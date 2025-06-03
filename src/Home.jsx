@@ -228,7 +228,6 @@ export default function Home() {
 
         {/* ✅ 쿠팡 광고 배너 */}
         <div className="text-center mb-8">
-          <p className="text-sm text-gray-500 mb-2">🛍️ 제휴 마케팅 광고</p>
           <div id="coupang-ad-banner" className="flex justify-center"></div>
         </div>
 
