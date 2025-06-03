@@ -118,13 +118,13 @@ export default function Home() {
     loadData();
   }, []);
 
-  // 최신 AI 시장 이슈 요약 4개 불러오기 (기존과 동일)
+  // 최신 AI 시장 이슈 요약 3개 불러오기 (기존과 동일)
   useEffect(() => {
     const fetchLatestAiSummaries = async () => {
       setAiSummaryLoading(true);
       setAiSummaryError(null);
       try {
-        const q = query(collection(db, "aiSummaries"), orderBy("createdAt", "desc"), limit(4));
+        const q = query(collection(db, "aiSummaries"), orderBy("createdAt", "desc"), limit(3));
         const querySnapshot = await getDocs(q);
         const summaries = querySnapshot.docs.map(doc => ({
           id: doc.id,
@@ -165,14 +165,14 @@ export default function Home() {
     fetchLatestBlogPosts();
   }, []);
 
-  // === 최신 주식/경제 뉴스 3개 불러오기 (수정) ===
+  // === 최신 주식/경제 뉴스 2개 불러오기 (수정) ===
   useEffect(() => {
     const fetchLatestNews = async () => {
       setNewsLoading(true);
       setNewsError(null);
       try {
         // 백엔드 API 호출: 이제 include_content 파라미터는 없습니다.
-        const response = await fetch(`${API_BASE_URL}/api/news?keyword=주식 경제&count=3`); 
+        const response = await fetch(`${API_BASE_URL}/api/news?keyword=주식 경제&count=2`); 
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
