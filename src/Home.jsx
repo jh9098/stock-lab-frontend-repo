@@ -33,7 +33,7 @@ export default function Home() {
   const [newsError, setNewsError] = useState(null);
 
   // API 서버 주소 (개발 환경 기준)
-  const API_BASE_URL = 'http://localhost:5000';
+  const API_BASE_URL = 'https://stock-lab-backend-repo.onrender.com';
 
 
   // Coupang 광고 로직 (기존과 동일)
