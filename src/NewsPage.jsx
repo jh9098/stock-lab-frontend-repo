@@ -10,7 +10,7 @@ export default function NewsPage() {
   const [error, setError] = useState(null);
 
   // API 서버 주소 (개발 환경 기준)
-  const API_BASE_URL = 'http://localhost:5000';
+  const API_BASE_URL = 'https://stock-lab-backend-repo.onrender.com';
 
   useEffect(() => {
     const fetchNews = async () => {
