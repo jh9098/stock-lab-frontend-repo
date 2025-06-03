@@ -118,13 +118,13 @@ export default function Home() {
     loadData();
   }, []);
 
-  // 최신 AI 시장 이슈 요약 3개 불러오기 (기존과 동일)
+  // 최신 AI 시장 이슈 요약 4개 불러오기 (기존과 동일)
   useEffect(() => {
     const fetchLatestAiSummaries = async () => {
       setAiSummaryLoading(true);
       setAiSummaryError(null);
       try {
-        const q = query(collection(db, "aiSummaries"), orderBy("createdAt", "desc"), limit(3));
+        const q = query(collection(db, "aiSummaries"), orderBy("createdAt", "desc"), limit(4));
         const querySnapshot = await getDocs(q);
         const summaries = querySnapshot.docs.map(doc => ({
           id: doc.id,
