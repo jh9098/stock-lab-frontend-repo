@@ -1,0 +1,14 @@
+{
+  "code": "A065500",
+  "name": "오리엔트정공",
+  "strategy": "단기반등매매",
+  "supportLines": [
+    8090
+  ],
+  "resistanceLines": [
+    8500
+  ],
+  "youtubeUrl": "",
+  "threadsUrl": "",
+  "status": "완료"
+}

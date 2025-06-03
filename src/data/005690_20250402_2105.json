@@ -1,0 +1,14 @@
+{
+  "code": "A005690",
+  "name": "파미셀",
+  "strategy": "급락반등 매매",
+  "supportLines": [
+    9850
+  ],
+  "resistanceLines": [
+    10600
+  ],
+  "youtubeUrl": "",
+  "threadsUrl": "",
+  "status": "완료"
+}

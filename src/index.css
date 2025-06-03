@@ -1,0 +1,72 @@
+/* src/index.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom scrollbar styles */
+::-webkit-scrollbar {
+    width: 8px;
+}
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+.news-item-content, .recommendation-item-content, .forum-post-content {
+    word-break: keep-all; /* 한국어 문맥을 고려한 줄바꿈 */
+}
+
+/* body 태그에 Pretendard 폰트 적용 (public/index.html에 Pretendard CDN 링크가 추가된 경우) */
+body {
+    font-family: 'Pretendard', 'Noto Sans KR', 'Inter', AppleSDGothicNeo, Arial, sans-serif;
+}
+
+
+/* ReactQuill 에디터 다크 테마 스타일 */
+.quill-dark-theme .ql-toolbar.ql-snow {
+  border-color: #475569 !important; /* border-gray-600 */
+  background-color: #334155 !important; /* bg-gray-700 */
+}
+
+.quill-dark-theme .ql-container.ql.snow {
+  border-color: #475569 !important; /* border-gray-600 */
+}
+
+.quill-dark-theme .ql-editor {
+  background-color: #1e293b !important; /* bg-gray-800 (에디터 본문 배경) */
+  color: #cbd5e1 !important; /* text-gray-300 (에디터 본문 글씨) */
+}
+
+/* Icons */
+.quill-dark-theme .ql-snow .ql-stroke {
+  stroke: #cbd5e1 !important; /* 아이콘 색상 */
+}
+
+.quill-dark-theme .ql-snow .ql-fill {
+  fill: #cbd5e1 !important; /* 아이콘 채우기 색상 */
+}
+
+/* Dropdowns/Pickers */
+.quill-dark-theme .ql-snow .ql-picker.ql-expanded .ql-picker-options {
+  background-color: #334155; /* bg-gray-700 */
+  border-color: #475569; /* border-gray-600 */
+}
+.quill-dark-theme .ql-snow .ql-picker-item,
+.quill-dark-theme .ql-snow .ql-picker-label {
+    color: #cbd5e1; /* 드롭다운 항목 텍스트 색상 */
+}
+.quill-dark-theme .ql-snow .ql-picker-item.ql-selected,
+.quill-dark-theme .ql-snow .ql-picker-item:hover {
+    background-color: #475569; /* 선택/호버 시 배경색 */
+    color: #fff;
+}
+
+/* HTML 소스 코드 편집용 textarea 글꼴 */
+.font-mono {
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+}

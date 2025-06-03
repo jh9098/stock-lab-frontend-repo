@@ -1,0 +1,137 @@
+/* src/styles/custom-styles.css */
+
+/* --- Blog Article Container and Base Styles --- */
+.blog-article {
+    font-family: 'Pretendard', 'Noto Sans KR', AppleSDGothicNeo, Arial, sans-serif !important; /* Font forced */
+    line-height: 1.7 !important; /* Original line-height */
+    color: #cbd5e1 !important; /* text-gray-300 for dark theme */
+    max-width: 840px !important; /* Exact max-width from original */
+    margin: 0 auto !important; /* Center align */
+    padding: 0 1rem !important; /* Exact padding from original body */
+    box-sizing: border-box !important;
+    background-color: transparent !important; /* Ensure no conflicting background */
+}
+
+/* --- Header Section Styles --- */
+.blog-article header {
+    padding-top: 1.5em !important; /* Add some top padding to mimic body's original top margin */
+    margin-bottom: 1.5em !important;
+}
+
+.blog-article header h1 {
+    font-size: 2.25em !important; /* Larger heading */
+    line-height: 1.3 !important;
+    font-weight: 700 !important;
+    margin: 0 0 0.4em !important; /* Adjusted margin for H1 */
+    color: #e2e8f0 !important;
+}
+.blog-article header h1 .text-blue-500 {
+    color: #3b82f6 !important; /* Ensure blue is prominent */
+}
+
+.blog-article header p {
+    font-size: 0.9em !important;
+    color: #94a3b8 !important;
+    margin-top: 0.4em !important; /* Gap below H1 */
+    margin-bottom: 0 !important;
+}
+
+/* --- Section Headings Styles --- */
+.blog-article h2,
+.blog-article h3 {
+    line-height: 1.3 !important;
+    font-weight: 700 !important;
+    margin: 1.5em 0 0.6em !important; /* More spacing above and below headings */
+    color: #e2e8f0 !important;
+}
+.blog-article h2 {
+    font-size: 1.75em !important; /* Larger H2 */
+}
+.blog-article h3 {
+    font-size: 1.35em !important; /* Slightly larger H3 */
+}
+
+/* --- Paragraph, List, List Item Styles --- */
+.blog-article p,
+.blog-article ul,
+.blog-article ol,
+.blog-article li {
+    font-size: 1rem !important; /* Base font size */
+    margin-bottom: 1em !important; /* Consistent paragraph/list item spacing */
+}
+.blog-article ul li, .blog-article ol li {
+    margin-bottom: 0.5em !important; /* Smaller gap between list items */
+}
+
+/* --- Emphasis Tags Styles --- */
+.blog-article strong {
+    font-weight: 700 !important;
+    color: #fff !important; /* Make bold text pure white for high contrast */
+}
+.blog-article em {
+    font-style: italic !important;
+    color: #a0aec0 !important; /* Slightly faded italic */
+}
+.blog-article abbr {
+    text-decoration: underline dotted !important;
+    cursor: help !important;
+}
+
+/* --- List Styles --- */
+.blog-article ul {
+    list-style-type: disc !important; /* Ensure default disc marker */
+    padding-left: 2em !important; /* Standard indentation */
+}
+.blog-article ol {
+    list-style-type: decimal !important; /* Ensure default decimal marker */
+    padding-left: 2em !important;
+}
+.blog-article ul li::marker,
+.blog-article ol li::marker {
+    color: #3b82f6 !important; /* Blue markers */
+}
+
+/* --- Figures and Captions Styles --- */
+.blog-article figure {
+    margin: 1.5em 0 !important;
+    text-align: center !important;
+}
+.blog-article figure img {
+    max-width: 100% !important;
+    height: auto !important;
+    border-radius: 0.5rem !important;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2) !important;
+}
+.blog-article figcaption {
+    font-size: 0.9rem !important;
+    color: #94a3b8 !important;
+    margin-top: 0.5em !important;
+}
+
+/* --- Tag Box Styles --- */
+.blog-article .tag-box {
+    margin: 2em 0 !important;
+    padding: 0.8em 1em !important; /* Original padding */
+    background: #1e293b !important; /* Darker background for contrast */
+    border-left: 4px solid #3b82f6 !important; /* Blue border */
+    color: #e2e8f0 !important; /* Text color */
+    border-radius: 0.5rem !important;
+}
+.blog-article .tag-box strong {
+    font-weight: 700 !important; /* Ensure strong is very bold here */
+    color: #fff !important; /* White color for strong in tag-box */
+}
+
+/* --- Disclaimer Styles --- */
+.blog-article .disclaimer {
+    font-size: 0.85rem !important;
+    color: #94a3b8 !important;
+    border-top: 1px dashed #475569 !important;
+    margin-top: 3em !important;
+    padding-top: 1em !important;
+}
+
+/* --- Specific Text Colors --- */
+.blog-article .text-blue-500 {
+    color: #3b82f6 !important; /* Ensure this specific blue is applied */
+}

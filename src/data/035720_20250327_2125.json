@@ -1,0 +1,15 @@
+
+{
+  "code": "A035720",
+  "name": "카카오",
+  "strategy": "단기반등 매매",
+  "supportLines": [
+    40300
+  ],
+  "resistanceLines": [
+    42850
+  ],
+  "youtubeUrl": "",
+  "threadsUrl": "",
+  "status": "완료"
+}

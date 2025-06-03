@@ -1,0 +1,14 @@
+{
+  "code": "047810",
+  "name": "한국항공우주",
+  "strategy": "지지선이하매수 저항선매도",
+  "supportLines": [
+    78500
+  ],
+  "resistanceLines": [
+    83500
+  ],
+  "youtubeUrl": "",
+  "threadsUrl": "",
+  "status": "완료"
+}

@@ -1,0 +1,14 @@
+{
+  "code": "A009420",
+  "name": "한올바이오파마",
+  "strategy": "스윙반등 매매",
+  "supportLines": [
+    28950,26600,24300
+  ],
+  "resistanceLines": [
+    31650
+  ],
+  "youtubeUrl": "",
+  "threadsUrl": "",
+  "status": "완료"
+}

@@ -1,0 +1,14 @@
+{
+  "code": "A047810",
+  "name": "한국항공우주",
+  "strategy": "단기반등 매매",
+  "supportLines": [
+    81100,73300
+  ],
+  "resistanceLines": [
+    98000
+  ],
+  "youtubeUrl": "",
+  "threadsUrl": "",
+  "status": "완료"
+}

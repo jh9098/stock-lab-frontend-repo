@@ -1,0 +1,15 @@
+{
+  "code": "A089850",
+  "name": "유비벨록스",
+  "strategy": "상한가 매매",
+  "detail": "10300 목표가 잡고 대응",
+  "supportLines": [
+    9300
+  ],
+  "resistanceLines": [
+    10300
+  ],
+  "youtubeUrl": "",
+  "threadsUrl": "",
+  "status": "완료"
+}

@@ -1,0 +1,14 @@
+{
+  "code": "A035420",
+  "name": "NAVER",
+  "strategy": "급락단기매매",
+  "supportLines": [
+    192000,188500
+  ],
+  "resistanceLines": [
+    201000
+  ],
+  "youtubeUrl": "",
+  "threadsUrl": "",
+  "status": "완료"
+}
