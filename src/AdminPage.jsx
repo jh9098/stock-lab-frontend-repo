@@ -307,8 +307,8 @@ export default function AdminPage() {
     setNewPostTitle(post.title);
     setNewPostAuthor(post.author);
     setNewPostSummary(post.summary);
-    // 💡 수정: post.contentHtml이 undefined/null일 경우 빈 문자열로 대체
-    setNewPostContent(post.contentHtml || ''); 
+    // 💡 수정: String()을 사용하여 어떤 값이든 문자열로 강제 변환
+    setNewPostContent(String(post.contentHtml || '')); 
     setEditHtmlMode(false);
     setMessage(`"${post.title}" 블로그 글을 수정 중입니다.`);
     blogFormRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -386,8 +386,8 @@ export default function AdminPage() {
   const handleEditAiSummary = (summary) => {
     setEditingAiSummaryId(summary.id);
     setNewAiSummaryTitle(summary.title);
-    // 💡 수정: summary.contentHtml이 undefined/null일 경우 빈 문자열로 대체
-    setNewAiSummaryContent(summary.contentHtml || ''); 
+    // 💡 수정: String()을 사용하여 어떤 값이든 문자열로 강제 변환
+    setNewAiSummaryContent(String(summary.contentHtml || '')); 
     setMessage(`"${summary.title}" AI 요약을 수정 중입니다.`);
     setAiSummaryEditHtmlMode(false);
     aiSummaryFormRef.current?.scrollIntoView({ behavior: 'smooth' });
