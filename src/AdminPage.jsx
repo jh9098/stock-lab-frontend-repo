@@ -1,4 +1,4 @@
-// START OF FILE frontend/src/AdminPage.jsx (수정: 종목 분석 관리 - 종목 코드 제거)
+// START OF FILE frontend/src/AdminPage.jsx (수정: 종목 분석 관리 - 종목 코드 제거, 상태/수익률 추가)
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Helmet } from 'react-helmet';
@@ -38,11 +38,12 @@ export default function AdminPage() {
   const [aiSummariesLoading, setAiSummariesLoading] = useState(true);
   const [aiSummariesError, setAiSummariesError] = useState(null);
 
-  // === 종목 분석 글 작성/수정을 위한 상태값 (종목 코드 제거) ===
+  // === 종목 분석 글 작성/수정을 위한 상태값 (종목 코드 제거, 상태/수익률 추가) ===
   const [newStockAnalysisName, setNewStockAnalysisName] = useState('');
-  // const [newStockAnalysisCode, setNewStockAnalysisCode] = useState(''); // ⚠️ 종목 코드 제거
   const [newStockAnalysisStrategy, setNewStockAnalysisStrategy] = useState(''); // 매매전략 설명
   const [newStockAnalysisDetail, setNewStockAnalysisDetail] = useState(''); // 종목설명
+  const [newStockAnalysisStatus, setNewStockAnalysisStatus] = useState('진행중'); // 💡 상태 추가 (기본값 진행중)
+  const [newStockAnalysisReturnRate, setNewStockAnalysisReturnRate] = useState(''); // 💡 수익률 추가
   const [editingStockAnalysisId, setEditingStockAnalysisId] = useState(null); // 수정 중인 종목 분석의 ID
   const [existingStockAnalyses, setExistingStockAnalyses] = useState([]); // 기존 종목 분석 목록
   const [stockAnalysesLoading, setStockAnalysesLoading] = useState(true);
@@ -417,31 +418,30 @@ export default function AdminPage() {
     aiSummaryFormRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  // === 새 종목 분석 작성 또는 수정 완료 (종목 코드 제거) ===
+  // === 새 종목 분석 작성 또는 수정 완료 (종목 코드 제거, 상태/수익률 추가) ===
   const handleSaveStockAnalysis = async () => {
-    // ⚠️ newStockAnalysisCode 유효성 검사 제거
-    if (!newStockAnalysisName || !newStockAnalysisStrategy || !newStockAnalysisDetail) {
-      setMessage('종목 분석: 모든 필드를 채워주세요.');
+    // 💡 newStockAnalysisStatus 추가 검사
+    if (!newStockAnalysisName || !newStockAnalysisStrategy || !newStockAnalysisDetail || !newStockAnalysisStatus) {
+      setMessage('종목 분석: 모든 필수 필드를 채워주세요.');
       return;
     }
 
     try {
       const stockData = {
         name: newStockAnalysisName,
-        // code: newStockAnalysisCode, // ⚠️ 종목 코드 저장 필드 제거
         strategy: newStockAnalysisStrategy,
         detail: newStockAnalysisDetail,
+        status: newStockAnalysisStatus, // 💡 상태 저장
+        returnRate: newStockAnalysisReturnRate, // 💡 수익률 저장
         date: new Date().toISOString().split('T')[0], // 오늘 날짜 YYYY-MM-DD
         updatedAt: new Date(),
       };
 
       if (editingStockAnalysisId) {
-        // 기존 종목 분석 수정
-        const stockRef = doc(db, "stocks", editingStockAnalysisId); // 'stocks' 컬렉션 사용
+        const stockRef = doc(db, "stocks", editingStockAnalysisId);
         await updateDoc(stockRef, stockData);
         setMessage(`종목 분석이 성공적으로 수정되었습니다! ID: ${editingStockAnalysisId}`);
       } else {
-        // 새 종목 분석 생성
         const docRef = await addDoc(collection(db, "stocks"), {
           ...stockData,
           createdAt: new Date(),
@@ -451,9 +451,10 @@ export default function AdminPage() {
 
       // 폼 초기화 및 목록 새로고침
       setNewStockAnalysisName('');
-      // setNewStockAnalysisCode(''); // ⚠️ 종목 코드 상태 초기화 제거
       setNewStockAnalysisStrategy('');
       setNewStockAnalysisDetail('');
+      setNewStockAnalysisStatus('진행중'); // 💡 상태 초기화
+      setNewStockAnalysisReturnRate(''); // 💡 수익률 초기화
       setEditingStockAnalysisId(null);
       await fetchExistingStockAnalyses(); // 목록 다시 불러오기
     } catch (e) {
@@ -462,13 +463,14 @@ export default function AdminPage() {
     }
   };
 
-  // "종목 분석 수정" 버튼 클릭 시 (종목 코드 제거)
+  // "종목 분석 수정" 버튼 클릭 시 (종목 코드 제거, 상태/수익률 추가)
   const handleEditStockAnalysis = (analysis) => {
     setEditingStockAnalysisId(analysis.id);
     setNewStockAnalysisName(analysis.name);
-    // setNewStockAnalysisCode(analysis.code); // ⚠️ 종목 코드 상태 설정 제거
     setNewStockAnalysisStrategy(analysis.strategy);
     setNewStockAnalysisDetail(analysis.detail);
+    setNewStockAnalysisStatus(analysis.status || '진행중'); // 💡 상태 불러오기
+    setNewStockAnalysisReturnRate(analysis.returnRate || ''); // 💡 수익률 불러오기
     setMessage(`"${analysis.name}" 종목 분석을 수정 중입니다.`);
     stockAnalysisFormRef.current?.scrollIntoView({ behavior: 'smooth' }); // 폼으로 스크롤
   };
@@ -490,15 +492,50 @@ export default function AdminPage() {
     }
   };
 
-  // "새 종목 분석 작성" 버튼 클릭 시 (종목 코드 제거)
+  // "새 종목 분석 작성" 버튼 클릭 시 (종목 코드 제거, 상태/수익률 추가)
   const handleNewStockAnalysis = () => {
     setEditingStockAnalysisId(null);
     setNewStockAnalysisName('');
-    // setNewStockAnalysisCode(''); // ⚠️ 종목 코드 상태 초기화 제거
     setNewStockAnalysisStrategy('');
     setNewStockAnalysisDetail('');
+    setNewStockAnalysisStatus('진행중'); // 💡 상태 초기화
+    setNewStockAnalysisReturnRate(''); // 💡 수익률 초기화
     setMessage('새 종목 분석을 작성합니다.');
     stockAnalysisFormRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  // 💡 종목 분석 상태 변경 핸들러
+  const handleStockAnalysisStatusChange = async (analysisId, currentStatus, currentReturnRate, analysisName) => {
+    const statuses = ['진행중', '목표달성', '손절'];
+    const currentIndex = statuses.indexOf(currentStatus);
+    const nextStatus = statuses[(currentIndex + 1) % statuses.length];
+
+    let newReturnRate = currentReturnRate;
+
+    // 목표달성/손절 상태로 변경 시 수익률 입력 프롬프트
+    if (nextStatus === '목표달성' || nextStatus === '손절') {
+      const input = prompt(`"${analysisName}" 종목의 상태를 "${nextStatus}"(으)로 변경합니다. 수익률을 입력해주세요 (예: +10.5%, -5%):`, currentReturnRate || '');
+      if (input === null) { // 사용자가 취소한 경우
+        return;
+      }
+      newReturnRate = input.trim();
+    } else { // 진행중으로 변경 시 수익률 초기화
+      newReturnRate = '';
+    }
+
+    try {
+      const stockRef = doc(db, "stocks", analysisId);
+      await updateDoc(stockRef, { 
+        status: nextStatus,
+        returnRate: newReturnRate,
+        updatedAt: new Date(),
+      });
+      setMessage(`"${analysisName}" 종목의 상태가 "${nextStatus}"(으)로 변경되었습니다. 수익률: ${newReturnRate}`);
+      await fetchExistingStockAnalyses(); // 목록 새로고침
+    } catch (e) {
+      console.error("종목 분석 상태 업데이트 실패:", e);
+      setMessage('종목 분석 상태 업데이트 실패.');
+    }
   };
 
 
@@ -782,7 +819,7 @@ export default function AdminPage() {
               )}
             </section>
 
-            {/* === 종목 분석 작성/수정 섹션 (종목 코드 제거) === */}
+            {/* === 종목 분석 작성/수정 섹션 (종목 코드 제거, 상태/수익률 추가) === */}
             <section ref={stockAnalysisFormRef} className="space-y-6 pt-6 pb-6 border-b border-gray-700">
               <div className="flex justify-between items-center">
                 <h2 className="text-2xl font-semibold text-white">
@@ -810,19 +847,6 @@ export default function AdminPage() {
                     placeholder="예: 삼성전자"
                   />
                 </div>
-                {/* ⚠️ 종목 코드 입력 필드 제거
-                <div>
-                  <label htmlFor="stockCode" className="block text-gray-300 text-sm font-bold mb-2">종목 코드:</label>
-                  <input
-                    type="text"
-                    id="stockCode"
-                    value={newStockAnalysisCode}
-                    onChange={(e) => setNewStockAnalysisCode(e.target.value)}
-                    className="w-full p-2 rounded bg-gray-700 border border-gray-600 text-gray-100 focus:outline-none focus:border-blue-500"
-                    placeholder="예: 005930"
-                  />
-                </div>
-                */}
                 <div>
                   <label htmlFor="stockStrategy" className="block text-gray-300 text-sm font-bold mb-2">매매전략 설명:</label>
                   <textarea
@@ -843,6 +867,34 @@ export default function AdminPage() {
                     placeholder="예: AI 반도체 관련주로 최근 강한 상승세를 보였으며, 실적 기대감 유효."
                   ></textarea>
                 </div>
+                {/* 💡 상태 선택 필드 추가 */}
+                <div>
+                  <label htmlFor="stockStatus" className="block text-gray-300 text-sm font-bold mb-2">상태:</label>
+                  <select
+                    id="stockStatus"
+                    value={newStockAnalysisStatus}
+                    onChange={(e) => setNewStockAnalysisStatus(e.target.value)}
+                    className="w-full p-2 rounded bg-gray-700 border border-gray-600 text-gray-100 focus:outline-none focus:border-blue-500"
+                  >
+                    <option value="진행중">진행중</option>
+                    <option value="목표달성">목표달성</option>
+                    <option value="손절">손절</option>
+                  </select>
+                </div>
+                {/* 💡 수익률 입력 필드 추가 (상태가 목표달성 또는 손절일 때만 표시) */}
+                {(newStockAnalysisStatus === '목표달성' || newStockAnalysisStatus === '손절') && (
+                  <div>
+                    <label htmlFor="stockReturnRate" className="block text-gray-300 text-sm font-bold mb-2">수익률:</label>
+                    <input
+                      type="text"
+                      id="stockReturnRate"
+                      value={newStockAnalysisReturnRate}
+                      onChange={(e) => setNewStockAnalysisReturnRate(e.target.value)}
+                      className="w-full p-2 rounded bg-gray-700 border border-gray-600 text-gray-100 focus:outline-none focus:border-blue-500"
+                      placeholder="예: +10.5% 또는 -5%"
+                    />
+                  </div>
+                )}
                 <button
                   onClick={handleSaveStockAnalysis}
                   className="w-full bg-teal-600 hover:bg-teal-700 text-white font-semibold py-2 px-4 rounded-md transition duration-300"
@@ -852,7 +904,7 @@ export default function AdminPage() {
               </div>
             </section>
 
-            {/* === 종목 분석 목록 섹션 (종목 코드 제거) === */}
+            {/* === 종목 분석 목록 섹션 (종목 코드 제거, 상태/수익률 표시 및 변경 버튼 추가) === */}
             <section className="space-y-4 pt-6">
               <h2 className="text-2xl font-semibold text-white border-b-2 border-gray-700 pb-2">종목 분석 목록</h2>
               {stockAnalysesLoading ? (
@@ -862,35 +914,53 @@ export default function AdminPage() {
               ) : existingStockAnalyses.length === 0 ? (
                 <p className="text-gray-400 text-center">작성된 종목 분석이 없습니다.</p>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {existingStockAnalyses.map((analysis) => (
-                    <div key={analysis.id} className="bg-gray-700 p-4 rounded-lg shadow-md flex flex-col justify-between">
-                      <div>
-                        {/* ⚠️ 종목 코드 표시 제거 */}
-                        <h3 className="text-xl font-semibold text-white mb-2">{analysis.name}</h3>
-                        <p className="text-gray-400 text-sm mb-1">등록일: {analysis.date}</p>
-                        <p className="text-gray-400 text-xs mt-2">전략: {analysis.strategy}</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4"> {/* lg:grid-cols-3 제거 (아이템당 공간 더 필요) */}
+                  {existingStockAnalyses.map((analysis) => {
+                    let statusBadgeClass = 'bg-blue-500 text-blue-100';
+                    if (analysis.status === '목표달성') {
+                      statusBadgeClass = 'bg-green-500 text-green-100';
+                    } else if (analysis.status === '손절') {
+                      statusBadgeClass = 'bg-red-500 text-red-100';
+                    }
+                    
+                    return (
+                      <div key={analysis.id} className="bg-gray-700 p-4 rounded-lg shadow-md flex flex-col justify-between">
+                        <div>
+                          <h3 className="text-xl font-semibold text-white mb-2">{analysis.name}</h3>
+                          <p className="text-gray-400 text-sm mb-1">등록일: {analysis.date}</p>
+                          <p className="text-gray-400 text-sm mb-1">전략: {analysis.strategy}</p>
+                          <p className="text-gray-400 text-sm mb-1">설명: {analysis.detail}</p>
+                          {/* 💡 상태 및 수익률 표시 */}
+                          <p className="text-gray-400 text-sm mt-2">
+                            상태: <span className={`${statusBadgeClass} text-xs font-semibold px-2.5 py-0.5 rounded-full`}>
+                              {analysis.status || '진행중'}
+                            </span>
+                            {analysis.returnRate && <span className="ml-2">수익률: {analysis.returnRate}</span>}
+                          </p>
+                        </div>
+                        <div className="flex flex-wrap justify-end space-x-2 mt-4">
+                          <button
+                            onClick={() => handleStockAnalysisStatusChange(analysis.id, analysis.status, analysis.returnRate, analysis.name)}
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-1 px-3 rounded-md text-xs transition duration-300"
+                          >
+                            상태 변경
+                          </button>
+                          <button
+                            onClick={() => handleEditStockAnalysis(analysis)}
+                            className="bg-yellow-600 hover:bg-yellow-700 text-white font-semibold py-1 px-3 rounded-md text-xs transition duration-300"
+                          >
+                            수정
+                          </button>
+                          <button
+                            onClick={() => handleDeleteStockAnalysis(analysis.id, analysis.name)}
+                            className="bg-red-600 hover:bg-red-700 text-white font-semibold py-1 px-3 rounded-md text-xs transition duration-300"
+                          >
+                            삭제
+                          </button>
+                        </div>
                       </div>
-                      <div className="flex justify-end space-x-2 mt-4">
-                        {/* 상세 보기 링크 (만약 /stock/A000000 페이지가 있다면) */}
-                        {/* <Link to={`/stock/${analysis.code}`} target="_blank" rel="noopener noreferrer" className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-1 px-3 rounded-md text-xs transition duration-300">
-                          보기
-                        </Link> */}
-                        <button
-                          onClick={() => handleEditStockAnalysis(analysis)}
-                          className="bg-yellow-600 hover:bg-yellow-700 text-white font-semibold py-1 px-3 rounded-md text-xs transition duration-300"
-                        >
-                          수정
-                        </button>
-                        <button
-                          onClick={() => handleDeleteStockAnalysis(analysis.id, analysis.name)}
-                          className="bg-red-600 hover:bg-red-700 text-white font-semibold py-1 px-3 rounded-md text-xs transition duration-300"
-                        >
-                          삭제
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </section>
