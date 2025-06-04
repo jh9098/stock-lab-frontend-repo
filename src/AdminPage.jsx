@@ -1,4 +1,4 @@
-// START OF FILE frontend/src/AdminPage.jsx (수정: 종목 분석 관리 추가)
+// START OF FILE frontend/src/AdminPage.jsx (수정: 종목 분석 관리 - 종목 코드 제거)
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Helmet } from 'react-helmet';
@@ -38,8 +38,9 @@ export default function AdminPage() {
   const [aiSummariesLoading, setAiSummariesLoading] = useState(true);
   const [aiSummariesError, setAiSummariesError] = useState(null);
 
-  // === 종목 분석 글 작성/수정을 위한 상태값 (추가) ===
+  // === 종목 분석 글 작성/수정을 위한 상태값 (종목 코드 제거) ===
   const [newStockAnalysisName, setNewStockAnalysisName] = useState('');
+  // const [newStockAnalysisCode, setNewStockAnalysisCode] = useState(''); // ⚠️ 종목 코드 제거
   const [newStockAnalysisStrategy, setNewStockAnalysisStrategy] = useState(''); // 매매전략 설명
   const [newStockAnalysisDetail, setNewStockAnalysisDetail] = useState(''); // 종목설명
   const [editingStockAnalysisId, setEditingStockAnalysisId] = useState(null); // 수정 중인 종목 분석의 ID
@@ -322,8 +323,8 @@ export default function AdminPage() {
           handleNewPost();
         }
       } catch (e) {
-        console.error("Firestore 블로그 삭제 실패:", e);
-        setMessage('블로그 글 삭제 실패.');
+          console.error("Firestore 블로그 삭제 실패:", e);
+          setMessage('블로그 글 삭제 실패.');
       }
     }
   };
@@ -416,8 +417,9 @@ export default function AdminPage() {
     aiSummaryFormRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  // === 새 종목 분석 작성 또는 수정 완료 (추가) ===
+  // === 새 종목 분석 작성 또는 수정 완료 (종목 코드 제거) ===
   const handleSaveStockAnalysis = async () => {
+    // ⚠️ newStockAnalysisCode 유효성 검사 제거
     if (!newStockAnalysisName || !newStockAnalysisStrategy || !newStockAnalysisDetail) {
       setMessage('종목 분석: 모든 필드를 채워주세요.');
       return;
@@ -426,6 +428,7 @@ export default function AdminPage() {
     try {
       const stockData = {
         name: newStockAnalysisName,
+        // code: newStockAnalysisCode, // ⚠️ 종목 코드 저장 필드 제거
         strategy: newStockAnalysisStrategy,
         detail: newStockAnalysisDetail,
         date: new Date().toISOString().split('T')[0], // 오늘 날짜 YYYY-MM-DD
@@ -448,6 +451,7 @@ export default function AdminPage() {
 
       // 폼 초기화 및 목록 새로고침
       setNewStockAnalysisName('');
+      // setNewStockAnalysisCode(''); // ⚠️ 종목 코드 상태 초기화 제거
       setNewStockAnalysisStrategy('');
       setNewStockAnalysisDetail('');
       setEditingStockAnalysisId(null);
@@ -458,10 +462,11 @@ export default function AdminPage() {
     }
   };
 
-  // "종목 분석 수정" 버튼 클릭 시 (추가)
+  // "종목 분석 수정" 버튼 클릭 시 (종목 코드 제거)
   const handleEditStockAnalysis = (analysis) => {
     setEditingStockAnalysisId(analysis.id);
     setNewStockAnalysisName(analysis.name);
+    // setNewStockAnalysisCode(analysis.code); // ⚠️ 종목 코드 상태 설정 제거
     setNewStockAnalysisStrategy(analysis.strategy);
     setNewStockAnalysisDetail(analysis.detail);
     setMessage(`"${analysis.name}" 종목 분석을 수정 중입니다.`);
@@ -485,10 +490,11 @@ export default function AdminPage() {
     }
   };
 
-  // "새 종목 분석 작성" 버튼 클릭 시 (추가)
+  // "새 종목 분석 작성" 버튼 클릭 시 (종목 코드 제거)
   const handleNewStockAnalysis = () => {
     setEditingStockAnalysisId(null);
     setNewStockAnalysisName('');
+    // setNewStockAnalysisCode(''); // ⚠️ 종목 코드 상태 초기화 제거
     setNewStockAnalysisStrategy('');
     setNewStockAnalysisDetail('');
     setMessage('새 종목 분석을 작성합니다.');
@@ -776,7 +782,7 @@ export default function AdminPage() {
               )}
             </section>
 
-            {/* === 종목 분석 작성/수정 섹션 (추가) === */}
+            {/* === 종목 분석 작성/수정 섹션 (종목 코드 제거) === */}
             <section ref={stockAnalysisFormRef} className="space-y-6 pt-6 pb-6 border-b border-gray-700">
               <div className="flex justify-between items-center">
                 <h2 className="text-2xl font-semibold text-white">
@@ -804,15 +810,19 @@ export default function AdminPage() {
                     placeholder="예: 삼성전자"
                   />
                 </div>
+                {/* ⚠️ 종목 코드 입력 필드 제거
                 <div>
                   <label htmlFor="stockCode" className="block text-gray-300 text-sm font-bold mb-2">종목 코드:</label>
                   <input
                     type="text"
                     id="stockCode"
+                    value={newStockAnalysisCode}
+                    onChange={(e) => setNewStockAnalysisCode(e.target.value)}
                     className="w-full p-2 rounded bg-gray-700 border border-gray-600 text-gray-100 focus:outline-none focus:border-blue-500"
                     placeholder="예: 005930"
                   />
                 </div>
+                */}
                 <div>
                   <label htmlFor="stockStrategy" className="block text-gray-300 text-sm font-bold mb-2">매매전략 설명:</label>
                   <textarea
@@ -842,7 +852,7 @@ export default function AdminPage() {
               </div>
             </section>
 
-            {/* === 종목 분석 목록 섹션 (추가) === */}
+            {/* === 종목 분석 목록 섹션 (종목 코드 제거) === */}
             <section className="space-y-4 pt-6">
               <h2 className="text-2xl font-semibold text-white border-b-2 border-gray-700 pb-2">종목 분석 목록</h2>
               {stockAnalysesLoading ? (
@@ -856,10 +866,10 @@ export default function AdminPage() {
                   {existingStockAnalyses.map((analysis) => (
                     <div key={analysis.id} className="bg-gray-700 p-4 rounded-lg shadow-md flex flex-col justify-between">
                       <div>
-                        <h3 className="text-xl font-semibold text-white mb-2">{analysis.name} ({analysis.code})</h3>
+                        {/* ⚠️ 종목 코드 표시 제거 */}
+                        <h3 className="text-xl font-semibold text-white mb-2">{analysis.name}</h3>
                         <p className="text-gray-400 text-sm mb-1">등록일: {analysis.date}</p>
                         <p className="text-gray-400 text-xs mt-2">전략: {analysis.strategy}</p>
-                        {/* 상세 설명은 클릭 시 보여줄 수도 있음 */}
                       </div>
                       <div className="flex justify-end space-x-2 mt-4">
                         {/* 상세 보기 링크 (만약 /stock/A000000 페이지가 있다면) */}
