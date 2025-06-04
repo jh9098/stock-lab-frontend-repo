@@ -508,6 +508,15 @@ export default function Home() {
               <a href="https://www.threads.net/@YOUR_USERNAME" target="_blank" rel="noopener noreferrer" className="mt-4 inline-block bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-md text-sm transition duration-300">쓰레드 방문하기 <i className="fas fa-external-link-alt ml-1"></i></a>
             </div>
           </div>
+        <div style={{ padding: "2rem", maxWidth: "960px", margin: "auto", lineHeight: "1.8" }}>
+          <h1 style={{ marginBottom: "1.5rem" }}>지지저항 Lab 문의하기</h1>
+    
+          <h2 style={{ marginTop: "2rem" }}>운영자 연락처</h2>
+          <ul>
+            <li>📧 이메일: <strong>stocksrlab@naver.com</strong></li>
+            <li>💬 오픈채팅방: <a href="https://open.kakao.com/o/gzQUEIoh" target="_blank" rel="noreferrer">카카오톡 오픈채팅 문의</a></li>
+          </ul>
+        </div>          
         </section>
 
         <section id="extra-features" className="mb-12 p-6 bg-gray-800 rounded-lg shadow-xl">
