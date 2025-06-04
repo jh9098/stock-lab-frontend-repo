@@ -1,10 +1,11 @@
-// START OF FILE AdminPage.jsx
+// START OF FILE frontend/src/AdminPage.jsx (수정: 종목 분석 관리 추가)
+
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Helmet } from 'react-helmet';
 import { Link, useNavigate } from 'react-router-dom';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
-import './styles/custom-styles.css'; // 블로그 콘텐츠 스타일 재사용
+import './styles/custom-styles.css';
 
 // Firebase import
 import { db, storage } from './firebaseConfig';
@@ -22,28 +23,39 @@ export default function AdminPage() {
   const [newPostAuthor, setNewPostAuthor] = useState('');
   const [newPostSummary, setNewPostSummary] = useState('');
   const [newPostContent, setNewPostContent] = useState('');
-  const [editHtmlMode, setEditHtmlMode] = useState(false); // HTML 소스 코드 편집 모드 토글 (블로그용)
-  const [editingPostId, setEditingPostId] = useState(null); // 수정 중인 글의 ID (null이면 새 글 작성)
-  const [existingPosts, setExistingPosts] = useState([]); // 기존 블로그 글 목록
+  const [editHtmlMode, setEditHtmlMode] = useState(false);
+  const [editingPostId, setEditingPostId] = useState(null);
+  const [existingPosts, setExistingPosts] = useState([]);
   const [postsLoading, setPostsLoading] = useState(true);
   const [postsError, setPostsError] = useState(null);
 
-  // === AI 요약 글 작성/수정을 위한 상태값 (추가 및 수정) ===
+  // AI 요약 글 작성/수정을 위한 상태값
   const [newAiSummaryTitle, setNewAiSummaryTitle] = useState('');
   const [newAiSummaryContent, setNewAiSummaryContent] = useState('');
-  const [aiSummaryEditHtmlMode, setAiSummaryEditHtmlMode] = useState(false); // HTML 소스 코드 편집 모드 토글 (AI 요약용)
-  const [editingAiSummaryId, setEditingAiSummaryId] = useState(null); // 수정 중인 AI 요약의 ID
-  const [existingAiSummaries, setExistingAiSummaries] = useState([]); // 기존 AI 요약 글 목록
+  const [aiSummaryEditHtmlMode, setAiSummaryEditHtmlMode] = useState(false);
+  const [editingAiSummaryId, setEditingAiSummaryId] = useState(null);
+  const [existingAiSummaries, setExistingAiSummaries] = useState([]);
   const [aiSummariesLoading, setAiSummariesLoading] = useState(true);
   const [aiSummariesError, setAiSummariesError] = useState(null);
-  const aiSummaryQuillRef = useRef(null); // AI 요약 Quill 인스턴스 참조
-  const aiSummaryFormRef = useRef(null); // AI 요약 폼으로 스크롤하기 위한 참조
 
-  const quillRef = useRef(null); // 블로그 Quill 인스턴스 참조
-  const blogFormRef = useRef(null); // 블로그 폼으로 스크롤하기 위한 참조 (이전 formRef 이름을 변경)
+  // === 종목 분석 글 작성/수정을 위한 상태값 (추가) ===
+  const [newStockAnalysisName, setNewStockAnalysisName] = useState('');
+  const [newStockAnalysisCode, setNewStockAnalysisCode] = useState(''); // 종목 코드
+  const [newStockAnalysisStrategy, setNewStockAnalysisStrategy] = useState(''); // 매매전략 설명
+  const [newStockAnalysisDetail, setNewStockAnalysisDetail] = useState(''); // 종목설명
+  const [editingStockAnalysisId, setEditingStockAnalysisId] = useState(null); // 수정 중인 종목 분석의 ID
+  const [existingStockAnalyses, setExistingStockAnalyses] = useState([]); // 기존 종목 분석 목록
+  const [stockAnalysesLoading, setStockAnalysesLoading] = useState(true);
+  const [stockAnalysesError, setStockAnalysesError] = useState(null);
 
-  // 간단한 관리자 비밀번호 (⚠️ 실제 서비스에서는 Firebase Authentication을 사용해야 합니다! 매우 중요!)
-  const ADMIN_PASSWORD = '12345'; // <-- 여기에 당신의 실제 비밀번호 설정
+  const quillRef = useRef(null);
+  const blogFormRef = useRef(null);
+  const aiSummaryQuillRef = useRef(null);
+  const aiSummaryFormRef = useRef(null);
+  const stockAnalysisFormRef = useRef(null); // 종목 분석 폼 참조 추가
+
+  // API 서버 주소 (Render 백엔드 앱의 URL)
+  const API_BASE_URL = 'https://stock-lab-backend-repo.onrender.com'; // Render 배포 후 얻게 되는 실제 URL로 변경
 
   useEffect(() => {
     const savedLogin = sessionStorage.getItem('adminLoggedIn');
@@ -73,7 +85,7 @@ export default function AdminPage() {
     }
   }, []);
 
-  // === 기존 AI 요약 글 목록 불러오기 (추가) ===
+  // 기존 AI 요약 글 목록 불러오기
   const fetchExistingAiSummaries = useCallback(async () => {
     setAiSummariesLoading(true);
     setAiSummariesError(null);
@@ -94,22 +106,63 @@ export default function AdminPage() {
     }
   }, []);
 
+  // === 기존 종목 분석 목록 불러오기 (추가) ===
+  const fetchExistingStockAnalyses = useCallback(async () => {
+    setStockAnalysesLoading(true);
+    setStockAnalysesError(null);
+    try {
+      const stockAnalysesCollection = collection(db, "stocks"); // 'stocks' 컬렉션 사용
+      const q = query(stockAnalysesCollection, orderBy("createdAt", "desc"));
+      const querySnapshot = await getDocs(q);
+      const analyses = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setExistingStockAnalyses(analyses);
+    } catch (err) {
+      console.error("기존 종목 분석 데이터를 불러오는 데 실패했습니다:", err);
+      setStockAnalysesError("종목 분석 목록을 불러올 수 없습니다.");
+    } finally {
+      setStockAnalysesLoading(false);
+    }
+  }, []);
+
 
   useEffect(() => {
     if (loggedIn) {
       fetchExistingPosts();
-      fetchExistingAiSummaries(); // AI 요약 글도 함께 불러오기
+      fetchExistingAiSummaries();
+      fetchExistingStockAnalyses(); // 종목 분석 목록도 함께 불러오기
     }
-  }, [loggedIn, fetchExistingPosts, fetchExistingAiSummaries]);
+  }, [loggedIn, fetchExistingPosts, fetchExistingAiSummaries, fetchExistingStockAnalyses]);
 
-  const handleLogin = (e) => {
+  // 관리자 로그인 핸들러 (백엔드 연동)
+  const handleLogin = async (e) => {
     e.preventDefault();
-    if (password === ADMIN_PASSWORD) {
-      setLoggedIn(true);
-      sessionStorage.setItem('adminLoggedIn', 'true');
-      setMessage('로그인 성공! 데이터를 불러오는 중...');
-    } else {
-      setMessage('로그인 실패: 비밀번호를 확인해주세요.');
+    setMessage('로그인 시도 중...');
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/admin/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', },
+        body: JSON.stringify({ password: password }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          setLoggedIn(true);
+          sessionStorage.setItem('adminLoggedIn', 'true');
+          setMessage('로그인 성공! 데이터를 불러오는 중...');
+        } else {
+          setMessage(`로그인 실패: ${data.message || '비밀번호를 확인해주세요.'}`);
+        }
+      } else {
+        const errorData = await response.json();
+        setMessage(`로그인 실패: ${errorData.message || '서버 오류 발생'}`);
+      }
+    } catch (error) {
+      console.error("로그인 API 호출 오류:", error);
+      setMessage('로그인 중 네트워크 오류가 발생했습니다.');
     }
   };
 
@@ -118,11 +171,12 @@ export default function AdminPage() {
     sessionStorage.removeItem('adminLoggedIn');
     setMessage('로그아웃되었습니다.');
     setPassword('');
-    setExistingPosts([]); // 목록 초기화
-    setExistingAiSummaries([]); // AI 요약 목록 초기화
+    setExistingPosts([]);
+    setExistingAiSummaries([]);
+    setExistingStockAnalyses([]); // 종목 분석 목록 초기화
   };
 
-  // 이미지 업로드 핸들러 (ReactQuill 커스텀) - 블로그와 AI 요약 모두 사용 가능
+  // 이미지 업로드 핸들러 (기존과 동일)
   const imageHandler = useCallback((quillInstanceRef) => {
     return () => {
       const input = document.createElement('input');
@@ -169,7 +223,7 @@ export default function AdminPage() {
     }
   }, []);
 
-  // ReactQuill 모듈 설정 (블로그용)
+  // ReactQuill 모듈 설정 (블로그용) - 기존과 동일
   const blogQuillModules = {
     toolbar: {
       container: [
@@ -181,12 +235,12 @@ export default function AdminPage() {
         ['clean']
       ],
       handlers: {
-        image: imageHandler(quillRef) // 블로그용 QuillRef 전달
+        image: imageHandler(quillRef)
       }
     }
   };
 
-  // ReactQuill 모듈 설정 (AI 요약용)
+  // ReactQuill 모듈 설정 (AI 요약용) - 기존과 동일
   const aiSummaryQuillModules = {
     toolbar: {
       container: [
@@ -194,17 +248,17 @@ export default function AdminPage() {
         [{ size: [] }],
         ['bold', 'italic', 'underline', 'strike', 'blockquote'],
         [{ 'list': 'ordered' }, { 'list': 'bullet' }, { 'indent': '-1' }, { 'indent': '+1' }],
-        ['link', 'image'], // AI 요약에는 비디오는 제외
+        ['link', 'image'],
         ['clean']
       ],
       handlers: {
-        image: imageHandler(aiSummaryQuillRef) // AI 요약용 QuillRef 전달
+        image: imageHandler(aiSummaryQuillRef)
       }
     }
   };
 
 
-  // 새 블로그 글 작성 또는 수정 완료
+  // 새 블로그 글 작성 또는 수정 완료 (기존과 동일)
   const handleSavePost = async () => {
     if (!newPostTitle || !newPostAuthor || !newPostSummary || !newPostContent) {
       setMessage('블로그 글: 모든 필드를 채워주세요.');
@@ -215,61 +269,56 @@ export default function AdminPage() {
       const postData = {
         title: newPostTitle,
         author: newPostAuthor,
-        date: new Date().toISOString().split('T')[0], // 오늘 날짜 YYYY-MM-DD
+        date: new Date().toISOString().split('T')[0],
         summary: newPostSummary,
         contentHtml: newPostContent,
-        updatedAt: new Date(), // 업데이트 시간
+        updatedAt: new Date(),
       };
 
       if (editingPostId) {
-        // 기존 글 수정
         const postRef = doc(db, "blogPosts", editingPostId);
         await updateDoc(postRef, postData);
         setMessage(`블로그 글이 성공적으로 수정되었습니다! ID: ${editingPostId}`);
       } else {
-        // 새 글 생성
         const docRef = await addDoc(collection(db, "blogPosts"), {
           ...postData,
-          createdAt: new Date(), // 생성 시간 (새 글에만)
+          createdAt: new Date(),
         });
         setMessage(`블로그 글이 성공적으로 게시되었습니다! ID: ${docRef.id}`);
       }
 
-      // 폼 초기화 및 목록 새로고침
       setNewPostTitle('');
       setNewPostAuthor('');
       setNewPostSummary('');
       setNewPostContent('');
       setEditingPostId(null);
-      setEditHtmlMode(false); // 일반 에디터 모드로 전환
-      await fetchExistingPosts(); // 목록 다시 불러오기
-      // navigate('/blog'); // 블로그 목록 페이지로 이동 (선택 사항, 관리자 페이지에 머무는 것이 더 일반적)
+      setEditHtmlMode(false);
+      await fetchExistingPosts();
     } catch (e) {
       console.error("Firestore 블로그 작업 실패:", e);
       setMessage(`블로그 글 ${editingPostId ? '수정' : '게시'} 실패.`);
     }
   };
 
-  // "블로그 수정" 버튼 클릭 시
+  // "블로그 수정" 버튼 클릭 시 (기존과 동일)
   const handleEditPost = (post) => {
     setEditingPostId(post.id);
     setNewPostTitle(post.title);
     setNewPostAuthor(post.author);
     setNewPostSummary(post.summary);
     setNewPostContent(post.contentHtml);
-    setEditHtmlMode(false); // 항상 WYSIWYG 모드로 시작
+    setEditHtmlMode(false);
     setMessage(`"${post.title}" 블로그 글을 수정 중입니다.`);
-    blogFormRef.current?.scrollIntoView({ behavior: 'smooth' }); // 폼으로 스크롤
+    blogFormRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  // "블로그 삭제" 버튼 클릭 시
+  // "블로그 삭제" 버튼 클릭 시 (기존과 동일)
   const handleDeletePost = async (postId, postTitle) => {
     if (window.confirm(`"${postTitle}" 블로그 글을 정말로 삭제하시겠습니까?`)) {
       try {
         await deleteDoc(doc(db, "blogPosts", postId));
         setMessage(`"${postTitle}" 블로그 글이 성공적으로 삭제되었습니다.`);
-        await fetchExistingPosts(); // 목록 다시 불러오기
-        // 만약 삭제된 글이 현재 수정 중인 글이라면 폼 초기화
+        await fetchExistingPosts();
         if (editingPostId === postId) {
           handleNewPost();
         }
@@ -280,7 +329,7 @@ export default function AdminPage() {
     }
   };
 
-  // "새 블로그 글 작성" 버튼 클릭 시
+  // "새 블로그 글 작성" 버튼 클릭 시 (기존과 동일)
   const handleNewPost = () => {
     setEditingPostId(null);
     setNewPostTitle('');
@@ -289,11 +338,11 @@ export default function AdminPage() {
     setNewPostContent('');
     setEditHtmlMode(false);
     setMessage('새 블로그 글을 작성합니다.');
-    blogFormRef.current?.scrollIntoView({ behavior: 'smooth' }); // 폼으로 스크롤
+    blogFormRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
 
-  // === 새 AI 요약 글 작성 또는 수정 완료 (수정) ===
+  // 새 AI 요약 글 작성 또는 수정 완료 (기존과 동일)
   const handleSaveAiSummary = async () => {
     if (!newAiSummaryTitle || !newAiSummaryContent) {
       setMessage('AI 요약: 제목과 내용을 채워주세요.');
@@ -304,7 +353,7 @@ export default function AdminPage() {
       const summaryData = {
         title: newAiSummaryTitle,
         contentHtml: newAiSummaryContent,
-        date: new Date().toISOString().split('T')[0], // 오늘 날짜 YYYY-MM-DD
+        date: new Date().toISOString().split('T')[0],
         updatedAt: new Date(),
       };
 
@@ -323,26 +372,25 @@ export default function AdminPage() {
       setNewAiSummaryTitle('');
       setNewAiSummaryContent('');
       setEditingAiSummaryId(null);
-      setAiSummaryEditHtmlMode(false); // 일반 에디터 모드로 전환
-      await fetchExistingAiSummaries(); // 목록 새로고침
-      // navigate('/ai-summaries'); // AI 요약 목록 페이지로 이동 (선택 사항)
+      setAiSummaryEditHtmlMode(false);
+      await fetchExistingAiSummaries();
     } catch (e) {
       console.error("Firestore AI 요약 작업 실패:", e);
       setMessage(`AI 요약 ${editingAiSummaryId ? '수정' : '게시'} 실패.`);
     }
   };
 
-  // "AI 요약 수정" 버튼 클릭 시
+  // "AI 요약 수정" 버튼 클릭 시 (기존과 동일)
   const handleEditAiSummary = (summary) => {
     setEditingAiSummaryId(summary.id);
     setNewAiSummaryTitle(summary.title);
     setNewAiSummaryContent(summary.contentHtml);
     setMessage(`"${summary.title}" AI 요약을 수정 중입니다.`);
-    setAiSummaryEditHtmlMode(false); // 항상 WYSIWYG 모드로 시작
+    setAiSummaryEditHtmlMode(false);
     aiSummaryFormRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  // "AI 요약 삭제" 버튼 클릭 시
+  // "AI 요약 삭제" 버튼 클릭 시 (기존과 동일)
   const handleDeleteAiSummary = async (summaryId, summaryTitle) => {
     if (window.confirm(`"${summaryTitle}" AI 요약을 정말로 삭제하시겠습니까?`)) {
       try {
@@ -359,14 +407,97 @@ export default function AdminPage() {
     }
   };
 
-  // "새 AI 요약 작성" 버튼 클릭 시
+  // "새 AI 요약 작성" 버튼 클릭 시 (기존과 동일)
   const handleNewAiSummary = () => {
     setEditingAiSummaryId(null);
     setNewAiSummaryTitle('');
     setNewAiSummaryContent('');
     setMessage('새 AI 요약 글을 작성합니다.');
-    setAiSummaryEditHtmlMode(false); // 일반 에디터 모드로 전환
+    setAiSummaryEditHtmlMode(false);
     aiSummaryFormRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  // === 새 종목 분석 작성 또는 수정 완료 (추가) ===
+  const handleSaveStockAnalysis = async () => {
+    if (!newStockAnalysisName || !newStockAnalysisCode || !newStockAnalysisStrategy || !newStockAnalysisDetail) {
+      setMessage('종목 분석: 모든 필드를 채워주세요.');
+      return;
+    }
+
+    try {
+      const stockData = {
+        name: newStockAnalysisName,
+        code: newStockAnalysisCode,
+        strategy: newStockAnalysisStrategy,
+        detail: newStockAnalysisDetail,
+        date: new Date().toISOString().split('T')[0], // 오늘 날짜 YYYY-MM-DD
+        updatedAt: new Date(),
+      };
+
+      if (editingStockAnalysisId) {
+        // 기존 종목 분석 수정
+        const stockRef = doc(db, "stocks", editingStockAnalysisId); // 'stocks' 컬렉션 사용
+        await updateDoc(stockRef, stockData);
+        setMessage(`종목 분석이 성공적으로 수정되었습니다! ID: ${editingStockAnalysisId}`);
+      } else {
+        // 새 종목 분석 생성
+        const docRef = await addDoc(collection(db, "stocks"), {
+          ...stockData,
+          createdAt: new Date(),
+        });
+        setMessage(`종목 분석이 성공적으로 게시되었습니다! ID: ${docRef.id}`);
+      }
+
+      // 폼 초기화 및 목록 새로고침
+      setNewStockAnalysisName('');
+      setNewStockAnalysisCode('');
+      setNewStockAnalysisStrategy('');
+      setNewStockAnalysisDetail('');
+      setEditingStockAnalysisId(null);
+      await fetchExistingStockAnalyses(); // 목록 다시 불러오기
+    } catch (e) {
+      console.error("Firestore 종목 분석 작업 실패:", e);
+      setMessage(`종목 분석 ${editingStockAnalysisId ? '수정' : '게시'} 실패.`);
+    }
+  };
+
+  // "종목 분석 수정" 버튼 클릭 시 (추가)
+  const handleEditStockAnalysis = (analysis) => {
+    setEditingStockAnalysisId(analysis.id);
+    setNewStockAnalysisName(analysis.name);
+    setNewStockAnalysisCode(analysis.code);
+    setNewStockAnalysisStrategy(analysis.strategy);
+    setNewStockAnalysisDetail(analysis.detail);
+    setMessage(`"${analysis.name}" 종목 분석을 수정 중입니다.`);
+    stockAnalysisFormRef.current?.scrollIntoView({ behavior: 'smooth' }); // 폼으로 스크롤
+  };
+
+  // "종목 분석 삭제" 버튼 클릭 시 (추가)
+  const handleDeleteStockAnalysis = async (analysisId, analysisName) => {
+    if (window.confirm(`"${analysisName}" 종목 분석을 정말로 삭제하시겠습니까?`)) {
+      try {
+        await deleteDoc(doc(db, "stocks", analysisId)); // 'stocks' 컬렉션 사용
+        setMessage(`"${analysisName}" 종목 분석이 성공적으로 삭제되었습니다.`);
+        await fetchExistingStockAnalyses(); // 목록 다시 불러오기
+        if (editingStockAnalysisId === analysisId) {
+          handleNewStockAnalysis();
+        }
+      } catch (e) {
+        console.error("Firestore 종목 분석 삭제 실패:", e);
+        setMessage('종목 분석 삭제 실패.');
+      }
+    }
+  };
+
+  // "새 종목 분석 작성" 버튼 클릭 시 (추가)
+  const handleNewStockAnalysis = () => {
+    setEditingStockAnalysisId(null);
+    setNewStockAnalysisName('');
+    setNewStockAnalysisCode('');
+    setNewStockAnalysisStrategy('');
+    setNewStockAnalysisDetail('');
+    setMessage('새 종목 분석을 작성합니다.');
+    stockAnalysisFormRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
 
@@ -401,29 +532,31 @@ export default function AdminPage() {
             {message && <p className="text-center text-sm text-red-400">{message}</p>}
           </form>
         ) : (
-          <div className="space-y-8"> {/* 전체 공간 간격 조정 */}
+          <div className="space-y-8">
+            <div className="flex justify-end mb-4">
+              <button
+                onClick={handleLogout}
+                className="bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-md text-sm transition duration-300"
+              >
+                로그아웃
+              </button>
+            </div>
+            {message && <p className="text-center text-sm text-yellow-400 mb-4">{message}</p>} {/* 로그인 후 메시지 */}
+
             {/* 블로그 글 작성/수정 섹션 */}
             <section ref={blogFormRef} className="space-y-6 pb-6 border-b border-gray-700">
               <div className="flex justify-between items-center">
                 <h2 className="text-2xl font-semibold text-white">
                   {editingPostId ? '블로그 글 수정' : '새 블로그 글 작성'}
                 </h2>
-                <div className="flex space-x-2">
-                  {editingPostId && (
-                    <button
-                      onClick={handleNewPost}
-                      className="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded-md text-sm transition duration-300"
-                    >
-                      새 글 작성
-                    </button>
-                  )}
+                {editingPostId && (
                   <button
-                    onClick={handleLogout}
-                    className="bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-md text-sm transition duration-300"
+                    onClick={handleNewPost}
+                    className="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded-md text-sm transition duration-300"
                   >
-                    로그아웃
+                    새 글 작성
                   </button>
-                </div>
+                )}
               </div>
 
               <div className="space-y-4">
@@ -475,7 +608,7 @@ export default function AdminPage() {
                       theme="snow"
                       value={newPostContent}
                       onChange={setNewPostContent}
-                      modules={blogQuillModules} // 블로그용 모듈 사용
+                      modules={blogQuillModules}
                       className="bg-gray-700 text-gray-100 quill-dark-theme"
                       placeholder="여기에 블로그 글 내용을 작성하세요. 이미지 버튼으로 파일을 업로드할 수 있습니다."
                     />
@@ -496,7 +629,6 @@ export default function AdminPage() {
                 >
                   {editingPostId ? '수정 완료 (Firebase에 저장)' : '블로그 글 게시 (Firebase에 저장)'}
                 </button>
-                {message && !message.startsWith('AI 요약') && <p className="text-center text-sm text-yellow-400 mt-2">{message}</p>}
               </div>
             </section>
 
@@ -541,11 +673,21 @@ export default function AdminPage() {
               )}
             </section>
 
-            {/* === AI 시장 이슈 요약 작성/수정 섹션 (수정) === */}
+            {/* AI 시장 이슈 요약 작성/수정 섹션 */}
             <section ref={aiSummaryFormRef} className="space-y-6 pt-6 pb-6 border-b border-gray-700">
-              <h2 className="text-2xl font-semibold text-white">
-                {editingAiSummaryId ? 'AI 시장 이슈 요약 수정' : '새 AI 시장 이슈 요약 작성'}
-              </h2>
+              <div className="flex justify-between items-center">
+                <h2 className="text-2xl font-semibold text-white">
+                  {editingAiSummaryId ? 'AI 시장 이슈 요약 수정' : '새 AI 시장 이슈 요약 작성'}
+                </h2>
+                {editingAiSummaryId && (
+                  <button
+                    onClick={handleNewAiSummary}
+                    className="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded-md text-sm transition duration-300"
+                  >
+                    새 글 작성
+                  </button>
+                )}
+              </div>
 
               <div className="space-y-4">
                 <div>
@@ -559,12 +701,11 @@ export default function AdminPage() {
                     placeholder="AI 요약 제목 (예: 2025-05-29 AI 시장 이슈 요약)"
                   />
                 </div>
-                {/* === AI 요약 내용 입력 필드 및 토글 버튼 추가 === */}
                 <div>
                   <label htmlFor="aiSummaryContent" className="block text-gray-300 text-sm font-bold mb-2">내용:</label>
                   {aiSummaryEditHtmlMode ? (
                     <textarea
-                      id="aiSummaryContentHtml" // ID 변경
+                      id="aiSummaryContentHtml"
                       value={newAiSummaryContent}
                       onChange={(e) => setNewAiSummaryContent(e.target.value)}
                       className="w-full p-4 rounded bg-gray-700 border border-gray-600 text-gray-100 focus:outline-none focus:border-blue-500 h-96 font-mono resize-y"
@@ -576,7 +717,7 @@ export default function AdminPage() {
                       theme="snow"
                       value={newAiSummaryContent}
                       onChange={setNewAiSummaryContent}
-                      modules={aiSummaryQuillModules} // AI 요약용 모듈 사용
+                      modules={aiSummaryQuillModules}
                       className="bg-gray-700 text-gray-100 quill-dark-theme"
                       placeholder="여기에 AI 시장 이슈 요약 내용을 작성하세요. 차트 이미지 등을 포함할 수 있습니다."
                     />
@@ -591,19 +732,17 @@ export default function AdminPage() {
                     여기에 작성된 내용은 홈 화면의 'AI 기반 시장 이슈 요약' 섹션에 표시됩니다.
                   </p>
                 </div>
-                {/* === AI 요약 내용 입력 필드 및 토글 버튼 끝 === */}
                 <button
                   onClick={handleSaveAiSummary}
                   className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md transition duration-300"
                 >
                   {editingAiSummaryId ? '수정 완료 (Firebase에 저장)' : 'AI 요약 게시 (Firebase에 저장)'}
                 </button>
-                {message && message.startsWith('AI 요약') && <p className="text-center text-sm text-yellow-400 mt-2">{message}</p>}
               </div>
             </section>
 
-            {/* === AI 시장 이슈 요약 목록 섹션 (추가) === */}
-            <section className="space-y-4 pt-6">
+            {/* AI 시장 이슈 요약 목록 섹션 */}
+            <section className="space-y-4 pt-6 pb-6 border-b border-gray-700">
               <h2 className="text-2xl font-semibold text-white border-b-2 border-gray-700 pb-2">AI 시장 이슈 요약 목록</h2>
               {aiSummariesLoading ? (
                 <p className="text-gray-400 text-center">AI 요약 목록을 불러오는 중...</p>
@@ -642,6 +781,116 @@ export default function AdminPage() {
               )}
             </section>
 
+            {/* === 종목 분석 작성/수정 섹션 (추가) === */}
+            <section ref={stockAnalysisFormRef} className="space-y-6 pt-6 pb-6 border-b border-gray-700">
+              <div className="flex justify-between items-center">
+                <h2 className="text-2xl font-semibold text-white">
+                  {editingStockAnalysisId ? '종목 분석 수정' : '새 종목 분석 작성'}
+                </h2>
+                {editingStockAnalysisId && (
+                  <button
+                    onClick={handleNewStockAnalysis}
+                    className="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded-md text-sm transition duration-300"
+                  >
+                    새 글 작성
+                  </button>
+                )}
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label htmlFor="stockName" className="block text-gray-300 text-sm font-bold mb-2">종목명:</label>
+                  <input
+                    type="text"
+                    id="stockName"
+                    value={newStockAnalysisName}
+                    onChange={(e) => setNewStockAnalysisName(e.target.value)}
+                    className="w-full p-2 rounded bg-gray-700 border border-gray-600 text-gray-100 focus:outline-none focus:border-blue-500"
+                    placeholder="예: 삼성전자"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="stockCode" className="block text-gray-300 text-sm font-bold mb-2">종목 코드:</label>
+                  <input
+                    type="text"
+                    id="stockCode"
+                    value={newStockAnalysisCode}
+                    onChange={(e) => setNewStockAnalysisCode(e.target.value)}
+                    className="w-full p-2 rounded bg-gray-700 border border-gray-600 text-gray-100 focus:outline-none focus:border-blue-500"
+                    placeholder="예: 005930"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="stockStrategy" className="block text-gray-300 text-sm font-bold mb-2">매매전략 설명:</label>
+                  <textarea
+                    id="stockStrategy"
+                    value={newStockAnalysisStrategy}
+                    onChange={(e) => setNewStockAnalysisStrategy(e.target.value)}
+                    className="w-full p-2 rounded bg-gray-700 border border-gray-600 text-gray-100 focus:outline-none focus:border-blue-500 h-24"
+                    placeholder="예: 매수 38000원, 목표 42000원, 손절 37000원. 주봉상 저항 돌파 후 지지 확인."
+                  ></textarea>
+                </div>
+                <div>
+                  <label htmlFor="stockDetail" className="block text-gray-300 text-sm font-bold mb-2">종목 설명:</label>
+                  <textarea
+                    id="stockDetail"
+                    value={newStockAnalysisDetail}
+                    onChange={(e) => setNewStockAnalysisDetail(e.target.value)}
+                    className="w-full p-2 rounded bg-gray-700 border border-gray-600 text-gray-100 focus:outline-none focus:border-blue-500 h-32"
+                    placeholder="예: AI 반도체 관련주로 최근 강한 상승세를 보였으며, 실적 기대감 유효."
+                  ></textarea>
+                </div>
+                <button
+                  onClick={handleSaveStockAnalysis}
+                  className="w-full bg-teal-600 hover:bg-teal-700 text-white font-semibold py-2 px-4 rounded-md transition duration-300"
+                >
+                  {editingStockAnalysisId ? '수정 완료 (Firebase에 저장)' : '종목 분석 게시 (Firebase에 저장)'}
+                </button>
+              </div>
+            </section>
+
+            {/* === 종목 분석 목록 섹션 (추가) === */}
+            <section className="space-y-4 pt-6">
+              <h2 className="text-2xl font-semibold text-white border-b-2 border-gray-700 pb-2">종목 분석 목록</h2>
+              {stockAnalysesLoading ? (
+                <p className="text-gray-400 text-center">종목 목록을 불러오는 중...</p>
+              ) : stockAnalysesError ? (
+                <p className="text-red-400 text-center">{stockAnalysesError}</p>
+              ) : existingStockAnalyses.length === 0 ? (
+                <p className="text-gray-400 text-center">작성된 종목 분석이 없습니다.</p>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {existingStockAnalyses.map((analysis) => (
+                    <div key={analysis.id} className="bg-gray-700 p-4 rounded-lg shadow-md flex flex-col justify-between">
+                      <div>
+                        <h3 className="text-xl font-semibold text-white mb-2">{analysis.name} ({analysis.code})</h3>
+                        <p className="text-gray-400 text-sm mb-1">등록일: {analysis.date}</p>
+                        <p className="text-gray-400 text-xs mt-2">전략: {analysis.strategy}</p>
+                        {/* 상세 설명은 클릭 시 보여줄 수도 있음 */}
+                      </div>
+                      <div className="flex justify-end space-x-2 mt-4">
+                        {/* 상세 보기 링크 (만약 /stock/A000000 페이지가 있다면) */}
+                        {/* <Link to={`/stock/${analysis.code}`} target="_blank" rel="noopener noreferrer" className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-1 px-3 rounded-md text-xs transition duration-300">
+                          보기
+                        </Link> */}
+                        <button
+                          onClick={() => handleEditStockAnalysis(analysis)}
+                          className="bg-yellow-600 hover:bg-yellow-700 text-white font-semibold py-1 px-3 rounded-md text-xs transition duration-300"
+                        >
+                          수정
+                        </button>
+                        <button
+                          onClick={() => handleDeleteStockAnalysis(analysis.id, analysis.name)}
+                          className="bg-red-600 hover:bg-red-700 text-white font-semibold py-1 px-3 rounded-md text-xs transition duration-300"
+                        >
+                          삭제
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
 
             <div className="mt-8 text-center">
               <Link to="/blog" className="bg-gray-700 hover:bg-gray-600 text-white font-semibold py-2 px-6 rounded-md text-sm transition duration-300">
