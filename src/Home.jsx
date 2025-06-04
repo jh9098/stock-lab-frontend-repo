@@ -1,4 +1,4 @@
-// START OF FILE Home.jsx (수정)
+// START OF FILE frontend/src/Home.jsx (수정)
 
 import { useEffect, useState, useCallback } from "react";
 import { useLocation, Link } from "react-router-dom";
@@ -17,24 +17,24 @@ export default function Home() {
   });
   const location = useLocation();
 
-  // AI 시장 이슈 요약 관련 상태 (수정)
+  // AI 시장 이슈 요약 관련 상태
   const [latestAiSummaries, setLatestAiSummaries] = useState([]);
   const [aiSummaryLoading, setAiSummaryLoading] = useState(true);
   const [aiSummaryError, setAiSummaryError] = useState(null);
 
-  // 최신 블로그 글 관련 상태 (수정)
+  // 최신 블로그 글 관련 상태
   const [latestBlogPosts, setLatestBlogPosts] = useState([]);
   const [blogPostLoading, setBlogPostLoading] = useState(true);
   const [blogPostError, setBlogPostError] = useState(null);
 
-  // === 최신 뉴스 관련 상태 (수정) ===
+  // === 최신 뉴스 관련 상태 ===
   const [latestNews, setLatestNews] = useState([]);
   const [newsLoading, setNewsLoading] = useState(true);
   const [newsError, setNewsError] = useState(null);
 
-  // API 서버 주소 (개발 환경 기준)
+  // API 서버 주소 (배포 시 이 부분을 실제 Render 백엔드 앱의 URL로 변경해야 합니다!)
+  // 이 URL이 정확한지 다시 한번 확인해주세요.
   const API_BASE_URL = 'https://stock-lab-backend-repo.onrender.com';
-
 
   // Coupang 광고 로직 (기존과 동일)
   useEffect(() => {
@@ -165,28 +165,35 @@ export default function Home() {
     fetchLatestBlogPosts();
   }, []);
 
-  // === 최신 주식/경제 뉴스 2개 불러오기 (수정) ===
+  // === 최신 주식/경제 뉴스 2개 불러오기 (수정: 오류 처리 로직 강화) ===
   useEffect(() => {
     const fetchLatestNews = async () => {
       setNewsLoading(true);
-      setNewsError(null);
+      setNewsError(null); // 항상 에러 상태를 초기화
       try {
-        // 백엔드 API 호출: 이제 include_content 파라미터는 없습니다.
+        // 백엔드 API 호출: count=2
         const response = await fetch(`${API_BASE_URL}/api/news?keyword=주식 경제&count=2`); 
         if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+          // HTTP 오류 상태 (예: 500)인 경우
+          const errorData = await response.json(); // 백엔드에서 보낸 에러 메시지 파싱 시도
+          throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
         }
         const data = await response.json();
-        setLatestNews(data);
+        if (data.length === 0) { // 빈 배열이 반환된 경우 (백엔드에서 데이터 못 찾았을 때)
+            setNewsError("현재 불러올 뉴스가 없습니다. (백엔드에서 데이터를 찾지 못했습니다.)");
+            setLatestNews([]);
+        } else {
+            setLatestNews(data);
+        }
       } catch (err) {
         console.error("최신 뉴스 불러오기 실패:", err);
-        setNewsError("최신 뉴스를 불러올 수 없습니다.");
+        setNewsError(`최신 뉴스를 불러올 수 없습니다: ${err.message || err.toString()}`);
       } finally {
         setNewsLoading(false);
       }
     };
     fetchLatestNews();
-  }, []);
+  }, [API_BASE_URL]); // API_BASE_URL이 변경될 때 다시 실행되도록 의존성 추가
 
   // 즐겨찾기 토글 로직 (기존과 동일)
   const toggleFavorite = (code) => {
