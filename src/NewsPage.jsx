@@ -18,7 +18,7 @@ export default function NewsPage() {
       setError(null);
       try {
         // 백엔드 API 호출: 이제 include_content 파라미터는 없습니다.
-        const response = await fetch(`${API_BASE_URL}/api/news?keyword=주식 경제&count=10`); // 뉴스 목록은 10개로 유지
+        const response = await fetch(`${API_BASE_URL}/api/news?keyword=주식 경제&count=20`); // 뉴스 목록은 20개로 유지
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
