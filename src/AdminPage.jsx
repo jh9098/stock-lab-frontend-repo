@@ -40,7 +40,6 @@ export default function AdminPage() {
 
   // === 종목 분석 글 작성/수정을 위한 상태값 (추가) ===
   const [newStockAnalysisName, setNewStockAnalysisName] = useState('');
-  const [newStockAnalysisCode, setNewStockAnalysisCode] = useState(''); // 종목 코드
   const [newStockAnalysisStrategy, setNewStockAnalysisStrategy] = useState(''); // 매매전략 설명
   const [newStockAnalysisDetail, setNewStockAnalysisDetail] = useState(''); // 종목설명
   const [editingStockAnalysisId, setEditingStockAnalysisId] = useState(null); // 수정 중인 종목 분석의 ID
@@ -419,7 +418,7 @@ export default function AdminPage() {
 
   // === 새 종목 분석 작성 또는 수정 완료 (추가) ===
   const handleSaveStockAnalysis = async () => {
-    if (!newStockAnalysisName || !newStockAnalysisCode || !newStockAnalysisStrategy || !newStockAnalysisDetail) {
+    if (!newStockAnalysisName || !newStockAnalysisStrategy || !newStockAnalysisDetail) {
       setMessage('종목 분석: 모든 필드를 채워주세요.');
       return;
     }
@@ -427,7 +426,6 @@ export default function AdminPage() {
     try {
       const stockData = {
         name: newStockAnalysisName,
-        code: newStockAnalysisCode,
         strategy: newStockAnalysisStrategy,
         detail: newStockAnalysisDetail,
         date: new Date().toISOString().split('T')[0], // 오늘 날짜 YYYY-MM-DD
@@ -450,7 +448,6 @@ export default function AdminPage() {
 
       // 폼 초기화 및 목록 새로고침
       setNewStockAnalysisName('');
-      setNewStockAnalysisCode('');
       setNewStockAnalysisStrategy('');
       setNewStockAnalysisDetail('');
       setEditingStockAnalysisId(null);
@@ -465,7 +462,6 @@ export default function AdminPage() {
   const handleEditStockAnalysis = (analysis) => {
     setEditingStockAnalysisId(analysis.id);
     setNewStockAnalysisName(analysis.name);
-    setNewStockAnalysisCode(analysis.code);
     setNewStockAnalysisStrategy(analysis.strategy);
     setNewStockAnalysisDetail(analysis.detail);
     setMessage(`"${analysis.name}" 종목 분석을 수정 중입니다.`);
@@ -493,7 +489,6 @@ export default function AdminPage() {
   const handleNewStockAnalysis = () => {
     setEditingStockAnalysisId(null);
     setNewStockAnalysisName('');
-    setNewStockAnalysisCode('');
     setNewStockAnalysisStrategy('');
     setNewStockAnalysisDetail('');
     setMessage('새 종목 분석을 작성합니다.');
@@ -814,8 +809,6 @@ export default function AdminPage() {
                   <input
                     type="text"
                     id="stockCode"
-                    value={newStockAnalysisCode}
-                    onChange={(e) => setNewStockAnalysisCode(e.target.value)}
                     className="w-full p-2 rounded bg-gray-700 border border-gray-600 text-gray-100 focus:outline-none focus:border-blue-500"
                     placeholder="예: 005930"
                   />
