@@ -165,14 +165,14 @@ export default function Home() {
     fetchLatestBlogPosts();
   }, []);
 
-  // === 최신 주식/경제 뉴스 2개 불러오기 (수정: 오류 처리 로직 강화) ===
+  // === 최신 주식/경제 뉴스 5개 불러오기 (수정: 오류 처리 로직 강화) ===
   useEffect(() => {
     const fetchLatestNews = async () => {
       setNewsLoading(true);
       setNewsError(null); // 항상 에러 상태를 초기화
       try {
-        // 백엔드 API 호출: count=2
-        const response = await fetch(`${API_BASE_URL}/api/news?keyword=주식 경제&count=2`); 
+        // 백엔드 API 호출: count=5
+        const response = await fetch(`${API_BASE_URL}/api/news?keyword=주식 경제&count=5`); 
         if (!response.ok) {
           // HTTP 오류 상태 (예: 500)인 경우
           const errorData = await response.json(); // 백엔드에서 보낸 에러 메시지 파싱 시도
