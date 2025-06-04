@@ -1,16 +1,16 @@
-// START OF FILE frontend/src/Home.jsx (수정)
+// START OF FILE frontend/src/Home.jsx (수정: 종목 데이터 Firebase 연동)
 
 import { useEffect, useState, useCallback } from "react";
 import { useLocation, Link } from "react-router-dom";
 import PopularStocksCompact from "./components/PopularStocksCompact";
 import { Helmet } from "react-helmet";
 
-// Firebase imports (기존과 동일)
+// Firebase imports
 import { db } from './firebaseConfig';
 import { collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
 
 export default function Home() {
-  const [stocks, setStocks] = useState([]);
+  // const [stocks, setStocks] = useState([]); // 기존 로컬 주식 데이터 상태 제거
   const [favorites, setFavorites] = useState(() => {
     const saved = localStorage.getItem("favorites");
     return saved ? JSON.parse(saved) : [];
@@ -27,14 +27,19 @@ export default function Home() {
   const [blogPostLoading, setBlogPostLoading] = useState(true);
   const [blogPostError, setBlogPostError] = useState(null);
 
-  // === 최신 뉴스 관련 상태 ===
+  // 최신 뉴스 관련 상태
   const [latestNews, setLatestNews] = useState([]);
   const [newsLoading, setNewsLoading] = useState(true);
   const [newsError, setNewsError] = useState(null);
 
-  // API 서버 주소 (배포 시 이 부분을 실제 Render 백엔드 앱의 URL로 변경해야 합니다!)
-  // 이 URL이 정확한지 다시 한번 확인해주세요.
-  const API_BASE_URL = 'https://stock-lab-backend-repo.onrender.com';
+  // === 종목 분석 관련 상태 (추가) ===
+  const [latestStockAnalyses, setLatestStockAnalyses] = useState([]);
+  const [stockAnalysesLoading, setStockAnalysesLoading] = useState(true);
+  const [stockAnalysesError, setStockAnalysesError] = useState(null);
+
+
+  // API 서버 주소 (Render 백엔드 앱의 URL)
+  const API_BASE_URL = 'https://stock-lab-backend-repo.onrender.com'; // Render 배포 후 얻게 되는 실제 URL로 변경
 
   // Coupang 광고 로직 (기존과 동일)
   useEffect(() => {
@@ -89,34 +94,59 @@ export default function Home() {
     }
   }, []);
 
-  // 주식 데이터 로딩 로직 (기존과 동일)
+  // 주식 데이터 로딩 로직 (기존 로컬 JSON 로딩 제거)
+  // 기존 코드:
+  // useEffect(() => {
+  //   const loadData = async () => {
+  //     const modules = import.meta.glob("../data/stocks/*.json");
+  //     const loadTasks = [];
+  //     for (const path in modules) {
+  //       const filename = path.split("/").pop().replace(".json", "");
+  //       const parts = filename.split("_");
+  //       if (parts.length !== 3) continue;
+  //       const [code, date, time] = parts;
+  //       const version = `${code}_${date}${time}`;
+  //       const loadPromise = modules[path]().then(mod => {
+  //         const data = mod.default;
+  //         if (data.status !== "진행중") return null;
+  //         return { ...data, version, code: code.replace("A", ""), sortKey: `${date}${time}` };
+  //       });
+  //       loadTasks.push(loadPromise);
+  //     }
+  //     const results = await Promise.all(loadTasks);
+  //     const valid = results.filter(Boolean).sort((a, b) => b.sortKey.localeCompare(a.sortKey));
+  //     setStocks(valid);
+  //   };
+  //   loadData();
+  // }, []);
+
+
+  // === Firebase에서 종목 분석 데이터 로딩 (추가) ===
   useEffect(() => {
-    const loadData = async () => {
-      const modules = import.meta.glob("../data/stocks/*.json");
-      const loadTasks = [];
-
-      for (const path in modules) {
-        const filename = path.split("/").pop().replace(".json", "");
-        const parts = filename.split("_");
-        if (parts.length !== 3) continue;
-
-        const [code, date, time] = parts;
-        const version = `${code}_${date}${time}`;
-        const loadPromise = modules[path]().then(mod => {
-          const data = mod.default;
-          if (data.status !== "진행중") return null;
-          return { ...data, version, code: code.replace("A", ""), sortKey: `${date}${time}` };
-        });
-        loadTasks.push(loadPromise);
+    const fetchLatestStockAnalyses = async () => {
+      setStockAnalysesLoading(true);
+      setStockAnalysesError(null);
+      try {
+        const stockAnalysesCollection = collection(db, "stocks"); // 'stocks' 컬렉션 사용
+        const q = query(stockAnalysesCollection, orderBy("createdAt", "desc"), limit(2)); // 최신 2개
+        const querySnapshot = await getDocs(q);
+        const analyses = querySnapshot.docs.map(doc => ({
+          id: doc.id,
+          // Firebase Timestamp 객체를 날짜 문자열로 변환 (필요시)
+          // createdAt: doc.data().createdAt ? new Date(doc.data().createdAt.toDate()).toISOString().split('T')[0] : '날짜 미상',
+          ...doc.data()
+        }));
+        setLatestStockAnalyses(analyses);
+      } catch (err) {
+        console.error("최신 종목 분석 불러오기 실패:", err);
+        setStockAnalysesError("최신 종목 분석을 불러올 수 없습니다.");
+      } finally {
+        setStockAnalysesLoading(false);
       }
-
-      const results = await Promise.all(loadTasks);
-      const valid = results.filter(Boolean).sort((a, b) => b.sortKey.localeCompare(a.sortKey));
-      setStocks(valid);
     };
-
-    loadData();
+    fetchLatestStockAnalyses();
   }, []);
+
 
   // 최신 AI 시장 이슈 요약 3개 불러오기 (기존과 동일)
   useEffect(() => {
@@ -165,21 +195,19 @@ export default function Home() {
     fetchLatestBlogPosts();
   }, []);
 
-  // === 최신 주식/경제 뉴스 5개 불러오기 (수정: 오류 처리 로직 강화) ===
+  // 최신 주식/경제 뉴스 2개 불러오기 (기존과 동일)
   useEffect(() => {
     const fetchLatestNews = async () => {
       setNewsLoading(true);
-      setNewsError(null); // 항상 에러 상태를 초기화
+      setNewsError(null);
       try {
-        // 백엔드 API 호출: count=5
-        const response = await fetch(`${API_BASE_URL}/api/news?keyword=주식 경제&count=5`); 
+        const response = await fetch(`${API_BASE_URL}/api/news?keyword=주식 경제&count=2`); 
         if (!response.ok) {
-          // HTTP 오류 상태 (예: 500)인 경우
-          const errorData = await response.json(); // 백엔드에서 보낸 에러 메시지 파싱 시도
+          const errorData = await response.json(); 
           throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
         }
         const data = await response.json();
-        if (data.length === 0) { // 빈 배열이 반환된 경우 (백엔드에서 데이터 못 찾았을 때)
+        if (data.length === 0) {
             setNewsError("현재 불러올 뉴스가 없습니다. (백엔드에서 데이터를 찾지 못했습니다.)");
             setLatestNews([]);
         } else {
@@ -193,9 +221,9 @@ export default function Home() {
       }
     };
     fetchLatestNews();
-  }, [API_BASE_URL]); // API_BASE_URL이 변경될 때 다시 실행되도록 의존성 추가
+  }, [API_BASE_URL]);
 
-  // 즐겨찾기 토글 로직 (기존과 동일)
+  // 즐겨찾기 토글 로직 (기존과 동일 - Firebase 종목에는 'code' 필드가 그대로 사용됨)
   const toggleFavorite = (code) => {
     const updated = favorites.includes(code)
       ? favorites.filter((c) => c !== code)
@@ -315,7 +343,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* === 최신 주식/경제 뉴스 섹션 (수정) === */}
+        {/* 최신 주식/경제 뉴스 섹션 (기존과 동일) */}
         <section id="news" className="mb-12 p-6 bg-gray-800 rounded-lg shadow-xl">
           <h2 className="text-2xl font-semibold mb-6 text-white border-b-2 border-purple-500 pb-2">최신 주식/경제 뉴스</h2>
           {newsLoading ? (
@@ -329,13 +357,11 @@ export default function Home() {
                   <h3 className="text-lg font-medium mb-2 text-purple-400">
                     {newsItem.title}
                   </h3>
-                  {/* content 필드에 본문 일부/요약이 들어옴 */}
                   <p className="text-gray-300 text-sm mb-3 news-item-content">
                     {newsItem.content}
                   </p>
                   <div className="flex justify-between items-center text-xs text-gray-400">
                     <span><i className="fas fa-calendar-alt mr-1"></i>{newsItem.post_date}</span>
-                    {/* 원본 기사 링크로 직접 이동 */}
                     <a href={newsItem.link} target="_blank" rel="noopener noreferrer" className="text-purple-400 hover:text-purple-300 font-semibold">더 보기 <i className="fas fa-arrow-right ml-1"></i></a>
                   </div>
                 </article>
@@ -345,91 +371,60 @@ export default function Home() {
             <p className="text-gray-300 text-center">현재 불러올 뉴스가 없습니다.</p>
           )}
           <div className="mt-6 text-center">
-            {/* NewsPage로 이동하는 링크는 유지 */}
             <Link to="/news" className="bg-gray-600 hover:bg-gray-500 text-white font-semibold py-2 px-6 rounded-md text-sm transition duration-300">
               전체 뉴스 보기
             </Link>
           </div>
         </section>
 
+        {/* === 최근 등록된 종목들 및 전문가 분석 섹션 (수정) === */}
         <section id="recommendations" className="mb-12 p-6 bg-gray-800 rounded-lg shadow-xl">
           <h2 className="text-2xl font-semibold mb-6 text-white border-b-2 border-teal-500 pb-2">최근 등록된 종목들 및 전문가 분석</h2>
-          <div className="grid md:grid-cols-2 gap-6 mb-8">
-            {stocks.slice(0, 2).map((stock) => (
-              <div key={stock.version} className="bg-gray-700 p-4 rounded-md shadow-lg">
-                <div className="flex justify-between items-start">
-                  <h3 className="text-xl font-medium mb-1 text-teal-400">{stock.name} ({stock.code})</h3>
-                  <button
-                    onClick={() => toggleFavorite(stock.code)}
-                    className="bg-transparent border-none cursor-pointer text-2xl"
-                  >
-                    {favorites.includes(stock.code) ? "❤️" : "🤍"}
-                  </button>
+          {stockAnalysesLoading ? (
+            <p className="text-gray-300 text-center">최신 종목 분석을 불러오는 중입니다...</p>
+          ) : stockAnalysesError ? (
+            <p className="text-red-400 text-center">{stockAnalysesError}</p>
+          ) : latestStockAnalyses.length > 0 ? (
+            <div className="grid md:grid-cols-2 gap-6 mb-8">
+              {latestStockAnalyses.map((stock) => (
+                // stock.id는 Firebase 문서 ID, stock.code는 종목 코드
+                <div key={stock.id} className="bg-gray-700 p-4 rounded-md shadow-lg">
+                  <div className="flex justify-between items-start">
+                    <h3 className="text-xl font-medium mb-1 text-teal-400">{stock.name} ({stock.code})</h3>
+                    <button
+                      onClick={() => toggleFavorite(stock.code)}
+                      className="bg-transparent border-none cursor-pointer text-2xl"
+                    >
+                      {favorites.includes(stock.code) ? "❤️" : "🤍"}
+                    </button>
+                  </div>
+                  <p className="text-xs text-gray-400 mb-3">업데이트: {stock.date}</p> {/* date 필드 사용 */}
+                  <p className="text-gray-300 text-sm mb-3 recommendation-item-content">
+                    <strong>전략:</strong> {stock.strategy || "등록된 전략 없음"}
+                  </p>
+                  <div className="text-sm space-y-1">
+                    <p><strong>설명:</strong> <span className="text-gray-300">{stock.detail || "등록된 설명 없음"}</span></p>
+                  </div>
+                  {/* 상세 분석 보기 링크: /list 페이지로 임시 이동 */}
+                  <Link to="/list" className="mt-4 inline-block bg-teal-500 hover:bg-teal-600 text-white font-semibold py-2 px-4 rounded-md text-sm transition duration-300">
+                    상세 분석 보기 <i className="fas fa-chart-line ml-1"></i>
+                  </Link>
                 </div>
-                <p className="text-xs text-gray-400 mb-3">업데이트: {stock.sortKey ? `${stock.sortKey.substring(0, 4)}-${stock.sortKey.substring(4, 6)}-${stock.sortKey.substring(6, 8)}` : '-'}</p>
-                <p className="text-gray-300 text-sm mb-3 recommendation-item-content">
-                  <strong>전략:</strong> {stock.strategy || "등록된 전략 없음"}
-                </p>
-                <div className="text-sm space-y-1">
-                  <p><strong>지지선:</strong> <span className="text-white">{stock.supportLines?.join(", ") || "없음"}</span></p>
-                  <p><strong>저항선:</strong> <span className="text-green-400 font-semibold">{stock.resistanceLines?.join(", ") || "없음"}</span></p>
-                  <p><strong>설명:</strong> <span className="text-gray-300">{stock.detail || "등록된 설명 없음"}</span></p>
-                </div>
-                <Link to={`/stock/A${stock.code}?v=${stock.version}`} className="mt-4 inline-block bg-teal-500 hover:bg-teal-600 text-white font-semibold py-2 px-4 rounded-md text-sm transition duration-300">
-                  상세 분석 보기 <i className="fas fa-chart-line ml-1"></i>
-                </Link>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-gray-300 text-center col-span-full mb-8">현재 등록된 종목 분석이 없습니다.</p>
+          )}
 
-          <div className="flex justify-center mb-8">
-              <Link
-                  to="/list"
-                  className="inline-block bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-6 rounded-md text-sm transition duration-300"
-              >
-                  전체 종목 보기 ➔
-              </Link>
-          </div>
-
-          <h3 className="text-xl font-semibold mb-4 text-white">추천 히스토리 (예시)</h3>
+          {/* 기존 예시 테이블은 Firebase 데이터 로딩으로 대체되므로 제거 */}
+          {/* <h3 className="text-xl font-semibold mb-4 text-white">추천 히스토리 (예시)</h3>
           <div className="overflow-x-auto bg-gray-700 rounded-md shadow-lg">
             <table className="min-w-full text-sm text-left text-gray-300">
-              <thead className="text-xs text-gray-200 uppercase bg-gray-600">
-                <tr>
-                  <th scope="col" className="px-6 py-3">등록일</th>
-                  <th scope="col" className="px-6 py-3">구분</th>
-                  <th scope="col" className="px-6 py-3">종목명</th>
-                  <th scope="col" className="px-6 py-3">현재가</th>
-                  <th scope="col" className="px-6 py-3">목표가</th>
-                  <th scope="col" className="px-6 py-3">손절가</th>
-                  <th scope="col" className="px-6 py-3">수익률</th>
-                  <th scope="col" className="px-6 py-3">상태</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr className="border-b border-gray-600 hover:bg-gray-500">
-                  <td className="px-6 py-4">2025-05-10</td>
-                  <td className="px-6 py-4">매수 추천</td>
-                  <td className="px-6 py-4 font-medium text-white">[C테크]</td>
-                  <td className="px-6 py-4">₩25,000</td>
-                  <td className="px-6 py-4 text-green-400">₩35,000</td>
-                  <td className="px-6 py-4 text-red-400">₩22,000</td>
-                  <td className="px-6 py-4 text-green-400">+5.50%</td>
-                  <td className="px-6 py-4"><span className="bg-blue-500 text-blue-100 text-xs font-semibold mr-2 px-2.5 py-0.5 rounded-full">진행중</span></td>
-                </tr>
-                <tr className="border-b border-gray-600 hover:bg-gray-500">
-                  <td className="px-6 py-4">2025-04-20</td>
-                  <td className="px-6 py-4">매수 추천</td>
-                  <td className="px-6 py-4 font-medium text-white">[D화학]</td>
-                  <td className="px-6 py-4">₩180,000</td>
-                  <td className="px-6 py-4 text-green-400">₩200,000</td>
-                  <td className="px-6 py-4 text-red-400">₩170,000</td>
-                  <td className="px-6 py-4 text-green-400">+11.11%</td>
-                  <td className="px-6 py-4"><span className="bg-green-500 text-green-100 text-xs font-semibold mr-2 px-2.5 py-0.5 rounded-full">목표달성</span></td>
-                </tr>
-              </tbody>
+              <thead className="text-xs text-gray-200 uppercase bg-gray-600"> ... </thead>
+              <tbody> ... </tbody>
             </table>
-          </div>
+          </div> */}
+
           <div className="mt-6 text-center">
             <Link to="/recommendations" className="bg-gray-600 hover:bg-gray-500 text-white font-semibold py-2 px-6 rounded-md text-sm transition duration-300">
               전체 추천 히스토리 보기
@@ -535,7 +530,8 @@ export default function Home() {
               <ul className="text-sm list-disc list-inside pl-2 space-y-1 text-gray-200">
                 {favorites.length > 0 ? (
                   favorites.map(favCode => {
-                    const stock = stocks.find(s => s.code === favCode);
+                    // latestStockAnalyses에서 해당 코드를 찾아 표시
+                    const stock = latestStockAnalyses.find(s => s.code === favCode);
                     return stock ? (
                       <li key={favCode}>
                         [{stock.name} ({stock.code})]: 현재가 정보
@@ -596,4 +592,4 @@ export default function Home() {
     </div>
   );
 }
-// END OF FILE Home.jsx
+// END OF FILE frontend/src/Home.jsx (수정)
