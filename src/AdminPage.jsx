@@ -1,4 +1,4 @@
-// START OF FILE frontend/src/AdminPage.jsx (수정: 종목 분석 관리 - 종목 코드 제거, 상태/수익률 추가)
+// START OF FILE frontend/src/AdminPage.jsx (수정: ReactQuill 'delta' 오류 해결)
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Helmet } from 'react-helmet';
@@ -301,13 +301,14 @@ export default function AdminPage() {
     }
   };
 
-  // "블로그 수정" 버튼 클릭 시 (기존과 동일)
+  // "블로그 수정" 버튼 클릭 시 (ReactQuill 'delta' 오류 해결)
   const handleEditPost = (post) => {
     setEditingPostId(post.id);
     setNewPostTitle(post.title);
     setNewPostAuthor(post.author);
     setNewPostSummary(post.summary);
-    setNewPostContent(post.contentHtml);
+    // 💡 수정: post.contentHtml이 undefined/null일 경우 빈 문자열로 대체
+    setNewPostContent(post.contentHtml || ''); 
     setEditHtmlMode(false);
     setMessage(`"${post.title}" 블로그 글을 수정 중입니다.`);
     blogFormRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -381,11 +382,12 @@ export default function AdminPage() {
     }
   };
 
-  // "AI 요약 수정" 버튼 클릭 시 (기존과 동일)
+  // "AI 요약 수정" 버튼 클릭 시 (ReactQuill 'delta' 오류 해결)
   const handleEditAiSummary = (summary) => {
     setEditingAiSummaryId(summary.id);
     setNewAiSummaryTitle(summary.title);
-    setNewAiSummaryContent(summary.contentHtml);
+    // 💡 수정: summary.contentHtml이 undefined/null일 경우 빈 문자열로 대체
+    setNewAiSummaryContent(summary.contentHtml || ''); 
     setMessage(`"${summary.title}" AI 요약을 수정 중입니다.`);
     setAiSummaryEditHtmlMode(false);
     aiSummaryFormRef.current?.scrollIntoView({ behavior: 'smooth' });
