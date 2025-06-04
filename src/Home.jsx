@@ -195,13 +195,13 @@ export default function Home() {
     fetchLatestBlogPosts();
   }, []);
 
-  // 최신 주식/경제 뉴스 2개 불러오기 (기존과 동일)
+  // 최신 주식/경제 뉴스 5개 불러오기 (기존과 동일)
   useEffect(() => {
     const fetchLatestNews = async () => {
       setNewsLoading(true);
       setNewsError(null);
       try {
-        const response = await fetch(`${API_BASE_URL}/api/news?keyword=주식 경제&count=2`); 
+        const response = await fetch(`${API_BASE_URL}/api/news?keyword=주식 경제&count=5`); 
         if (!response.ok) {
           const errorData = await response.json(); 
           throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
