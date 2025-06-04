@@ -1,4 +1,4 @@
-// START OF FILE frontend/src/AdminPage.jsx (수정: ReactQuill 'delta' 오류 해결)
+// START OF FILE frontend/src/AdminPage.jsx (수정: ReactQuill 'delta' 오류 해결 - useEffect 동기화)
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Helmet } from 'react-helmet';
@@ -137,6 +137,31 @@ export default function AdminPage() {
     }
   }, [loggedIn, fetchExistingPosts, fetchExistingAiSummaries, fetchExistingStockAnalyses]);
 
+  // 💡 useEffect를 사용하여 newPostContent를 동기화
+  useEffect(() => {
+    if (editingPostId && existingPosts.length > 0) {
+      const postToEdit = existingPosts.find(post => post.id === editingPostId);
+      if (postToEdit) {
+        setNewPostContent(String(postToEdit.contentHtml || ''));
+      }
+    } else {
+      setNewPostContent(''); // 새 글 작성 모드일 때 초기화
+    }
+  }, [editingPostId, existingPosts]);
+
+  // 💡 useEffect를 사용하여 newAiSummaryContent를 동기화
+  useEffect(() => {
+    if (editingAiSummaryId && existingAiSummaries.length > 0) {
+      const summaryToEdit = existingAiSummaries.find(summary => summary.id === editingAiSummaryId);
+      if (summaryToEdit) {
+        setNewAiSummaryContent(String(summaryToEdit.contentHtml || ''));
+      }
+    } else {
+      setNewAiSummaryContent(''); // 새 글 작성 모드일 때 초기화
+    }
+  }, [editingAiSummaryId, existingAiSummaries]);
+
+
   // 관리자 로그인 핸들러 (백엔드 연동)
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -259,7 +284,7 @@ export default function AdminPage() {
   };
 
 
-  // 새 블로그 글 작성 또는 수정 완료 (기존과 동일)
+  // 새 블로그 글 작성 또는 수정 완료
   const handleSavePost = async () => {
     if (!newPostTitle || !newPostAuthor || !newPostSummary || !newPostContent) {
       setMessage('블로그 글: 모든 필드를 채워주세요.');
@@ -291,7 +316,7 @@ export default function AdminPage() {
       setNewPostTitle('');
       setNewPostAuthor('');
       setNewPostSummary('');
-      setNewPostContent('');
+      // setNewPostContent(''); // 💡 useEffect에서 초기화하므로 여기서는 제거
       setEditingPostId(null);
       setEditHtmlMode(false);
       await fetchExistingPosts();
@@ -301,15 +326,14 @@ export default function AdminPage() {
     }
   };
 
-  // "블로그 수정" 버튼 클릭 시 (ReactQuill 'delta' 오류 해결)
+  // "블로그 수정" 버튼 클릭 시
   const handleEditPost = (post) => {
     setEditingPostId(post.id);
     setNewPostTitle(post.title);
     setNewPostAuthor(post.author);
     setNewPostSummary(post.summary);
-    // 💡 수정: String()을 사용하여 어떤 값이든 문자열로 강제 변환
-    setNewPostContent(String(post.contentHtml || '')); 
-    setEditHtmlMode(false);
+    // setNewPostContent(String(post.contentHtml || '')); // 💡 useEffect에서 처리하므로 여기서는 제거
+    setEditHtmlMode(false); 
     setMessage(`"${post.title}" 블로그 글을 수정 중입니다.`);
     blogFormRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -331,20 +355,20 @@ export default function AdminPage() {
     }
   };
 
-  // "새 블로그 글 작성" 버튼 클릭 시 (기존과 동일)
+  // "새 블로그 글 작성" 버튼 클릭 시
   const handleNewPost = () => {
     setEditingPostId(null);
     setNewPostTitle('');
     setNewPostAuthor('');
     setNewPostSummary('');
-    setNewPostContent('');
+    // setNewPostContent(''); // 💡 useEffect에서 초기화하므로 여기서는 제거
     setEditHtmlMode(false);
     setMessage('새 블로그 글을 작성합니다.');
     blogFormRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
 
-  // 새 AI 요약 글 작성 또는 수정 완료 (기존과 동일)
+  // 새 AI 요약 글 작성 또는 수정 완료
   const handleSaveAiSummary = async () => {
     if (!newAiSummaryTitle || !newAiSummaryContent) {
       setMessage('AI 요약: 제목과 내용을 채워주세요.');
@@ -372,7 +396,7 @@ export default function AdminPage() {
       }
 
       setNewAiSummaryTitle('');
-      setNewAiSummaryContent('');
+      // setNewAiSummaryContent(''); // 💡 useEffect에서 초기화하므로 여기서는 제거
       setEditingAiSummaryId(null);
       setAiSummaryEditHtmlMode(false);
       await fetchExistingAiSummaries();
@@ -382,14 +406,13 @@ export default function AdminPage() {
     }
   };
 
-  // "AI 요약 수정" 버튼 클릭 시 (ReactQuill 'delta' 오류 해결)
+  // "AI 요약 수정" 버튼 클릭 시
   const handleEditAiSummary = (summary) => {
     setEditingAiSummaryId(summary.id);
     setNewAiSummaryTitle(summary.title);
-    // 💡 수정: String()을 사용하여 어떤 값이든 문자열로 강제 변환
-    setNewAiSummaryContent(String(summary.contentHtml || '')); 
+    // setNewAiSummaryContent(String(summary.contentHtml || '')); // 💡 useEffect에서 처리하므로 여기서는 제거
     setMessage(`"${summary.title}" AI 요약을 수정 중입니다.`);
-    setAiSummaryEditHtmlMode(false);
+    setAiSummaryEditHtmlMode(false); 
     aiSummaryFormRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
@@ -410,19 +433,18 @@ export default function AdminPage() {
     }
   };
 
-  // "새 AI 요약 작성" 버튼 클릭 시 (기존과 동일)
+  // "새 AI 요약 작성" 버튼 클릭 시
   const handleNewAiSummary = () => {
     setEditingAiSummaryId(null);
     setNewAiSummaryTitle('');
-    setNewAiSummaryContent('');
+    // setNewAiSummaryContent(''); // 💡 useEffect에서 초기화하므로 여기서는 제거
     setMessage('새 AI 요약 글을 작성합니다.');
-    setAiSummaryEditHtmlMode(false);
+    setAiSummaryEditHtmlMode(false); 
     aiSummaryFormRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
   // === 새 종목 분석 작성 또는 수정 완료 (종목 코드 제거, 상태/수익률 추가) ===
   const handleSaveStockAnalysis = async () => {
-    // 💡 newStockAnalysisStatus 추가 검사
     if (!newStockAnalysisName || !newStockAnalysisStrategy || !newStockAnalysisDetail || !newStockAnalysisStatus) {
       setMessage('종목 분석: 모든 필수 필드를 채워주세요.');
       return;
@@ -433,9 +455,9 @@ export default function AdminPage() {
         name: newStockAnalysisName,
         strategy: newStockAnalysisStrategy,
         detail: newStockAnalysisDetail,
-        status: newStockAnalysisStatus, // 💡 상태 저장
-        returnRate: newStockAnalysisReturnRate, // 💡 수익률 저장
-        date: new Date().toISOString().split('T')[0], // 오늘 날짜 YYYY-MM-DD
+        status: newStockAnalysisStatus, 
+        returnRate: newStockAnalysisReturnRate, 
+        date: new Date().toISOString().split('T')[0], 
         updatedAt: new Date(),
       };
 
@@ -451,14 +473,13 @@ export default function AdminPage() {
         setMessage(`종목 분석이 성공적으로 게시되었습니다! ID: ${docRef.id}`);
       }
 
-      // 폼 초기화 및 목록 새로고침
       setNewStockAnalysisName('');
       setNewStockAnalysisStrategy('');
       setNewStockAnalysisDetail('');
-      setNewStockAnalysisStatus('진행중'); // 💡 상태 초기화
-      setNewStockAnalysisReturnRate(''); // 💡 수익률 초기화
+      setNewStockAnalysisStatus('진행중'); 
+      setNewStockAnalysisReturnRate(''); 
       setEditingStockAnalysisId(null);
-      await fetchExistingStockAnalyses(); // 목록 다시 불러오기
+      await fetchExistingStockAnalyses(); 
     } catch (e) {
       console.error("Firestore 종목 분석 작업 실패:", e);
       setMessage(`종목 분석 ${editingStockAnalysisId ? '수정' : '게시'} 실패.`);
@@ -471,19 +492,19 @@ export default function AdminPage() {
     setNewStockAnalysisName(analysis.name);
     setNewStockAnalysisStrategy(analysis.strategy);
     setNewStockAnalysisDetail(analysis.detail);
-    setNewStockAnalysisStatus(analysis.status || '진행중'); // 💡 상태 불러오기
-    setNewStockAnalysisReturnRate(analysis.returnRate || ''); // 💡 수익률 불러오기
+    setNewStockAnalysisStatus(analysis.status || '진행중'); 
+    setNewStockAnalysisReturnRate(analysis.returnRate || ''); 
     setMessage(`"${analysis.name}" 종목 분석을 수정 중입니다.`);
-    stockAnalysisFormRef.current?.scrollIntoView({ behavior: 'smooth' }); // 폼으로 스크롤
+    stockAnalysisFormRef.current?.scrollIntoView({ behavior: 'smooth' }); 
   };
 
   // "종목 분석 삭제" 버튼 클릭 시 (추가)
   const handleDeleteStockAnalysis = async (analysisId, analysisName) => {
     if (window.confirm(`"${analysisName}" 종목 분석을 정말로 삭제하시겠습니까?`)) {
       try {
-        await deleteDoc(doc(db, "stocks", analysisId)); // 'stocks' 컬렉션 사용
+        await deleteDoc(doc(db, "stocks", analysisId)); 
         setMessage(`"${analysisName}" 종목 분석이 성공적으로 삭제되었습니다.`);
-        await fetchExistingStockAnalyses(); // 목록 다시 불러오기
+        await fetchExistingStockAnalyses(); 
         if (editingStockAnalysisId === analysisId) {
           handleNewStockAnalysis();
         }
@@ -500,8 +521,8 @@ export default function AdminPage() {
     setNewStockAnalysisName('');
     setNewStockAnalysisStrategy('');
     setNewStockAnalysisDetail('');
-    setNewStockAnalysisStatus('진행중'); // 💡 상태 초기화
-    setNewStockAnalysisReturnRate(''); // 💡 수익률 초기화
+    setNewStockAnalysisStatus('진행중'); 
+    setNewStockAnalysisReturnRate(''); 
     setMessage('새 종목 분석을 작성합니다.');
     stockAnalysisFormRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -514,14 +535,13 @@ export default function AdminPage() {
 
     let newReturnRate = currentReturnRate;
 
-    // 목표달성/손절 상태로 변경 시 수익률 입력 프롬프트
     if (nextStatus === '목표달성' || nextStatus === '손절') {
       const input = prompt(`"${analysisName}" 종목의 상태를 "${nextStatus}"(으)로 변경합니다. 수익률을 입력해주세요 (예: +10.5%, -5%):`, currentReturnRate || '');
-      if (input === null) { // 사용자가 취소한 경우
+      if (input === null) { 
         return;
       }
       newReturnRate = input.trim();
-    } else { // 진행중으로 변경 시 수익률 초기화
+    } else { 
       newReturnRate = '';
     }
 
@@ -533,7 +553,7 @@ export default function AdminPage() {
         updatedAt: new Date(),
       });
       setMessage(`"${analysisName}" 종목의 상태가 "${nextStatus}"(으)로 변경되었습니다. 수익률: ${newReturnRate}`);
-      await fetchExistingStockAnalyses(); // 목록 새로고침
+      await fetchExistingStockAnalyses(); 
     } catch (e) {
       console.error("종목 분석 상태 업데이트 실패:", e);
       setMessage('종목 분석 상태 업데이트 실패.');
@@ -648,13 +668,12 @@ export default function AdminPage() {
                       key={editingPostId || 'new-post'} 
                       ref={quillRef}
                       theme="snow"
-                      value={newPostContent}
+                      value={newPostContent} // 💡 useEffect에서 관리
                       onChange={setNewPostContent}
                       modules={blogQuillModules}
                       className="bg-gray-700 text-gray-100 quill-dark-theme"
                       placeholder="여기에 블로그 글 내용을 작성하세요. 이미지 버튼으로 파일을 업로드할 수 있습니다."
                     />
-
                   )}
                   <button
                       onClick={() => setEditHtmlMode(!editHtmlMode)}
@@ -734,6 +753,17 @@ export default function AdminPage() {
 
               <div className="space-y-4">
                 <div>
+                  <label htmlFor="aiSummaryTitle" className="block text-gray-300 text-sm font-bold mb-2">제목:</label>
+                  <input
+                    type="text"
+                    id="aiSummaryTitle"
+                    value={newAiSummaryTitle}
+                    onChange={(e) => setNewAiSummaryTitle(e.target.value)}
+                    className="w-full p-2 rounded bg-gray-700 border border-gray-600 text-gray-100 focus:outline-none focus:border-blue-500"
+                    placeholder="AI 요약 제목 (예: 2025-05-29 AI 시장 이슈 요약)"
+                  />
+                </div>
+                <div>
                   <label htmlFor="aiSummaryContent" className="block text-gray-300 text-sm font-bold mb-2">내용:</label>
                   {aiSummaryEditHtmlMode ? (
                     <textarea
@@ -749,13 +779,12 @@ export default function AdminPage() {
                       key={editingAiSummaryId || 'new-ai-summary'} 
                       ref={aiSummaryQuillRef}
                       theme="snow"
-                      value={newAiSummaryContent}
+                      value={newAiSummaryContent} // 💡 useEffect에서 관리
                       onChange={setNewAiSummaryContent}
                       modules={aiSummaryQuillModules}
                       className="bg-gray-700 text-gray-100 quill-dark-theme"
                       placeholder="여기에 AI 시장 이슈 요약 내용을 작성하세요. 차트 이미지 등을 포함할 수 있습니다."
                     />
-
                   )}
                   <button
                       onClick={() => setAiSummaryEditHtmlMode(!aiSummaryEditHtmlMode)}
