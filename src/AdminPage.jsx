@@ -644,6 +644,8 @@ export default function AdminPage() {
                     ></textarea>
                   ) : (
                     <ReactQuill
+                      // 💡 key prop 추가: editingPostId가 변경될 때마다 Quill 컴포넌트를 재마운트
+                      key={editingPostId || 'new-post'} 
                       ref={quillRef}
                       theme="snow"
                       value={newPostContent}
@@ -652,6 +654,7 @@ export default function AdminPage() {
                       className="bg-gray-700 text-gray-100 quill-dark-theme"
                       placeholder="여기에 블로그 글 내용을 작성하세요. 이미지 버튼으로 파일을 업로드할 수 있습니다."
                     />
+
                   )}
                   <button
                       onClick={() => setEditHtmlMode(!editHtmlMode)}
@@ -731,17 +734,6 @@ export default function AdminPage() {
 
               <div className="space-y-4">
                 <div>
-                  <label htmlFor="aiSummaryTitle" className="block text-gray-300 text-sm font-bold mb-2">제목:</label>
-                  <input
-                    type="text"
-                    id="aiSummaryTitle"
-                    value={newAiSummaryTitle}
-                    onChange={(e) => setNewAiSummaryTitle(e.target.value)}
-                    className="w-full p-2 rounded bg-gray-700 border border-gray-600 text-gray-100 focus:outline-none focus:border-blue-500"
-                    placeholder="AI 요약 제목 (예: 2025-05-29 AI 시장 이슈 요약)"
-                  />
-                </div>
-                <div>
                   <label htmlFor="aiSummaryContent" className="block text-gray-300 text-sm font-bold mb-2">내용:</label>
                   {aiSummaryEditHtmlMode ? (
                     <textarea
@@ -753,6 +745,8 @@ export default function AdminPage() {
                     ></textarea>
                   ) : (
                     <ReactQuill
+                      // 💡 key prop 추가: editingAiSummaryId가 변경될 때마다 Quill 컴포넌트를 재마운트
+                      key={editingAiSummaryId || 'new-ai-summary'} 
                       ref={aiSummaryQuillRef}
                       theme="snow"
                       value={newAiSummaryContent}
@@ -761,6 +755,7 @@ export default function AdminPage() {
                       className="bg-gray-700 text-gray-100 quill-dark-theme"
                       placeholder="여기에 AI 시장 이슈 요약 내용을 작성하세요. 차트 이미지 등을 포함할 수 있습니다."
                     />
+
                   )}
                   <button
                       onClick={() => setAiSummaryEditHtmlMode(!aiSummaryEditHtmlMode)}
