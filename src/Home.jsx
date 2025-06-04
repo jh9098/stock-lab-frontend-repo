@@ -1,4 +1,4 @@
-// START OF FILE frontend/src/Home.jsx (수정: 종목 데이터 Firebase 연동)
+// START OF FILE frontend/src/Home.jsx (수정: 종목 데이터 Firebase 연동 및 종목 코드 제거)
 
 import { useEffect, useState, useCallback } from "react";
 import { useLocation, Link } from "react-router-dom";
@@ -10,9 +10,10 @@ import { db } from './firebaseConfig';
 import { collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
 
 export default function Home() {
-  // const [stocks, setStocks] = useState([]); // 기존 로컬 주식 데이터 상태 제거
+  // const [stocks, setStocks] = useState([]); // ⚠️ 기존 로컬 주식 데이터 상태 제거
+  // 💡 즐겨찾기 로직 변경: stock.code 대신 stock.id(Firebase 문서 ID)를 저장
   const [favorites, setFavorites] = useState(() => {
-    const saved = localStorage.getItem("favorites");
+    const saved = localStorage.getItem("favorites_firebase_ids"); // 💡 localStorage 키 변경
     return saved ? JSON.parse(saved) : [];
   });
   const location = useLocation();
@@ -94,31 +95,8 @@ export default function Home() {
     }
   }, []);
 
-  // 주식 데이터 로딩 로직 (기존 로컬 JSON 로딩 제거)
-  // 기존 코드:
-  // useEffect(() => {
-  //   const loadData = async () => {
-  //     const modules = import.meta.glob("../data/stocks/*.json");
-  //     const loadTasks = [];
-  //     for (const path in modules) {
-  //       const filename = path.split("/").pop().replace(".json", "");
-  //       const parts = filename.split("_");
-  //       if (parts.length !== 3) continue;
-  //       const [code, date, time] = parts;
-  //       const version = `${code}_${date}${time}`;
-  //       const loadPromise = modules[path]().then(mod => {
-  //         const data = mod.default;
-  //         if (data.status !== "진행중") return null;
-  //         return { ...data, version, code: code.replace("A", ""), sortKey: `${date}${time}` };
-  //       });
-  //       loadTasks.push(loadPromise);
-  //     }
-  //     const results = await Promise.all(loadTasks);
-  //     const valid = results.filter(Boolean).sort((a, b) => b.sortKey.localeCompare(a.sortKey));
-  //     setStocks(valid);
-  //   };
-  //   loadData();
-  // }, []);
+  // ⚠️ 기존 주식 데이터 로딩 로직 제거됨
+  // useEffect(() => { ... });
 
 
   // === Firebase에서 종목 분석 데이터 로딩 (추가) ===
@@ -131,9 +109,7 @@ export default function Home() {
         const q = query(stockAnalysesCollection, orderBy("createdAt", "desc"), limit(2)); // 최신 2개
         const querySnapshot = await getDocs(q);
         const analyses = querySnapshot.docs.map(doc => ({
-          id: doc.id,
-          // Firebase Timestamp 객체를 날짜 문자열로 변환 (필요시)
-          // createdAt: doc.data().createdAt ? new Date(doc.data().createdAt.toDate()).toISOString().split('T')[0] : '날짜 미상',
+          id: doc.id, // Firebase 문서 ID를 포함
           ...doc.data()
         }));
         setLatestStockAnalyses(analyses);
@@ -223,13 +199,13 @@ export default function Home() {
     fetchLatestNews();
   }, [API_BASE_URL]);
 
-  // 즐겨찾기 토글 로직 (기존과 동일 - Firebase 종목에는 'code' 필드가 그대로 사용됨)
-  const toggleFavorite = (code) => {
-    const updated = favorites.includes(code)
-      ? favorites.filter((c) => c !== code)
-      : [...favorites, code];
+  // 💡 즐겨찾기 토글 로직 변경: stock.code 대신 stock.id 사용
+  const toggleFavorite = (stockId) => {
+    const updated = favorites.includes(stockId)
+      ? favorites.filter((id) => id !== stockId)
+      : [...favorites, stockId];
     setFavorites(updated);
-    localStorage.setItem("favorites", JSON.stringify(updated));
+    localStorage.setItem("favorites_firebase_ids", JSON.stringify(updated)); // 💡 localStorage 키 변경
   };
 
 
@@ -387,26 +363,28 @@ export default function Home() {
           ) : latestStockAnalyses.length > 0 ? (
             <div className="grid md:grid-cols-2 gap-6 mb-8">
               {latestStockAnalyses.map((stock) => (
-                // stock.id는 Firebase 문서 ID, stock.code는 종목 코드
+                // stock.id는 Firebase 문서 ID
                 <div key={stock.id} className="bg-gray-700 p-4 rounded-md shadow-lg">
                   <div className="flex justify-between items-start">
-                    <h3 className="text-xl font-medium mb-1 text-teal-400">{stock.name} ({stock.code})</h3>
+                    {/* ⚠️ 종목 코드 표시 제거 */}
+                    <h3 className="text-xl font-medium mb-1 text-teal-400">{stock.name}</h3>
+                    {/* 💡 즐겨찾기 토글 버튼: stock.id 사용 */}
                     <button
-                      onClick={() => toggleFavorite(stock.code)}
+                      onClick={() => toggleFavorite(stock.id)}
                       className="bg-transparent border-none cursor-pointer text-2xl"
                     >
-                      {favorites.includes(stock.code) ? "❤️" : "🤍"}
+                      {favorites.includes(stock.id) ? "❤️" : "🤍"}
                     </button>
                   </div>
-                  <p className="text-xs text-gray-400 mb-3">업데이트: {stock.date}</p> {/* date 필드 사용 */}
+                  <p className="text-xs text-gray-400 mb-3">업데이트: {stock.date}</p>
                   <p className="text-gray-300 text-sm mb-3 recommendation-item-content">
                     <strong>전략:</strong> {stock.strategy || "등록된 전략 없음"}
                   </p>
                   <div className="text-sm space-y-1">
                     <p><strong>설명:</strong> <span className="text-gray-300">{stock.detail || "등록된 설명 없음"}</span></p>
                   </div>
-                  {/* 상세 분석 보기 링크: /list 페이지로 임시 이동 */}
-                  <Link to="/list" className="mt-4 inline-block bg-teal-500 hover:bg-teal-600 text-white font-semibold py-2 px-4 rounded-md text-sm transition duration-300">
+                  {/* 상세 분석 보기 링크: /recommendations 페이지로 이동 */}
+                  <Link to="/recommendations" className="mt-4 inline-block bg-teal-500 hover:bg-teal-600 text-white font-semibold py-2 px-4 rounded-md text-sm transition duration-300">
                     상세 분석 보기 <i className="fas fa-chart-line ml-1"></i>
                   </Link>
                 </div>
@@ -415,15 +393,6 @@ export default function Home() {
           ) : (
             <p className="text-gray-300 text-center col-span-full mb-8">현재 등록된 종목 분석이 없습니다.</p>
           )}
-
-          {/* 기존 예시 테이블은 Firebase 데이터 로딩으로 대체되므로 제거 */}
-          {/* <h3 className="text-xl font-semibold mb-4 text-white">추천 히스토리 (예시)</h3>
-          <div className="overflow-x-auto bg-gray-700 rounded-md shadow-lg">
-            <table className="min-w-full text-sm text-left text-gray-300">
-              <thead className="text-xs text-gray-200 uppercase bg-gray-600"> ... </thead>
-              <tbody> ... </tbody>
-            </table>
-          </div> */}
 
           <div className="mt-6 text-center">
             <Link to="/recommendations" className="bg-gray-600 hover:bg-gray-500 text-white font-semibold py-2 px-6 rounded-md text-sm transition duration-300">
@@ -526,20 +495,21 @@ export default function Home() {
           <div className="grid md:grid-cols-2 lg:grid-cols-2 gap-6">
             <div className="bg-gray-700 p-4 rounded-md shadow-lg">
               <h3 className="text-lg font-medium mb-3 text-yellow-400"><i className="fas fa-star mr-2"></i>나의 관심 종목</h3>
-              <p className="text-gray-300 text-sm mb-3">로그인 후 관심 종목을 등록하고 실시간 시세를 확인하세요.</p>
+              <p className="text-gray-300 text-sm mb-3">관심 종목을 등록하고 최신 분석을 확인하세요.</p>
               <ul className="text-sm list-disc list-inside pl-2 space-y-1 text-gray-200">
                 {favorites.length > 0 ? (
-                  favorites.map(favCode => {
-                    // latestStockAnalyses에서 해당 코드를 찾아 표시
-                    const stock = latestStockAnalyses.find(s => s.code === favCode);
+                  favorites.map(favId => { // 💡 favId는 Firebase 문서 ID
+                    // latestStockAnalyses에서 해당 ID를 찾아 표시
+                    const stock = latestStockAnalyses.find(s => s.id === favId);
                     return stock ? (
-                      <li key={favCode}>
-                        [{stock.name} ({stock.code})]: 현재가 정보
+                      <li key={favId}>
+                        {/* ⚠️ 종목 코드 표시 제거 */}
+                        {stock.name}: {stock.strategy}
                       </li>
-                    ) : null;
+                    ) : null; // 찾지 못하면 표시하지 않음 (예: 삭제된 종목)
                   })
                 ) : (
-                  <li>관심 종목을 추가해보세요!</li>
+                  <li>아직 관심 종목이 없습니다. 아래 종목들을 추가해보세요!</li>
                 )}
               </ul>
               <button className="mt-4 bg-yellow-500 hover:bg-yellow-600 text-gray-900 font-semibold py-2 px-3 rounded-md text-xs transition duration-300">관심종목 관리</button>
