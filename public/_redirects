@@ -1,1 +1,7 @@
-/* /index.html 200
+# 특정 파일들은 그대로 서빙 (SPA fallback 규칙보다 위에 와야 함)
+/vip_catch.html   /vip_catch.html   200
+# /ads.txt 와 같은 다른 public 파일도 있다면 여기에 추가
+# /ads.txt   /ads.txt   200
+
+# SPA fallback 규칙 (가장 마지막에 위치)
+/*   /index.html   200
