@@ -316,7 +316,7 @@ export default function AdminPage() {
       setNewPostTitle('');
       setNewPostAuthor('');
       setNewPostSummary('');
-      // setNewPostContent(''); // 💡 useEffect에서 초기화하므로 여기서는 제거
+      setNewPostContent(''); // 💡 이 줄의 주석을 제거하거나 추가하세요!
       setEditingPostId(null);
       setEditHtmlMode(false);
       await fetchExistingPosts();
@@ -396,7 +396,7 @@ export default function AdminPage() {
       }
 
       setNewAiSummaryTitle('');
-      // setNewAiSummaryContent(''); // 💡 useEffect에서 초기화하므로 여기서는 제거
+      setNewAiSummaryContent(''); // 💡 이 줄의 주석을 제거하거나 추가하세요!
       setEditingAiSummaryId(null);
       setAiSummaryEditHtmlMode(false);
       await fetchExistingAiSummaries();
