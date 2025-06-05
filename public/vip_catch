@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>캣치뷰 쇼핑 캠페인 모니터링 (API 기반) - VIP</title>
+  <!-- Firebase SDK 추가 -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+
+  <script>
+    // ⚠️ 중요: 여기에 본인의 Firebase 프로젝트 구성 객체를 붙여넣으세요.
+    const firebaseConfig = {
+      apiKey: "AIzaSyBeFvZZLj5vHt2ScpyR8X3bU1PXx1Y_a6U",
+      authDomain: "reviewercommunity-bf80c.firebaseapp.com",
+      projectId: "reviewercommunity-bf80c",
+      storageBucket: "reviewercommunity-bf80c.firebasestorage.app",
+      messagingSenderId: "598999060480",
+      appId: "1:598999060480:web:fa0348bbc59ebe393bc8e5",
+      measurementId: "G-CTGXGM9GQG"
+    };
+    // Firebase 앱 초기화
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+
+    // ⚠️ 중요: VIP로 지정할 Google 계정 이메일 목록
+    const VIP_EMAILS = [
+      "jihoon909857@gmail.com",
+      "jiwonvv98@gmail.com" // 여기에 실제 VIP 이메일을 추가하세요.
+      // 추가 VIP 이메일들...
+    ];
+
+    // 페이지 로드 시 인증 상태 확인
+    auth.onAuthStateChanged(user => {
+      const vipContent = document.getElementById('vip-main-content');
+      const accessDeniedMessage = document.getElementById('access-denied');
+      const loginMessage = document.getElementById('login-prompt');
+
+      if (user) {
+        // 사용자가 로그인한 경우
+        console.log("로그인 사용자:", user.email);
+        if (VIP_EMAILS.includes(user.email)) {
+          // VIP 사용자인 경우
+          if (vipContent) vipContent.style.display = 'block';
+          if (accessDeniedMessage) accessDeniedMessage.style.display = 'none';
+          if (loginMessage) loginMessage.style.display = 'none';
+          if (typeof window.initializeVipPage === 'function') {
+            window.initializeVipPage(); // VIP 컨텐츠 관련 스크립트 실행
+          }
+        } else {
+          // VIP 사용자가 아닌 경우
+          if (vipContent) vipContent.style.display = 'none';
+          if (accessDeniedMessage) accessDeniedMessage.style.display = 'block';
+          if (loginMessage) loginMessage.style.display = 'none';
+          console.warn("접근 거부: VIP 사용자가 아닙니다.");
+        }
+      } else {
+        // 사용자가 로그인하지 않은 경우
+        if (vipContent) vipContent.style.display = 'none';
+        if (accessDeniedMessage) accessDeniedMessage.style.display = 'none';
+        if (loginMessage) loginMessage.style.display = 'block';
+        console.log("로그인이 필요합니다.");
+      }
+    });
+
+    // Google 로그인 함수
+    function signInWithGoogle() {
+      const provider = new firebase.auth.GoogleAuthProvider();
+      auth.signInWithPopup(provider)
+        .then((result) => {
+          console.log("Google 로그인 성공:", result.user);
+        })
+        .catch((error) => {
+          console.error("Google 로그인 실패:", error);
+        });
+    }
+
+    // 로그아웃 함수
+    function signOut() {
+      auth.signOut().then(() => {
+        console.log("로그아웃 성공");
+      }).catch((error) => {
+        console.error("로그아웃 실패:", error);
+      });
+    }
+  </script>
+
+  <style>
+    /* ... (이전 답변에서 제공한 스타일 전체 복사) ... */
+    body { font-family: 'Pretendard', 'Noto Sans KR', Arial, sans-serif; background: #fafbfc; color: #222; padding: 24px; margin: 0; }
+    .container { max-width: 1200px; margin: 0 auto; }
+    .header { font-size: 1.5em; font-weight: bold; margin-bottom: 16px; color: #333; }
+    .status-bar { background-color: #f0f0f0; padding: 10px; border-radius: 8px; margin-bottom: 16px; font-size: 0.9em; color: #555;}
+    .status-bar span { font-weight: bold; }
+    .campaign-list { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 20px; }
+    .campaign { background: #fff; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.07); padding: 12px; width: 280px; display: flex; flex-direction: row; align-items: flex-start; gap: 12px; position: relative; transition: transform 0.2s ease-in-out;}
+    .campaign:hover { transform: translateY(-3px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+    .campaign img { width: 64px; height: 64px; object-fit: cover; border-radius: 8px; border: 1px solid #eee; flex-shrink: 0; }
+    .info { flex: 1; display: flex; flex-direction: column; min-height: 64px; }
+    .shop-platform { font-size: 0.9em; border-radius: 6px; padding: 2px 8px; color: #fff; font-weight: 500; margin-bottom: 5px; display: inline-block; }
+    .name { font-size: 1em; font-weight: 600; margin-bottom: 4px; line-height: 1.3; word-break: keep-all; flex-grow: 1; }
+    .price-info { margin-top: auto; }
+    .price { font-size: 0.95em; color: #E84545; font-weight: bold; }
+    .oldprice { font-size: 0.9em; color: #999; text-decoration: line-through; margin-left: 6px; }
+    .new-tag { color: #fff; background: #E84545; border-radius: 12px; padding: 3px 8px; font-size: 0.8em; margin-left: 6px; font-weight: bold; vertical-align: middle; }
+    .log-container { margin-top: 28px; }
+    .log-header { font-size: 1.1em; font-weight: bold; margin-bottom: 8px; color: #444; }
+    .log { background: #f7f9fc; border: 1px solid #e0e4e8; border-radius: 8px; padding: 12px; color: #555; font-size: 0.9em; max-height: 200px; overflow-y: auto; }
+    .log-item { padding: 4px 0; border-bottom: 1px dashed #e0e4e8; }
+    .log-item:last-child { border-bottom: none; }
+    .highlight { color: #10a85a; font-weight: bold; }
+    .error-log { color: #D8000C; }
+    #audio-permission-notice { color: orange; font-style: italic; margin-top: 5px; font-size: 0.9em; }
+
+    /* 모달 스타일 */
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+        visibility: hidden; /* 기본 숨김 */
+        opacity: 0;
+        transition: opacity 0.3s ease, visibility 0.3s ease;
+    }
+    .modal-overlay.active {
+        visibility: visible;
+        opacity: 1;
+    }
+    .modal-content {
+        background-color: #fff;
+        padding: 25px;
+        border-radius: 10px;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        width: 90%;
+        max-width: 450px;
+        text-align: center;
+    }
+    .modal-content h2 {
+        margin-top: 0;
+        color: #333;
+        font-size: 1.4em;
+    }
+    .modal-content p {
+        margin-bottom: 15px;
+        line-height: 1.6;
+        font-size: 1em;
+        text-align: left;
+        max-height: 200px; /* 내용이 길 경우 스크롤 */
+        overflow-y: auto;
+    }
+    .modal-content button {
+        background-color: #5cb85c;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 1em;
+        transition: background-color 0.2s;
+    }
+    .modal-content button:hover {
+        background-color: #4cae4c;
+    }
+    /* 접근 거부 및 로그인 프롬프트 메시지 스타일 */
+    .auth-message {
+      text-align: center;
+      padding: 50px;
+      font-size: 1.2em;
+    }
+    .auth-message button {
+      padding: 10px 20px;
+      font-size: 1em;
+      cursor: pointer;
+      margin-top: 20px;
+      background-color: #4CAF50; /* 초록색 계열 */
+      color: white;
+      border: none;
+      border-radius: 5px;
+    }
+  </style>
+</head>
+<body>
+  <!-- 접근 제어 메시지 영역 -->
+  <div id="login-prompt" class="auth-message" style="display: none;">
+    <p>VIP 서비스를 이용하려면 로그인이 필요합니다.</p>
+    <button onclick="signInWithGoogle()">Google 계정으로 로그인</button>
+  </div>
+  <div id="access-denied" class="auth-message" style="display: none;">
+    <p>이 페이지에 접근할 수 있는 권한이 없습니다. 관리자에게 문의하세요.</p>
+    <p><button onclick="signOut()">로그아웃</button></p>
+    <p><a href="/">홈으로 돌아가기</a></p> <!-- React 앱의 경우 이 링크는 React Router의 홈으로 연결될 수 있습니다 -->
+  </div>
+
+  <!-- VIP 사용자에게만 보여질 실제 콘텐츠 -->
+  <div id="vip-main-content" style="display: none;">
+    <!-- 여기에 기존 HTML의 <body> 내부 내용을 옮깁니다. -->
+    <div class="container">
+      <div class="header">캣치뷰 쇼핑 캠페인 모니터링 (API 기반) - VIP</div>
+      <div class="status-bar">
+        마지막 확인: <span id="lastCheckedTime">N/A</span> |
+        현재 캠페인 수: <span id="currentCampaignCount">0</span> |
+        다음 확인: <span id="countdown">N/A</span>
+      </div>
+      <div class="campaign-list" id="campaigns"></div>
+
+      <div class="log-container">
+        <div class="log-header">활동 로그</div>
+        <div class="log" id="log"></div>
+      </div>
+    </div>
+
+    <!-- 새 캠페인 알림 모달 -->
+    <div id="newCampaignModal" class="modal-overlay">
+      <div class="modal-content">
+        <h2 id="modalTitle">✨ 새로운 캠페인 발견!</h2>
+        <p id="modalCampaignList"></p>
+        <button id="closeModalButton">확인</button>
+      </div>
+    </div>
+
+    <audio id="alertSound" src="https://cdn.pixabay.com/audio/2022/03/15/audio_11f7fe1f2f.mp3" preload="auto"></audio>
+    <!-- 기존 스크립트는 여기에 위치 (initializeVipPage 함수 내부로) -->
+  </div>
+
+  <script>
+    // 이 함수는 Firebase 인증 성공 후 VIP임이 확인되면 호출됩니다.
+    window.initializeVipPage = function() {
+      console.log("VIP 페이지 초기화 시작");
+      // ... (이전 답변에서 제공한 initializeVipPage 함수 내용 전체 복사) ...
+        const API_URL = "https://api.catchview.kr/v2/campaign?page=1&limit=30&filter=%7B%22type%22:%22%EC%87%BC%ED%95%91%22%7D&sort=%7B%22isClosed%22:1%7D&isJoinable=false";
+        const CHECK_SECONDS_PAST_MINUTE = [2, 32];
+
+        const campaignsDiv = document.getElementById('campaigns');
+        const logDiv = document.getElementById('log');
+        const alertSound = document.getElementById('alertSound');
+        const lastCheckedTimeEl = document.getElementById('lastCheckedTime');
+        const currentCampaignCountEl = document.getElementById('currentCampaignCount');
+        const countdownEl = document.getElementById('countdown');
+
+        // 모달 관련 요소
+        const modalOverlay = document.getElementById('newCampaignModal');
+        const modalTitleEl = document.getElementById('modalTitle');
+        const modalCampaignListEl = document.getElementById('modalCampaignList');
+        const closeModalButton = document.getElementById('closeModalButton');
+
+
+        let isFirstLoad = true;
+        let nextCheckTimeoutId;
+        let userInteracted = false;
+        const ORIGINAL_TITLE = document.title;
+        let titleNotificationInterval;
+
+        document.body.addEventListener('click', () => {
+            if (!userInteracted) {
+                userInteracted = true;
+                alertSound.muted = true;
+                alertSound.play().then(() => {
+                    alertSound.pause();
+                    alertSound.currentTime = 0;
+                    alertSound.muted = false;
+                    logMessage("사용자 상호작용 감지됨. 알림 소리 재생 준비 완료.");
+                    const audioNotice = document.getElementById('audio-permission-notice');
+                    if (audioNotice) audioNotice.remove();
+                }).catch(e => {
+                    logMessage("사용자 상호작용 후 오디오 컨텍스트 활성화 시도 실패: " + e.message, true);
+                });
+            }
+        }, { once: true });
+
+        closeModalButton.addEventListener('click', () => {
+            modalOverlay.classList.remove('active');
+            stopPageTitleNotificationAndRemoveListener();
+        });
+        modalOverlay.addEventListener('click', (event) => {
+            if (event.target === modalOverlay) {
+                modalOverlay.classList.remove('active');
+                stopPageTitleNotificationAndRemoveListener();
+            }
+        });
+
+
+        function loadPreviousCampaignIds() {
+          try {
+            return JSON.parse(localStorage.getItem('cv_shopping_campaign_ids_v3') || '[]');
+          } catch (e) {
+            console.error("이전 캠페인 ID 로드 실패:", e);
+            return [];
+          }
+        }
+
+        function saveCurrentCampaignIds(campaignIdList) {
+          localStorage.setItem('cv_shopping_campaign_ids_v3', JSON.stringify(campaignIdList));
+        }
+
+        function logMessage(message, isError = false, forceLog = false) {
+          const alwaysLogMessages = ["캠페인 확인 시작...", "다음 확인 예정:", "초기", "사용자 상호작용", "권한"];
+          const shouldLog = forceLog || isError || alwaysLogMessages.some(keyword => message.includes(keyword)) || message.includes("새 캠페인") || message.includes("오류");
+
+          if (shouldLog) {
+            const logEntry = document.createElement('div');
+            logEntry.className = 'log-item';
+            if (isError) {
+              logEntry.classList.add('error-log');
+            }
+            logEntry.innerHTML = `[${new Date().toLocaleTimeString()}] ${message}`;
+            if (logDiv) { // logDiv가 존재하는지 확인
+                logDiv.insertBefore(logEntry, logDiv.firstChild);
+                if (logDiv.children.length > 50) {
+                logDiv.removeChild(logDiv.lastChild);
+                }
+            } else {
+                console.warn("logDiv 요소를 찾을 수 없습니다. 로그 메시지:", message);
+            }
+          }
+        }
+
+        function requestNotificationPermission() {
+          if (!("Notification" in window)) {
+            logMessage("이 브라우저는 데스크톱 알림을 지원하지 않습니다.", true, true);
+            return;
+          }
+          if (Notification.permission === "granted") {
+            logMessage("브라우저 알림 권한이 이미 허용되어 있습니다.", false, true);
+            return;
+          }
+          if (Notification.permission !== "denied") {
+            Notification.requestPermission().then(permission => {
+              if (permission === "granted") {
+                logMessage("브라우저 알림 권한이 허용되었습니다.", false, true);
+              } else if (permission === "denied") {
+                logMessage("브라우저 알림 권한이 거부되었습니다. 브라우저 설정에서 변경해주세요.", true, true);
+              } else {
+                logMessage("브라우저 알림 권한 요청이 사용자에 의해 닫혔습니다.", false, true);
+              }
+            });
+          } else {
+            logMessage("브라우저 알림 권한이 이미 거부되어 있습니다. 브라우저 설정에서 직접 권한을 허용해야 합니다.", true, true);
+          }
+        }
+
+        function displayCampaigns(campaignList, newCampaignIds = []) {
+          if (!campaignsDiv) {
+              console.warn("campaignsDiv 요소를 찾을 수 없습니다.");
+              return;
+          }
+          campaignsDiv.innerHTML = '';
+          if (currentCampaignCountEl) currentCampaignCountEl.textContent = campaignList.length;
+
+
+          if (campaignList.length === 0) {
+            campaignsDiv.innerHTML = '<div>현재 진행 중인 쇼핑 캠페인이 없습니다.</div>';
+            return;
+          }
+
+          campaignList.forEach(item => {
+            const campaignElement = document.createElement('div');
+            campaignElement.className = 'campaign';
+            const socialColor = item.socialColor || '#777777';
+            const displayName = item.displayName || '이름 없는 캠페인';
+            const finalPriceText = item.finalPrice != null ? item.finalPrice.toLocaleString() : '가격 정보 없음';
+            const isNew = newCampaignIds.includes(item._id);
+
+            campaignElement.innerHTML = `
+              <img src="${item.thumbnail}" alt="${displayName} 썸네일" loading="lazy">
+              <div class="info">
+                <div class="shop-platform" style="background-color:${socialColor};">${item.socialName || '플랫폼 정보 없음'}</div>
+                <div class="name">
+                  ${displayName}
+                  ${isNew ? '<span class="new-tag">NEW!</span>' : ''}
+                </div>
+                <div class="price-info">
+                  <span class="price">${finalPriceText}원</span>
+                  ${item.totalPrice > item.finalPrice ? `<span class="oldprice">${item.totalPrice.toLocaleString()}원</span>` : ''}
+                </div>
+              </div>
+            `;
+            if (isNew) {
+                campaignElement.style.cssText += "border: 2px solid #E84545 !important; animation: pulseBorder 1s infinite alternate;";
+            }
+            campaignsDiv.appendChild(campaignElement);
+          });
+          if (!document.getElementById('pulseAnimationStyle')) {
+            const styleSheet = document.createElement("style");
+            styleSheet.id = "pulseAnimationStyle";
+            styleSheet.innerText = "@keyframes pulseBorder { 0% { border-color: #E84545; } 100% { border-color: #ff8c8c; } }";
+            document.head.appendChild(styleSheet);
+          }
+        }
+
+        function updateNextCheckTimeDisplay(nextTime) {
+            const now = new Date();
+            const diffSeconds = Math.round((nextTime.getTime() - now.getTime()) / 1000);
+            if (countdownEl) countdownEl.textContent = `${nextTime.toLocaleTimeString()} (${diffSeconds > 0 ? diffSeconds : 0}초 후)`;
+        }
+
+        function calculateNextCheckTime() {
+            const now = new Date();
+            let currentMinute = now.getMinutes();
+            let currentHour = now.getHours();
+            let currentDay = now.getDate();
+            let currentMonth = now.getMonth();
+            let currentYear = now.getFullYear();
+            let currentSecond = now.getSeconds();
+
+            let nextRunTime = null;
+            CHECK_SECONDS_PAST_MINUTE.sort((a, b) => a - b);
+
+            for (const sec of CHECK_SECONDS_PAST_MINUTE) {
+                if (currentSecond < sec) {
+                    nextRunTime = new Date(currentYear, currentMonth, currentDay, currentHour, currentMinute, sec, 0);
+                    break;
+                }
+            }
+
+            if (!nextRunTime) {
+                currentMinute++;
+                if (currentMinute >= 60) {
+                    currentMinute = 0;
+                    currentHour++;
+                    if (currentHour >= 24) {
+                        currentHour = 0;
+                        nextRunTime = new Date(currentYear, currentMonth, currentDay + 1, currentHour, currentMinute, CHECK_SECONDS_PAST_MINUTE[0], 0);
+                    } else {
+                        nextRunTime = new Date(currentYear, currentMonth, currentDay, currentHour, currentMinute, CHECK_SECONDS_PAST_MINUTE[0], 0);
+                    }
+                } else {
+                    nextRunTime = new Date(currentYear, currentMonth, currentDay, currentHour, currentMinute, CHECK_SECONDS_PAST_MINUTE[0], 0);
+                }
+            }
+            return nextRunTime;
+        }
+
+        function startPageTitleNotification(newCampaignCount) {
+            stopPageTitleNotification();
+            let isAltTitle = false;
+            const baseTitle = `(${newCampaignCount}) 새 캠페인!`;
+            document.title = `🔥 ${baseTitle} - ${ORIGINAL_TITLE}`;
+
+            titleNotificationInterval = setInterval(() => {
+                document.title = isAltTitle ? `✨ ${baseTitle} - ${ORIGINAL_TITLE}` : `🔥 ${baseTitle} - ${ORIGINAL_TITLE}`;
+                isAltTitle = !isAltTitle;
+            }, 800);
+            window.addEventListener('focus', stopPageTitleNotificationAndRemoveListener);
+        }
+
+        function stopPageTitleNotification() {
+            if (titleNotificationInterval) {
+                clearInterval(titleNotificationInterval);
+                titleNotificationInterval = null;
+            }
+            document.title = ORIGINAL_TITLE;
+        }
+
+        function stopPageTitleNotificationAndRemoveListener() {
+            stopPageTitleNotification();
+            window.removeEventListener('focus', stopPageTitleNotificationAndRemoveListener);
+        }
+
+        function showNewCampaignModal(newCampaignDetails) {
+            if (!modalTitleEl || !modalCampaignListEl || !modalOverlay) {
+                console.warn("모달 관련 요소를 찾을 수 없습니다.");
+                return;
+            }
+            modalTitleEl.textContent = `✨ 새로운 캠페인 ${newCampaignDetails.length}개 발견!`;
+            let listHtml = '<ul>';
+            newCampaignDetails.forEach(campaign => {
+                listHtml += `<li>${campaign.displayName} (${campaign.socialName})</li>`;
+            });
+            listHtml += '</ul>';
+            modalCampaignListEl.innerHTML = listHtml;
+            modalOverlay.classList.add('active');
+        }
+
+        async function checkNewCampaigns() {
+          try {
+            const response = await fetch(API_URL, {
+              credentials: "omit",
+              headers: { 'Accept': 'application/json' }
+            });
+
+            if (!response.ok) {
+              throw new Error(`API 요청 실패: ${response.status} ${response.statusText}`);
+            }
+
+            const jsonResponse = await response.json();
+            const campaignData = Array.isArray(jsonResponse.data) ? jsonResponse.data : [];
+            const activeShoppingCampaigns = campaignData.filter(
+              campaign => campaign.type === "쇼핑" && campaign.applyFinish === false
+            );
+
+            const previousIds = loadPreviousCampaignIds();
+            const currentIds = activeShoppingCampaigns.map(campaign => campaign._id);
+
+            let newCampaignsFoundIds = [];
+            if (!isFirstLoad) {
+                newCampaignsFoundIds = currentIds.filter(id => !previousIds.includes(id));
+            }
+            
+            if (isFirstLoad || newCampaignsFoundIds.length > 0 || (previousIds.length !== currentIds.length && !isFirstLoad) ) {
+                logMessage(`ID 비교: 이전 ${previousIds.length}개, 현재 ${currentIds.length}개. ${newCampaignsFoundIds.length > 0 ? `<span class="highlight">${newCampaignsFoundIds.length}개 신규 발견!</span>` : '신규 없음.'} (첫 로드: ${isFirstLoad})`, false, true);
+            }
+
+            displayCampaigns(activeShoppingCampaigns, newCampaignsFoundIds);
+
+            if (newCampaignsFoundIds.length > 0) {
+              const newCampaignDetails = newCampaignsFoundIds.map(id => {
+                return activeShoppingCampaigns.find(c => c._id === id);
+              }).filter(Boolean);
+
+              startPageTitleNotification(newCampaignDetails.length);
+              showNewCampaignModal(newCampaignDetails);
+
+              if (window.Notification && Notification.permission === "granted") {
+                newCampaignDetails.slice(0, 3).forEach(campaign => {
+                  new Notification("✨ 새로운 캣치뷰 캠페인!", {
+                    body: campaign.displayName,
+                    icon: campaign.thumbnail,
+                    tag: `catchview-${campaign._id}`
+                  });
+                });
+                if (newCampaignDetails.length > 3) {
+                    new Notification("✨ 새로운 캣치뷰 캠페인!", {
+                        body: `그 외 ${newCampaignDetails.length - 3}개의 새 캠페인이 더 있습니다.`,
+                        tag: `catchview-more`
+                    });
+                }
+                logMessage(`브라우저 알림 ${Math.min(newCampaignDetails.length, 3) + (newCampaignDetails.length > 3 ? 1:0)}개 발송됨.`);
+              } else if (Notification.permission !== "denied") {
+                logMessage("브라우저 알림 권한이 허용되지 않았습니다. 알림을 받으려면 권한을 허용해주세요.");
+              }
+
+              if (userInteracted) {
+                if(alertSound) { // alertSound 요소 확인
+                    alertSound.play()
+                    .then(() => logMessage("알림 소리 재생됨."))
+                    .catch(e => {
+                        logMessage("알림 소리 재생 실패: " + e.message, true);
+                        if (!document.getElementById('audio-permission-notice') && logDiv) {
+                            const notice = document.createElement('p');
+                            notice.id = 'audio-permission-notice';
+                            notice.textContent = '알림 소리를 재생하려면 페이지의 아무 곳이나 클릭해주세요.';
+                            logDiv.parentNode.insertBefore(notice, logDiv);
+                        }
+                    });
+                } else {
+                    console.warn("alertSound 요소를 찾을 수 없습니다.");
+                }
+              } else {
+                logMessage("사용자 상호작용 전에는 알림 소리가 자동 재생되지 않습니다. 페이지를 클릭해주세요.");
+                if (!document.getElementById('audio-permission-notice') && logDiv) {
+                    const notice = document.createElement('p');
+                    notice.id = 'audio-permission-notice';
+                    notice.textContent = '알림 소리를 재생하려면 페이지의 아무 곳이나 클릭해주세요.';
+                    logDiv.parentNode.insertBefore(notice, logDiv);
+                }
+              }
+
+            } else if (!isFirstLoad) {
+              stopPageTitleNotification(); 
+            } else {
+              logMessage(`초기 ${activeShoppingCampaigns.length}개 캠페인 로드 완료. 다음 확인부터 새 캠페인 알림을 시작합니다.`, false, true);
+            }
+
+            saveCurrentCampaignIds(currentIds);
+            isFirstLoad = false;
+
+          } catch (error) {
+            console.error("캠페인 확인 중 오류:", error);
+            logMessage(`캠페인 확인 실패: ${error.message}`, true, true);
+            stopPageTitleNotification();
+          } finally {
+            if(lastCheckedTimeEl) lastCheckedTimeEl.textContent = new Date().toLocaleTimeString();
+            scheduleNextCheck();
+          }
+        }
+
+        function scheduleNextCheck() {
+            if (nextCheckTimeoutId) {
+                clearTimeout(nextCheckTimeoutId);
+            }
+
+            const nextRunTime = calculateNextCheckTime();
+            const delay = nextRunTime.getTime() - new Date().getTime();
+            updateNextCheckTimeDisplay(nextRunTime);
+
+            if (delay >= 0) {
+                nextCheckTimeoutId = setTimeout(() => {
+                    checkNewCampaigns();
+                }, delay);
+            } else {
+                logMessage(`딜레이 계산 오류 (현재 시간보다 과거로 예약됨: ${delay}ms). 10초 후 강제 재시도.`, true, true);
+                nextCheckTimeoutId = setTimeout(() => {
+                    checkNewCampaigns();
+                }, 10000);
+            }
+        }
+
+        requestNotificationPermission();
+        logMessage("모니터링 시작. 첫 캠페인 확인을 진행합니다. 알림 소리를 원하시면 페이지를 한 번 클릭해주세요.", false, true);
+        checkNewCampaigns();
+    }; // initializeVipPage 함수 정의 끝
+  </script>
+</body>
+</html>
