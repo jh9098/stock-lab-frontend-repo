@@ -463,20 +463,18 @@ export default function Home() {
           <h2 className="text-2xl font-semibold mb-6 text-white border-b-2 border-red-500 pb-2">미디어 채널</h2>
           <div className="grid md:grid-cols-2 gap-6">
             <div className="bg-gray-700 p-4 rounded-md shadow-lg">
-              <h3 className="text-xl font-medium mb-3 text-red-400"><i className="fab fa-youtube mr-2"></i>운영자 유튜브 채널</h3>
-              <a href="https://www.youtube.com/@stocksrlab" target="_blank" style={btn}>▶️ YouTube Shorts</a><br /><br />
                 <img src="https://placehold.co/120x30/FF0000/FFFFFF?text=YouTube+채널" alt="지지저항랩 유튜브 채널 로고" className="rounded" onError={(e) => { e.target.src = 'https://placehold.co/120x30/FF0000/FFFFFF?text=로고+오류'; e.target.onerror = null; }} />
               </a>
               <p className="text-gray-300 text-sm mb-3">최신 시장 분석과 투자 전략을 영상으로 만나보세요. 다양한 주식 콘텐츠가 준비되어 있습니다.</p>
-              <a href="https://www.youtube.com/YOUR_CHANNEL_ID" target="_blank" rel="noopener noreferrer" className="mt-4 inline-block bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-md text-sm transition duration-300">유튜브 채널 방문 <i className="fas fa-external-link-alt ml-1"></i></a>
+              <a href="https://www.youtube.com/@stocksrlab" target="_blank" rel="noopener noreferrer" className="mt-4 inline-block bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-md text-sm transition duration-300">유튜브 채널 방문 <i className="fas fa-external-link-alt ml-1"></i></a>
             </div>
             <div className="bg-gray-700 p-4 rounded-md shadow-lg">
               <h3 className="text-xl font-medium mb-3 text-blue-400"><i className="fab fa-threads mr-2"></i>운영자 쓰레드</h3>
-              <a href="https://www.threads.net/@YOUR_USERNAME" target="_blank" rel="noopener noreferrer" className="inline-block mb-3">
+              <a href="https://www.threads.net/@stocksrlab" target="_blank" rel="noopener noreferrer" className="inline-block mb-3">
                 <img src="https://placehold.co/120x30/0077B5/FFFFFF?text=Threads+채널" alt="지지저항랩 쓰레드 채널 로고" className="rounded" onError={(e) => { e.target.src = 'https://placehold.co/120x30/0077B5/FFFFFF?text=로고+오류'; e.target.onerror = null; }} />
               </a>
               <p className="text-gray-300 text-sm">실시간 투자 아이디어와 짧은 코멘트를 확인하세요. 시장 속보를 빠르게 공유합니다.</p>
-              <a href="https://www.threads.net/@YOUR_USERNAME" target="_blank" rel="noopener noreferrer" className="mt-4 inline-block bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-md text-sm transition duration-300">쓰레드 방문하기 <i className="fas fa-external-link-alt ml-1"></i></a>
+              <a href="https://www.threads.net/@stocksrlab" target="_blank" rel="noopener noreferrer" className="mt-4 inline-block bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-md text-sm transition duration-300">쓰레드 방문하기 <i className="fas fa-external-link-alt ml-1"></i></a>
             </div>
           </div>
         <div style={{ padding: "2rem", maxWidth: "960px", margin: "auto", lineHeight: "1.8" }}>
@@ -540,8 +538,8 @@ export default function Home() {
         </div>
 
         <div className="mb-4">
-          <a href="https://www.youtube.com/YOUR_CHANNEL_ID" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white mx-2 text-xl transition duration-300"><i className="fab fa-youtube"></i></a>
-          <a href="https://www.threads.net/@YOUR_USERNAME" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white mx-2 text-xl transition duration-300"><i className="fab fa-threads"></i></a>
+          <a href="https://www.youtube.com/@stocksrlab" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white mx-2 text-xl transition duration-300"><i className="fab fa-youtube"></i></a>
+          <a href="https://www.threads.net/@stocksrlab" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white mx-2 text-xl transition duration-300"><i className="fab fa-threads"></i></a>
         </div>
         <p className="text-sm text-gray-400">© 2025 지지저항 Lab. All Rights Reserved.</p>
         <p className="text-xs text-gray-500 mt-1">
