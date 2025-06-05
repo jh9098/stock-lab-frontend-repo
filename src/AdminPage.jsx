@@ -1,4 +1,4 @@
-// START OF FILE frontend/src/AdminPage.jsx (수정: ReactQuill 'delta' 오류 해결 - useEffect 동기화)
+// START OF FILE frontend/src/AdminPage.jsx (수정: ReactQuill 'delta' 오류 해결 - useEffect 동기화 및 key prop 개선)
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Helmet } from 'react-helmet';
@@ -48,6 +48,10 @@ export default function AdminPage() {
   const [existingStockAnalyses, setExistingStockAnalyses] = useState([]); // 기존 종목 분석 목록
   const [stockAnalysesLoading, setStockAnalysesLoading] = useState(true);
   const [stockAnalysesError, setStockAnalysesError] = useState(null);
+
+  // 💡 ReactQuill 강제 리마운트를 위한 Key (새로 추가됨)
+  const [blogQuillKey, setBlogQuillKey] = useState(0); 
+  const [aiSummaryQuillKey, setAiSummaryQuillKey] = useState(0);
 
   const quillRef = useRef(null);
   const blogFormRef = useRef(null);
@@ -311,12 +315,14 @@ export default function AdminPage() {
           createdAt: new Date(),
         });
         setMessage(`블로그 글이 성공적으로 게시되었습니다! ID: ${docRef.id}`);
+        // 💡 새 글 저장 시 Quill Key 변경하여 리마운트 유도 (추가됨)
+        setBlogQuillKey(prev => prev + 1); 
       }
 
       setNewPostTitle('');
       setNewPostAuthor('');
       setNewPostSummary('');
-      setNewPostContent(''); // 💡 이 줄의 주석을 제거하거나 추가하세요!
+      setNewPostContent(''); // 이 줄은 그대로 유지 (이미 활성화됨)
       setEditingPostId(null);
       setEditHtmlMode(false);
       await fetchExistingPosts();
@@ -332,7 +338,7 @@ export default function AdminPage() {
     setNewPostTitle(post.title);
     setNewPostAuthor(post.author);
     setNewPostSummary(post.summary);
-    // setNewPostContent(String(post.contentHtml || '')); // 💡 useEffect에서 처리하므로 여기서는 제거
+    // setNewPostContent(String(post.contentHtml || '')); // useEffect에서 처리하므로 여기서는 제거
     setEditHtmlMode(false); 
     setMessage(`"${post.title}" 블로그 글을 수정 중입니다.`);
     blogFormRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -361,10 +367,11 @@ export default function AdminPage() {
     setNewPostTitle('');
     setNewPostAuthor('');
     setNewPostSummary('');
-    // setNewPostContent(''); // 💡 useEffect에서 초기화하므로 여기서는 제거
+    setNewPostContent(''); // 이 줄은 그대로 유지 (이미 활성화됨)
     setEditHtmlMode(false);
     setMessage('새 블로그 글을 작성합니다.');
     blogFormRef.current?.scrollIntoView({ behavior: 'smooth' });
+    setBlogQuillKey(prev => prev + 1); // 💡 새 글 작성 모드 진입 시 Quill Key 변경 (추가됨)
   };
 
 
@@ -393,10 +400,12 @@ export default function AdminPage() {
           createdAt: new Date(),
         });
         setMessage(`AI 요약이 성공적으로 게시되었습니다! ID: ${docRef.id}`);
+        // 💡 새 글 저장 시 Quill Key 변경하여 리마운트 유도 (추가됨)
+        setAiSummaryQuillKey(prev => prev + 1);
       }
 
       setNewAiSummaryTitle('');
-      setNewAiSummaryContent(''); // 💡 이 줄의 주석을 제거하거나 추가하세요!
+      setNewAiSummaryContent(''); // 이 줄은 그대로 유지 (이미 활성화됨)
       setEditingAiSummaryId(null);
       setAiSummaryEditHtmlMode(false);
       await fetchExistingAiSummaries();
@@ -410,7 +419,7 @@ export default function AdminPage() {
   const handleEditAiSummary = (summary) => {
     setEditingAiSummaryId(summary.id);
     setNewAiSummaryTitle(summary.title);
-    // setNewAiSummaryContent(String(summary.contentHtml || '')); // 💡 useEffect에서 처리하므로 여기서는 제거
+    // setNewAiSummaryContent(String(summary.contentHtml || '')); // useEffect에서 처리하므로 여기서는 제거
     setMessage(`"${summary.title}" AI 요약을 수정 중입니다.`);
     setAiSummaryEditHtmlMode(false); 
     aiSummaryFormRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -437,10 +446,11 @@ export default function AdminPage() {
   const handleNewAiSummary = () => {
     setEditingAiSummaryId(null);
     setNewAiSummaryTitle('');
-    // setNewAiSummaryContent(''); // 💡 useEffect에서 초기화하므로 여기서는 제거
+    setNewAiSummaryContent(''); // 이 줄은 그대로 유지 (이미 활성화됨)
     setMessage('새 AI 요약 글을 작성합니다.');
     setAiSummaryEditHtmlMode(false); 
     aiSummaryFormRef.current?.scrollIntoView({ behavior: 'smooth' });
+    setAiSummaryQuillKey(prev => prev + 1); // 💡 새 글 작성 모드 진입 시 Quill Key 변경 (추가됨)
   };
 
   // === 새 종목 분석 작성 또는 수정 완료 (종목 코드 제거, 상태/수익률 추가) ===
@@ -664,11 +674,12 @@ export default function AdminPage() {
                     ></textarea>
                   ) : (
                     <ReactQuill
-                      // 💡 key prop 추가: editingPostId가 변경될 때마다 Quill 컴포넌트를 재마운트
-                      key={editingPostId || 'new-post'} 
+                      // 💡 key prop 수정: editingPostId가 변경될 때마다 Quill 컴포넌트를 재마운트
+                      // 새 글 작성 모드일 때는 blogQuillKey를 사용하여 강제 리마운트 유도 (수정됨)
+                      key={editingPostId ? editingPostId : `new-post-${blogQuillKey}`} 
                       ref={quillRef}
                       theme="snow"
-                      value={newPostContent} // 💡 useEffect에서 관리
+                      value={newPostContent} // useEffect에서 관리
                       onChange={setNewPostContent}
                       modules={blogQuillModules}
                       className="bg-gray-700 text-gray-100 quill-dark-theme"
@@ -775,11 +786,12 @@ export default function AdminPage() {
                     ></textarea>
                   ) : (
                     <ReactQuill
-                      // 💡 key prop 추가: editingAiSummaryId가 변경될 때마다 Quill 컴포넌트를 재마운트
-                      key={editingAiSummaryId || 'new-ai-summary'} 
+                      // 💡 key prop 수정: editingAiSummaryId가 변경될 때마다 Quill 컴포넌트를 재마운트
+                      // 새 글 작성 모드일 때는 aiSummaryQuillKey를 사용하여 강제 리마운트 유도 (수정됨)
+                      key={editingAiSummaryId ? editingAiSummaryId : `new-ai-summary-${aiSummaryQuillKey}`} 
                       ref={aiSummaryQuillRef}
                       theme="snow"
-                      value={newAiSummaryContent} // 💡 useEffect에서 관리
+                      value={newAiSummaryContent} // useEffect에서 관리
                       onChange={setNewAiSummaryContent}
                       modules={aiSummaryQuillModules}
                       className="bg-gray-700 text-gray-100 quill-dark-theme"
