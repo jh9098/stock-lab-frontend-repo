@@ -464,7 +464,7 @@ export default function Home() {
           <div className="grid md:grid-cols-2 gap-6">
             <div className="bg-gray-700 p-4 rounded-md shadow-lg">
               <h3 className="text-xl font-medium mb-3 text-red-400"><i className="fab fa-youtube mr-2"></i>운영자 유튜브 채널</h3>
-              <a href="https://www.youtube.com/YOUR_CHANNEL_ID" target="_blank" rel="noopener noreferrer" className="inline-block mb-3">
+              <a href="https://www.youtube.com/@stocksrlab" target="_blank" style={btn}>▶️ YouTube Shorts</a><br /><br />
                 <img src="https://placehold.co/120x30/FF0000/FFFFFF?text=YouTube+채널" alt="지지저항랩 유튜브 채널 로고" className="rounded" onError={(e) => { e.target.src = 'https://placehold.co/120x30/FF0000/FFFFFF?text=로고+오류'; e.target.onerror = null; }} />
               </a>
               <p className="text-gray-300 text-sm mb-3">최신 시장 분석과 투자 전략을 영상으로 만나보세요. 다양한 주식 콘텐츠가 준비되어 있습니다.</p>
