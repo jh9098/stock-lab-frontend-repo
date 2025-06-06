@@ -253,16 +253,6 @@ export default function Home() {
           <div id="coupang-ad-banner" className="flex justify-center"></div>
         </div>
 
-        {/* ✅ Google AdSense 광고 단위 (예: 메인 콘텐츠 상단) */}
-        <div className="text-center my-8">
-          <ins className="adsbygoogle"
-              style={{ display: "block" }}
-              data-ad-client="ca-pub-1861160469675223"
-              data-ad-slot="8508377494"
-              data-ad-format="auto"
-              data-full-width-responsive="true"></ins>
-        </div>
-
         <section id="market-status" className="mb-12 p-6 bg-gray-800 rounded-lg shadow-xl">
           <h2 className="text-2xl font-semibold mb-6 text-white border-b-2 border-blue-500 pb-2">시장 현황 및 블로그</h2>
           <div className="grid md:grid-cols-2 gap-6 mb-6">
@@ -384,7 +374,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* ✅ Google AdSense 광고 단위 (예: 뉴스 섹션과 추천 종목 섹션 사이) */}
+        {/* ✅ Google AdSense 광고 단위 (예: 뉴스 섹션과 추천 종목 섹션 사이) 
         <div className="text-center my-8">
           <ins className="adsbygoogle"
               style={{ display: "block" }}
@@ -393,7 +383,7 @@ export default function Home() {
               data-ad-format="auto"
               data-full-width-responsive="true"></ins>
         </div>
-
+        */}
         {/* === 최근 등록된 종목들 및 전문가 분석 섹션 (수정) === */}
         <section id="recommendations" className="mb-12 p-6 bg-gray-800 rounded-lg shadow-xl">
           <h2 className="text-2xl font-semibold mb-6 text-white border-b-2 border-teal-500 pb-2">최근 등록된 종목들 및 전문가 분석</h2>
@@ -442,7 +432,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* ✅ Google AdSense 광고 단위 (예: 추천 종목 섹션과 테마 섹션 사이) */}
+        {/* ✅ Google AdSense 광고 단위 (예: 추천 종목 섹션과 테마 섹션 사이) 
         <div className="text-center my-8">
           <ins className="adsbygoogle"
               style={{ display: "block" }}
@@ -450,7 +440,7 @@ export default function Home() {
               data-ad-slot="8508377494" 
               data-ad-format="auto"
               data-full-width-responsive="true"></ins>
-        </div>
+        </div>*/}
 
 
         <section id="themes" className="mb-12 p-6 bg-gray-800 rounded-lg shadow-xl">
@@ -511,7 +501,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* ✅ Google AdSense 광고 단위 (예: 종목 상담 섹션과 소셜 미디어 섹션 사이) */}
+        {/* ✅ Google AdSense 광고 단위 (예: 종목 상담 섹션과 소셜 미디어 섹션 사이) 
         <div className="text-center my-8">
           <ins className="adsbygoogle"
               style={{ display: "block" }}
@@ -519,7 +509,7 @@ export default function Home() {
               data-ad-slot="8508377494" 
               data-ad-format="auto"
               data-full-width-responsive="true"></ins>
-        </div>
+        </div>*/}
 
         <section id="social-media" className="mb-12 p-6 bg-gray-800 rounded-lg shadow-xl">
           <h2 className="text-2xl font-semibold mb-6 text-white border-b-2 border-red-500 pb-2">미디어 채널</h2>
