@@ -40,40 +40,64 @@ export default function Home() {
   // API 서버 주소 (Render 백엔드 앱의 URL)
   const API_BASE_URL = 'https://stock-lab-backend-repo.onrender.com'; // Render 배포 후 얻게 되는 실제 URL로 변경
 
-  // Coupang 광고 로직 (기존과 동일)
+  // ✅ Coupang 광고 로직 (수정: 클린업 함수 추가 및 초기 로드 로직 개선)
   useEffect(() => {
-    if (window.PartnersCoupang) {
-      new window.PartnersCoupang.G({
-        id: 864271,
-        trackingCode: "AF5962904",
-        subId: null,
-        template: "carousel",
-        width: "680",
-        height: "140",
-      });
+    const coupangAdContainer = document.getElementById("coupang-ad-banner");
+
+    // 광고 컨테이너가 없으면 로직 실행 안 함
+    if (!coupangAdContainer) {
+      console.warn("Coupang ad banner container not found, skipping ad load.");
       return;
     }
 
-    if (!document.getElementById("coupang-script")) {
-      const script = document.createElement("script");
-      script.id = "coupang-script";
-      script.src = "https://ads-partners.coupang.com/g.js";
-      script.async = true;
-      script.onload = () => {
-        if (window.PartnersCoupang) {
-          new window.PartnersCoupang.G({
-            id: 864271,
-            trackingCode: "AF5962904",
-            subId: null,
-            template: "carousel",
-            width: "680",
-            height: "140",
-          });
-        }
-      };
-      document.body.appendChild(script);
+    // 광고 로드 함수 (재사용을 위해 분리)
+    const loadCoupangAd = () => {
+      // 이전에 로드된 광고가 있다면 비웁니다.
+      coupangAdContainer.innerHTML = ''; 
+      if (window.PartnersCoupang) {
+        new window.PartnersCoupang.G({
+          id: 864271,
+          trackingCode: "AF5962904",
+          subId: null,
+          template: "carousel",
+          width: "680",
+          height: "140",
+        });
+      }
+    };
+
+    // Coupang 스크립트가 이미 로드되었는지 확인
+    if (window.PartnersCoupang) {
+      loadCoupangAd(); // 이미 로드되어 있다면 바로 광고 로드
+    } else {
+      // 스크립트가 아직 없으면 동적으로 추가
+      if (!document.getElementById("coupang-script")) {
+        const script = document.createElement("script");
+        script.id = "coupang-script";
+        script.src = "https://ads-partners.coupang.com/g.js";
+        script.async = true;
+        script.onload = loadCoupangAd; // 스크립트 로드 완료 후 광고 로드
+        document.body.appendChild(script);
+      } else {
+        // 스크립트는 있지만 PartnersCoupang이 아직 정의되지 않은 경우 (가끔 발생)
+        // 안전하게 스크립트 로드 완료를 기다리거나, 짧은 딜레이 후 시도
+        setTimeout(() => {
+          if (window.PartnersCoupang) {
+            loadCoupangAd();
+          }
+        }, 100);
+      }
     }
-  }, []);
+
+    // ✅ 클린업 함수: 컴포넌트 언마운트 시 또는 재렌더링 시 광고 영역 비우기
+    return () => {
+      if (coupangAdContainer) {
+        coupangAdContainer.innerHTML = ''; // 광고 콘텐츠를 비웁니다.
+      }
+      // 주의: Coupang 스크립트 자체는 document.body에 한 번만 추가되는 것이 일반적이므로 여기서 제거하지 않습니다.
+      // 다른 컴포넌트가 이 스크립트에 의존할 수 있기 때문입니다.
+    };
+  }, [location.pathname]); // 경로가 변경될 때마다 Coupang 광고도 다시 로드/정리
 
   // Daum 광고 로직 (기존과 동일)
   useEffect(() => {
@@ -94,15 +118,20 @@ export default function Home() {
   }, []);
 
   // ✅ Google AdSense 광고 단위 로드 로직 (수정)
-  // 컴포넌트가 마운트되거나 업데이트될 때마다 AdSense 광고 단위를 로드하도록 지시
   useEffect(() => {
     if (window.adsbygoogle) {
       try {
-        // 모든 'adsbygoogle' 클래스를 가진 <ins> 요소를 찾아서 처리합니다.
-        // data-ad-status="done" 속성이 없는 광고만 처리하여 중복 로드를 방지합니다.
-        const adElements = document.querySelectorAll('ins.adsbygoogle:not([data-ad-status="done"])');
+        // 🚨 중요: AdSense 큐를 명시적으로 비워주는 코드 추가
+        window.adsbygoogle = window.adsbygoogle || [];
+        if (window.adsbygoogle.length > 0) {
+          window.adsbygoogle.length = 0; // 큐를 비웁니다.
+        }
+
+        // 모든 'adsbygoogle' 클래스를 가진 <ins> 요소를 찾아 처리합니다.
+        // key prop 덕분에 페이지 이동 시 항상 새로운 ins 요소가 됩니다.
+        const adElements = document.querySelectorAll('ins.adsbygoogle'); 
         adElements.forEach(adElement => {
-            (window.adsbygoogle = window.adsbygoogle || []).push({});
+            (window.adsbygoogle || []).push({});
         });
       } catch (e) {
         console.error("AdSense push error:", e);
@@ -246,12 +275,13 @@ export default function Home() {
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8">
+      {/* ✅ 쿠팡 광고 배너 및 대가성 문구 (상단으로 이동 및 문구 추가) */}
+      <div className="text-center my-8">
+        <div id="coupang-ad-banner" className="flex justify-center"></div>
+        <p className="text-xs text-gray-500 mt-2">이 포스팅은 쿠팡파트너스 활동의 일환으로, 이데 따른 일정액의 수수료를 제공받습니다.</p>
+      </div>
 
-        {/* ✅ 쿠팡 광고 배너 */}
-        <div className="text-center mb-8">
-          <div id="coupang-ad-banner" className="flex justify-center"></div>
-        </div>
+      <main className="container mx-auto px-4 py-8">
 
         <section id="market-status" className="mb-12 p-6 bg-gray-800 rounded-lg shadow-xl">
           <h2 className="text-2xl font-semibold mb-6 text-white border-b-2 border-blue-500 pb-2">시장 현황 및 블로그</h2>
@@ -331,11 +361,11 @@ export default function Home() {
         </section>
 
         {/* ✅ Google AdSense 광고 단위 (예: 시장 현황과 뉴스 섹션 사이) */}
-        <div className="text-center my-8">
+        <div className="text-center my-8" key={location.pathname + '_adsense_2'}> {/* key 추가 */}
           <ins className="adsbygoogle"
               style={{ display: "block" }}
               data-ad-client="ca-pub-1861160469675223"
-              data-ad-slot="8508377494"
+              data-ad-slot="8508377494" {/* ⚠️ 여기에 실제 광고 단위 ID를 입력하세요! */}
               data-ad-format="auto"
               data-full-width-responsive="true"></ins>
         </div>
@@ -484,12 +514,10 @@ export default function Home() {
           <h2 className="text-2xl font-semibold mb-6 text-white border-b-2 border-red-500 pb-2">미디어 채널</h2>
           <div className="grid md:grid-cols-2 gap-6">
             <div className="bg-gray-700 p-4 rounded-md shadow-lg">
-                {/* FIX START: Missing <h3> and <a> tag around the image */}
                 <h3 className="text-xl font-medium mb-3 text-red-400"><i className="fab fa-youtube mr-2"></i>유튜브 채널</h3>
                 <a href="https://www.youtube.com/@stocksrlab" target="_blank" rel="noopener noreferrer" className="inline-block mb-3">
                   <img src="https://placehold.co/120x30/FF0000/FFFFFF?text=YouTube+채널" alt="지지저항랩 유튜브 채널 로고" className="rounded" onError={(e) => { e.target.src = 'https://placehold.co/120x30/FF0000/FFFFFF?text=로고+오류'; e.target.onerror = null; }} />
                 </a>
-                {/* FIX END */}
               <p className="text-gray-300 text-sm mb-3">최신 시장 분석과 투자 전략을 영상으로 만나보세요. 다양한 주식 콘텐츠가 준비되어 있습니다.</p>
               <a href="https://www.youtube.com/@stocksrlab" target="_blank" rel="noopener noreferrer" className="mt-4 inline-block bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-md text-sm transition duration-300">유튜브 채널 방문 <i className="fas fa-external-link-alt ml-1"></i></a>
             </div>
@@ -554,12 +582,12 @@ export default function Home() {
 
       <footer className="bg-gray-800 border-t border-gray-700 py-8 text-center">
         {/* ✅ Google AdSense 광고 단위 (예: 푸터 상단) */}
-        <div className="text-center my-8">
+        <div className="text-center my-8" key={location.pathname + '_adsense_6'}> {/* key 추가 */}
           <ins className="adsbygoogle"
               style={{ display: "block" }}
               data-ad-client="ca-pub-1861160469675223"
-              data-ad-slot="8508377494" 
-              data-ad-format="auto"
+              data-ad-slot="9101072734" 
+              data-ad-format="autorelaxed"
               data-full-width-responsive="true"></ins>
         </div>
 
