@@ -16,12 +16,11 @@ export default function BlogListPage() {
     const fetchBlogPosts = async () => {
       try {
         const blogPostsCollection = collection(db, "blogPosts");
-        // 날짜 최신순으로 정렬
-        const q = query(blogPostsCollection, orderBy("createdAt", "desc")); // AdminPage에서 createdAt 필드 사용
+        const q = query(blogPostsCollection, orderBy("createdAt", "desc"));
 
         const querySnapshot = await getDocs(q);
         const posts = querySnapshot.docs.map(doc => ({
-          id: doc.id, // Firestore 문서 ID를 글 ID로 사용
+          id: doc.id,
           ...doc.data()
         }));
         setBlogPosts(posts);
@@ -36,28 +35,28 @@ export default function BlogListPage() {
     fetchBlogPosts();
   }, []);
 
-  // ✅ Google AdSense 광고 단위 로드 로직 (수정된 부분)
+  // ✅ Google AdSense 광고 단위 로드 로직 (수정)
   useEffect(() => {
     if (window.adsbygoogle) {
       try {
-        // 🚨 중요: AdSense 큐를 명시적으로 비워주는 코드 추가
-        // 이전에 푸시된 광고 요청을 초기화하여 중복 로딩 오류 방지
+        // 큐 초기화는 여전히 좋은 습관이지만, key 속성 변경이 더 효과적입니다.
         window.adsbygoogle = window.adsbygoogle || [];
+        // 큐를 비워주는 것은 여러 광고 슬롯이 있을 때 이전에 푸시된 것이 중복으로 처리되지 않도록 돕습니다.
         if (window.adsbygoogle.length > 0) {
-          window.adsbygoogle.length = 0; // 큐를 비웁니다.
+           window.adsbygoogle.length = 0;
         }
 
-        // 현재 컴포넌트 내의 모든 'adsbygoogle' 클래스를 가진 <ins> 요소를 찾아 처리합니다.
-        // 큐를 비웠기 때문에 data-ad-status="done" 조건은 덜 중요해지지만, 여전히 좋은 습관입니다.
-        const adElements = document.querySelectorAll('ins.adsbygoogle:not([data-ad-status="done"])');
+        // DOM에서 새로 마운트된 광고 요소만 찾아서 푸시합니다.
+        // key prop 덕분에 페이지 이동 시 항상 새로운 ins 요소가 됩니다.
+        const adElements = document.querySelectorAll('ins.adsbygoogle'); // :not([data-ad-status="done"]) 제거
         adElements.forEach(adElement => {
-            (window.adsbygoogle || []).push({}); // 비워진 큐에 새로운 요청 추가
+            (window.adsbygoogle || []).push({});
         });
       } catch (e) {
         console.error("AdSense push error in BlogListPage:", e);
       }
     }
-  }, [location.pathname]); // React Router 경로가 변경될 때마다 다시 시도 (SPA에서 중요)
+  }, [location.pathname]); // 경로 변경 시 useEffect 다시 실행
 
   if (loading) {
     return (
@@ -89,12 +88,12 @@ export default function BlogListPage() {
       <h1 className="text-3xl font-bold text-white mb-6 border-b-2 border-green-500 pb-2">최신 블로그 포스트</h1>
       <p className="text-gray-300 mb-8">실전 투자 전략, 시장 분석 팁, 그리고 투자 심리 관리에 대한 심도 깊은 블로그 포스트들을 확인하세요.</p>
 
-      {/* ✅ Google AdSense 인스트림 광고 단위 (추가된 부분) */}
-      <div className="text-center my-8">
+      {/* ✅ Google AdSense 인스트림 광고 단위 (key prop 추가) */}
+      <div className="text-center my-8" key={location.pathname}> {/* ✅ key={location.pathname} 추가 */}
         <ins className="adsbygoogle"
              style={{ display: "block" }}
              data-ad-client="ca-pub-1861160469675223"
-             data-ad-slot="5922871900" // BlogListPage용 슬롯 ID
+             data-ad-slot="5922871900"
              data-ad-format="auto"
              data-full-width-responsive="true"></ins>
       </div>
