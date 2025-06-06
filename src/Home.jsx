@@ -365,7 +365,7 @@ export default function Home() {
           <ins className="adsbygoogle"
               style={{ display: "block" }}
               data-ad-client="ca-pub-1861160469675223"
-              data-ad-slot="8508377494" {/* ⚠️ 여기에 실제 광고 단위 ID를 입력하세요! */}
+              data-ad-slot="8508377494"
               data-ad-format="auto"
               data-full-width-responsive="true"></ins>
         </div>
