@@ -374,16 +374,6 @@ export default function Home() {
           </div>
         </section>
 
-        {/* ✅ Google AdSense 광고 단위 (예: 뉴스 섹션과 추천 종목 섹션 사이) 
-        <div className="text-center my-8">
-          <ins className="adsbygoogle"
-              style={{ display: "block" }}
-              data-ad-client="ca-pub-1861160469675223"
-              data-ad-slot="8508377494" 
-              data-ad-format="auto"
-              data-full-width-responsive="true"></ins>
-        </div>
-        */}
         {/* === 최근 등록된 종목들 및 전문가 분석 섹션 (수정) === */}
         <section id="recommendations" className="mb-12 p-6 bg-gray-800 rounded-lg shadow-xl">
           <h2 className="text-2xl font-semibold mb-6 text-white border-b-2 border-teal-500 pb-2">최근 등록된 종목들 및 전문가 분석</h2>
@@ -431,17 +421,6 @@ export default function Home() {
             </Link>
           </div>
         </section>
-
-        {/* ✅ Google AdSense 광고 단위 (예: 추천 종목 섹션과 테마 섹션 사이) 
-        <div className="text-center my-8">
-          <ins className="adsbygoogle"
-              style={{ display: "block" }}
-              data-ad-client="ca-pub-1861160469675223"
-              data-ad-slot="8508377494" 
-              data-ad-format="auto"
-              data-full-width-responsive="true"></ins>
-        </div>*/}
-
 
         <section id="themes" className="mb-12 p-6 bg-gray-800 rounded-lg shadow-xl">
           <h2 className="text-2xl font-semibold mb-6 text-white border-b-2 border-yellow-500 pb-2">📚 테마별 종목 분석</h2>
@@ -500,16 +479,6 @@ export default function Home() {
             <Link to="/forum" className="bg-gray-600 hover:bg-gray-500 text-white font-semibold py-2 px-6 rounded-md text-sm transition duration-300">게시판 전체 보기</Link>
           </div>
         </section>
-
-        {/* ✅ Google AdSense 광고 단위 (예: 종목 상담 섹션과 소셜 미디어 섹션 사이) 
-        <div className="text-center my-8">
-          <ins className="adsbygoogle"
-              style={{ display: "block" }}
-              data-ad-client="ca-pub-1861160469675223"
-              data-ad-slot="8508377494" 
-              data-ad-format="auto"
-              data-full-width-responsive="true"></ins>
-        </div>*/}
 
         <section id="social-media" className="mb-12 p-6 bg-gray-800 rounded-lg shadow-xl">
           <h2 className="text-2xl font-semibold mb-6 text-white border-b-2 border-red-500 pb-2">미디어 채널</h2>
