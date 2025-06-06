@@ -1,4 +1,4 @@
-// START OF FILE frontend/src/Home.jsx (수정: 종목 데이터 Firebase 연동 및 종목 코드 제거)
+// START OF FILE frontend/src/Home.jsx
 
 import { useEffect, useState, useCallback } from "react";
 import { useLocation, Link } from "react-router-dom";
@@ -33,68 +33,16 @@ export default function Home() {
 
   // === 종목 분석 관련 상태 (추가) ===
   const [latestStockAnalyses, setLatestStockAnalyses] = useState([]);
-  const [stockAnalysesLoading, setStockAnalysesLoading] = useState(true);
+  const [stockAnalysesLoading, setStockAnalysesLoading] = true;
   const [stockAnalysesError, setStockAnalysesError] = useState(null);
 
 
   // API 서버 주소 (Render 백엔드 앱의 URL)
   const API_BASE_URL = 'https://stock-lab-backend-repo.onrender.com'; // Render 배포 후 얻게 되는 실제 URL로 변경
 
-  // ✅ Coupang 광고 로직 (수정: 상단 배치, 대가성 문구, 클린업 함수 강화)
-  useEffect(() => {
-    const coupangAdContainer = document.getElementById("coupang-ad-banner");
+  // ✅ Coupang 광고 로직 제거 (아래 JSX에서 정적 위젯 방식으로 처리)
+  // useEffect(() => { /* 이전에 있던 쿠팡 로직 전체를 제거합니다. */ }, []);
 
-    if (!coupangAdContainer) {
-      console.warn("Coupang ad banner container not found, skipping ad load.");
-      return;
-    }
-
-    // 광고 로드 함수
-    const loadCoupangAd = () => {
-      // 기존 광고 내용 비우기 (중요: 페이지 전환 시 잔상 제거)
-      coupangAdContainer.innerHTML = ''; 
-      if (window.PartnersCoupang) {
-        new window.PartnersCoupang.G({
-          id: 864271,
-          trackingCode: "AF5962904",
-          subId: null,
-          template: "carousel",
-          width: "680",
-          height: "140",
-        });
-      }
-    };
-
-    // Coupang 스크립트가 이미 로드되었는지 확인
-    if (window.PartnersCoupang) {
-      loadCoupangAd(); // 이미 로드되어 있다면 바로 광고 로드
-    } else {
-      // 스크립트가 아직 없으면 동적으로 추가
-      if (!document.getElementById("coupang-script")) {
-        const script = document.createElement("script");
-        script.id = "coupang-script";
-        script.src = "https://ads-partners.coupang.com/g.js";
-        script.async = true;
-        script.onload = loadCoupangAd; // 스크립트 로드 완료 후 광고 로드
-        document.body.appendChild(script);
-      } else {
-        // 스크립트는 있지만 PartnersCoupang이 아직 정의되지 않은 경우 (가끔 발생)
-        setTimeout(() => {
-          if (window.PartnersCoupang) {
-            loadCoupangAd();
-          }
-        }, 100);
-      }
-    }
-
-    // ✅ 클린업 함수: 컴포넌트 언마운트 시 또는 경로 변경 시 광고 영역 비우기
-    return () => {
-      if (coupangAdContainer) {
-        coupangAdContainer.innerHTML = ''; // 광고 콘텐츠를 비웁니다.
-      }
-      // Coupang 스크립트 자체는 document.body에서 제거하지 않습니다. (다른 컴포넌트가 의존할 수 있음)
-    };
-  }, [location.pathname]); // 경로가 변경될 때마다 Coupang 광고도 다시 로드/정리
 
   // Daum 광고 로직 (기존과 동일)
   useEffect(() => {
@@ -273,9 +221,17 @@ export default function Home() {
         </div>
       </header>
 
-      {/* ✅ 쿠팡 광고 배너 및 대가성 문구 (상단으로 이동) */}
-      <div className="text-center my-8" key={location.pathname + '_coupang_banner'}> {/* key 추가 */}
-        <div id="coupang-ad-banner" className="flex justify-center"></div>
+      {/* ✅ 쿠팡 광고 배너 및 대가성 문구 (상단으로 이동 및 정적 위젯 방식 적용) */}
+      <div className="text-center my-8" key={location.pathname + '_coupang_banner'}> 
+        <div 
+          data-widget-id="864271" 
+          data-widget-tracking-code="AF5962904" 
+          data-widget-template="carousel" 
+          data-widget-width="680" 
+          data-widget-height="140"
+          className="flex justify-center" // Tailwind CSS 클래스 유지
+          style={{ margin: "0 auto" }} // 중앙 정렬 및 불필요한 마진 제거 (옵션)
+        ></div>
         <p className="text-xs text-gray-500 mt-2">이 포스팅은 쿠팡파트너스 활동의 일환으로, 이데 따른 일정액의 수수료를 제공받습니다.</p>
       </div>
 
@@ -600,25 +556,25 @@ export default function Home() {
 
         <div className="mb-4">
           <a href="https://www.youtube.com/@stocksrlab" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white mx-2 text-xl transition duration-300"><i className="fab fa-youtube"></i></a>
-          <a href="https://www.threads.net/@stocksrlab" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white mx-2 text-xl transition duration-300"><i className="fab fa-threads"></i></a>
+          <a href="https://www.threads.net/@stocksrlab" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white mx-2 text-xl transition duration-300"><i class="fab fa-threads"></i></a>
         </div>
-        <p className="text-sm text-gray-400">© 2025 지지저항 Lab. All Rights Reserved.</p>
-        <p className="text-xs text-gray-500 mt-1">
-          <a href="#" className="hover:text-gray-300 transition duration-300">이용약관</a> |
-          <a href="#" className="hover:text-gray-300 transition duration-300">개인정보처리방침</a> |
-          <a href="#" className="hover:text-gray-300 transition duration-300">고객센터</a>
+        <p class="text-sm text-gray-400">© 2025 지지저항 Lab. All Rights Reserved.</p>
+        <p class="text-xs text-gray-500 mt-1">
+          <a href="#" class="hover:text-gray-300 transition duration-300">이용약관</a> |
+          <a href="#" class="hover:text-gray-300 transition duration-300">개인정보처리방침</a> |
+          <a href="#" class="hover:text-gray-300 transition duration-300">고객센터</a>
         </p>
-        <p className="text-xs text-gray-500 mt-4">
+        <p class="text-xs text-gray-500 mt-4">
           ※ 지지저항 Lab에서 제공하는 정보는 오류 및 지연이 있을 수 있으며, 이를 기반으로 한 투자에는 손실이 발생할 수 있습니다.
         </p>
-        <p className="text-xs text-gray-500">
+        <p class="text-xs text-gray-500">
           ※ 본 서비스는 비상업적 참고용이며, 투자 자문이나 매매 유도 목적이 아닙니다.
         </p>
-        <p className="text-xs text-gray-500">
+        <p class="text-xs text-gray-500">
           ※ 문의: stocksrlab@naver.com
         </p>
       </footer>
     </div>
   );
 }
-// END OF FILE frontend/src/Home.jsx (수정)
+// END OF FILE frontend/src/Home.jsx
