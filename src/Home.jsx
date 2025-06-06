@@ -24,88 +24,84 @@ export default function Home() {
   // 최신 블로그 글 관련 상태
   const [latestBlogPosts, setLatestBlogPosts] = useState([]);
   const [blogPostLoading, setBlogPostLoading] = useState(true);
-  const [blogPostError, setBlogPostError] = useState(null);
+  const [blogPostError, setBlogPostError] = null;
 
   // 최신 뉴스 관련 상태
   const [latestNews, setLatestNews] = useState([]);
   const [newsLoading, setNewsLoading] = useState(true);
-  const [newsError, setNewsError] = useState(null);
+  const [newsError, setNewsError] = null;
 
   // === 종목 분석 관련 상태 (추가) ===
   const [latestStockAnalyses, setLatestStockAnalyses] = useState([]);
-  const [stockAnalysesLoading, setStockAnalysesLoading] = useState(true);
-  const [stockAnalysesError, setStockAnalysesError] = useState(null);
+  const [stockAnalysesLoading, setStockAnalysesLoading] = true; // ✅ 여기도 초기값을 true로 설정
+  const [stockAnalysesError, setStockAnalysesError] = null;
 
 
   // API 서버 주소 (Render 백엔드 앱의 URL)
   const API_BASE_URL = 'https://stock-lab-backend-repo.onrender.com'; // Render 배포 후 얻게 되는 실제 URL로 변경
 
-  // ✅ Coupang 광고 로직 (개선된 동적 로드 및 클린업)
+  // ✅ Coupang 광고 로직 (개선된 동적 로드 및 iframe 직접 제거 클린업)
   useEffect(() => {
-    const coupangAdContainer = document.getElementById("coupang-ad-banner");
+    // 쿠팡 광고 스크립트가 동적으로 생성하는 iframe을 추적하기 위한 ID
+    const coupangAdId = "864271"; // 쿠팡 위젯 ID
 
-    // 광고 컨테이너가 없으면 로직 실행 안 함
-    if (!coupangAdContainer) {
-      console.warn("Coupang ad banner container not found, skipping ad load.");
-      return;
-    }
-
-    // 광고 로드 함수 (재사용을 위해 분리)
     const loadCoupangAd = () => {
-      // 기존 광고 내용 비우기 (매우 중요: 페이지 전환 시 잔상 제거)
-      coupangAdContainer.innerHTML = ''; 
+      // 이전에 생성된 쿠팡 iframe이 있다면 제거 (잔상 방지)
+      const existingCoupangIframe = document.querySelector(`iframe[id^="${coupangAdId}-"]`);
+      if (existingCoupangIframe) {
+        existingCoupangIframe.parentNode.removeChild(existingCoupangIframe);
+        console.log("Existing Coupang iframe removed.");
+      }
+      
       if (window.PartnersCoupang) {
         new window.PartnersCoupang.G({
-          id: 864271, // 이 ID는 쿠팡 위젯 고유 ID이며, coupangAdContainer의 ID와는 다름
+          id: coupangAdId,
           trackingCode: "AF5962904",
           subId: null,
-          template: "carousel",
+          template: "carousel", // 템플릿이 'carousel'이면 하단 고정이 아닐 수 있음
           width: "680",
           height: "140",
         });
+        console.log("Coupang.G called with new settings.");
       } else {
-        // PartnersCoupang이 정의되지 않았다면 스크립트 로드가 아직 안된 것이므로,
-        // 다시 시도하거나 에러를 로깅
-        console.warn("window.PartnersCoupang is not defined after script load attempt.");
+        console.warn("window.PartnersCoupang is not defined, cannot load Coupang ad.");
       }
     };
 
-    // Coupang 스크립트가 이미 로드되었는지 확인
-    if (window.PartnersCoupang) {
-      loadCoupangAd(); // 이미 로드되어 있다면 바로 광고 로드
+    // 스크립트 존재 여부 확인 후 로드 또는 재실행
+    if (!document.getElementById("coupang-script")) {
+      const script = document.createElement("script");
+      script.id = "coupang-script";
+      script.src = "https://ads-partners.coupang.com/g.js";
+      script.async = true;
+      script.onload = loadCoupangAd; // 스크립트 로드 완료 후 광고 로드
+      document.body.appendChild(script);
+      console.log("Coupang script appended to body.");
     } else {
-      // 스크립트가 아직 없으면 동적으로 추가
-      if (!document.getElementById("coupang-script")) {
-        const script = document.createElement("script");
-        script.id = "coupang-script";
-        script.src = "https://ads-partners.coupang.com/g.js";
-        script.async = true;
-        script.onload = loadCoupangAd; // 스크립트 로드 완료 후 광고 로드
-        document.body.appendChild(script);
-      } else {
-        // 스크립트는 있지만 PartnersCoupang이 아직 정의되지 않은 경우
-        // 짧은 딜레이 후 시도 (광고 스크립트가 완전히 초기화될 시간을 줌)
-        const timeoutId = setTimeout(() => {
-          if (window.PartnersCoupang) {
-            loadCoupangAd();
-          } else {
-            console.error("Coupang script loaded but PartnersCoupang object is still undefined.");
-          }
-        }, 500); // 0.5초 지연
-
-        // 클린업 시 timeout 제거
-        return () => clearTimeout(timeoutId);
-      }
+      // 스크립트가 이미 있다면, PartnersCoupang 객체 초기화를 기다린 후 광고 로드
+      // 또는 페이지 이동 시마다 광고를 재로드
+      const retryLoad = () => {
+        if (window.PartnersCoupang) {
+          loadCoupangAd();
+        } else {
+          // PartnersCoupang이 아직 정의되지 않은 경우 다시 시도
+          setTimeout(retryLoad, 200); // 0.2초 후 다시 시도
+        }
+      };
+      retryLoad();
+      console.log("Coupang script already exists, attempting to load ad.");
     }
 
-    // ✅ 클린업 함수: 컴포넌트 언마운트 시 또는 경로 변경 시 광고 영역 비우기
+    // 클린업 함수: 컴포넌트 언마운트 또는 경로 변경 시
     return () => {
-      if (coupangAdContainer) {
-        coupangAdContainer.innerHTML = ''; // 광고 콘텐츠를 비웁니다.
+      console.log("Coupang useEffect cleanup running...");
+      const existingCoupangIframe = document.querySelector(`iframe[id^="${coupangAdId}-"]`);
+      if (existingCoupangIframe) {
+        existingCoupangIframe.parentNode.removeChild(existingCoupangIframe);
+        console.log("Coupang iframe explicitly removed during cleanup.");
       }
     };
-  }, [location.pathname]); // 경로가 변경될 때마다 Coupang 광고도 다시 로드/정리
-
+  }, [location.pathname]); // 경로 변경 시 이펙트 다시 실행
 
   // Daum 광고 로직 (기존과 동일)
   useEffect(() => {
@@ -125,14 +121,14 @@ export default function Home() {
     }
   }, []);
 
-  // ✅ Google AdSense 광고 단위 로드 로직 (TypeError: true is not iterable 해결 및 TagError 개선)
+  // ✅ Google AdSense 광고 단위 로드 로직 (TagError 및 404 오류 개선 시도)
   useEffect(() => {
-    // window.adsbygoogle가 존재하고 배열이 아닌 경우를 처리
+    // window.adsbygoogle가 존재하고 배열이 아닌 경우를 처리 (TypeError 해결)
     if (typeof window.adsbygoogle !== 'object' || !Array.isArray(window.adsbygoogle)) {
       window.adsbygoogle = []; // 배열이 아니면 새 배열로 강제 초기화
     }
     
-    // 이전에 푸시된 광고 요청을 초기화 (큐를 비움)
+    // 큐를 명시적으로 비움 (SPA에서 중복 로드 방지)
     window.adsbygoogle.length = 0; 
 
     // ✅ setTimeout으로 약간의 지연을 주어 React DOM 업데이트 완료 후 AdSense 로드 시도
@@ -141,14 +137,15 @@ export default function Home() {
             const adElements = document.querySelectorAll('ins.adsbygoogle');
             adElements.forEach(adElement => {
                 // AdSense 스크립트가 해당 요소를 아직 처리하지 않은 경우에만 push (안전장치)
-                if (!adElement.hasAttribute('data-adsbygoogle-status') || adElement.getAttribute('data-adsbygoogle-status') !== 'done') {
+                // data-ad-status="filled"도 체크하여 이미 채워진 광고는 다시 push하지 않음
+                if (!adElement.hasAttribute('data-adsbygoogle-status') || adElement.getAttribute('data-adsbygoogle-status') !== 'done' || adElement.getAttribute('data-ad-status') !== 'filled') {
                     (window.adsbygoogle || []).push({});
                 }
             });
         } catch (e) {
             console.error("AdSense push error:", e);
         }
-    }, 100); // 100ms 지연 (조절 가능, 너무 길면 사용자 경험 저하)
+    }, 300); // 300ms 지연 (충분한 시간을 줌)
 
     // 클린업 함수: 컴포넌트 언마운트 시 timeout 제거
     return () => clearTimeout(timeoutId);
@@ -163,7 +160,8 @@ export default function Home() {
       setStockAnalysesError(null);
       try {
         const stockAnalysesCollection = collection(db, "stocks"); // 'stocks' 컬렉션 사용
-        const q = query(stockAnallection, orderBy("createdAt", "desc"), limit(2)); // 최신 2개
+        // ✅ 오타 수정: stockAnallection -> stockAnalysesCollection
+        const q = query(stockAnalysesCollection, orderBy("createdAt", "desc"), limit(2)); // 최신 2개
         const querySnapshot = await getDocs(q);
         const analyses = querySnapshot.docs.map(doc => ({
           id: doc.id, // Firebase 문서 ID를 포함
@@ -293,8 +291,8 @@ export default function Home() {
       </header>
 
       {/* ✅ 쿠팡 광고 배너 및 대가성 문구 (상단 배치 및 ID 기반 동적 로드 유지) */}
-      <div className="text-center my-8"> {/* key prop은 useEffect 내부에서 처리하므로 여기서 제거 */}
-        <div id="coupang-ad-banner" className="flex justify-center"></div>
+      <div className="text-center my-8">
+        <div id="coupang-ad-banner" className="flex justify-center" style={{ margin: "0 auto" }}></div>
         <p className="text-xs text-gray-500 mt-2">이 포스팅은 쿠팡파트너스 활동의 일환으로, 이데 따른 일정액의 수수료를 제공받습니다.</p>
       </div>
 
@@ -434,9 +432,7 @@ export default function Home() {
                 // stock.id는 Firebase 문서 ID
                 <div key={stock.id} className="bg-gray-700 p-4 rounded-md shadow-lg">
                   <div className="flex justify-between items-start">
-                    {/* ⚠️ 종목 코드 표시 제거 */}
                     <h3 className="text-xl font-medium mb-1 text-teal-400">{stock.name}</h3>
-                    {/* 💡 즐겨찾기 토글 버튼: stock.id 사용 */}
                     <button
                       onClick={() => toggleFavorite(stock.id)}
                       className="bg-transparent border-none cursor-pointer text-2xl"
@@ -451,7 +447,6 @@ export default function Home() {
                   <div className="text-sm space-y-1">
                     <p><strong>설명:</strong> <span className="text-gray-300">{stock.detail || "등록된 설명 없음"}</span></p>
                   </div>
-                  {/* 상세 분석 보기 링크: /recommendations 페이지로 이동 */}
                   <Link to="/recommendations" className="mt-4 inline-block bg-teal-500 hover:bg-teal-600 text-white font-semibold py-2 px-4 rounded-md text-sm transition duration-300">
                     상세 분석 보기 <i className="fas fa-chart-line ml-1"></i>
                   </Link>
@@ -539,7 +534,7 @@ export default function Home() {
               <a href="https://www.youtube.com/@stocksrlab" target="_blank" rel="noopener noreferrer" className="mt-4 inline-block bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-md text-sm transition duration-300">유튜브 채널 방문 <i className="fas fa-external-link-alt ml-1"></i></a>
             </div>
             <div className="bg-gray-700 p-4 rounded-md shadow-lg">
-              <h3 className="text-xl font-medium mb-3 text-blue-400"><i className="fab fa-threads mr-2"></i>운영자 쓰레드</h3>
+              <h3 className="text-xl font-medium mb-3 text-blue-400"><i class="fab fa-threads mr-2"></i>운영자 쓰레드</h3>
               <a href="https://www.threads.net/@stocksrlab" target="_blank" rel="noopener noreferrer" className="inline-block mb-3">
                 <img src="https://placehold.co/120x30/0077B5/FFFFFF?text=Threads+채널" alt="지지저항랩 쓰레드 채널 로고" className="rounded" onError={(e) => { e.target.src = 'https://placehold.co/120x30/0077B5/FFFFFF?text=로고+오류'; e.target.onerror = null; }} />
               </a>
