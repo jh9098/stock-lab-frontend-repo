@@ -641,27 +641,9 @@ export default function Home() {
 
       <footer className="bg-gray-800 border-t border-gray-700 py-8 text-center">
         {/* 쿠팡 광고 배너 및 대가성 문구 (맨 아래로 이동 및 정적 위젯 방식 적용) */}
-        <div className="text-center my-8" key={location.pathname + '_coupang_banner_footer'}> 
-          <div 
-            data-widget-id="864271" 
-            data-widget-tracking-code="AF5962904" 
-            data-widget-template="carousel" 
-            data-widget-width="680" 
-            data-widget-height="140"
-            className="flex justify-center" 
-            style={{ margin: "0 auto" }} 
-          ></div>
+        <div className="text-center mb-8">
+          <div id="coupang-ad-banner" className="flex justify-center"></div>
           <p className="text-xs text-gray-500 mt-2">이 포스팅은 쿠팡파트너스 활동의 일환으로, 이데 따른 일정액의 수수료를 제공받습니다.</p>
-        </div>
-
-        {/* Google AdSense 광고 단위 (예: 푸터 상단) */}
-        <div className="text-center my-8" key={location.pathname + '_adsense_6'}> {/* key 추가 */}
-          <ins className="adsbygoogle"
-              style={{ display: "block" }}
-              data-ad-client="ca-pub-1861160469675223"
-              data-ad-slot="9101072734" 
-              data-ad-format="autorelaxed"
-              data-full-width-responsive="true"></ins>
         </div>
 
         <div className="text-center mb-8">
