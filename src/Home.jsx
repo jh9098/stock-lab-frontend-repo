@@ -557,7 +557,9 @@ export default function Home() {
         </p>
         <p className="text-xs text-gray-500">
           ※ 문의: stocksrlab@naver.com
+
         </p>
+        <p className="text-xs text-gray-500 mt-2">이 사이트는 쿠팡파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다.</p>
       </footer>
     </div>
   );
