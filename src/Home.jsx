@@ -59,7 +59,7 @@ export default function Home() {
     }
   }, []);
 
-  // ✅ Google AdSense 광고 단위 로드 로직 (key 속성 추가 반영 및 reset 제거)
+  // ✅ Google AdSense 광고 단위 로드 로직 (key 속성 반영 및 큐 초기화 제거)
   useEffect(() => {
     if (window.adsbygoogle) {
       try {
@@ -70,13 +70,10 @@ export default function Home() {
         // }
 
         // 모든 'adsbygoogle' 클래스를 가진 <ins> 요소를 찾아 처리합니다.
-        // key prop 덕분에 페이지 이동 시 항상 새로운 ins 요소가 되므로
+        // key prop 덕분에 React 라우터 경로 변경 시 항상 새로운 ins 요소가 되므로
         // AdSense 스크립트가 이를 새 광고 단위로 인식하고 로드할 것입니다.
         const adElements = document.querySelectorAll('ins.adsbygoogle'); 
         adElements.forEach(adElement => {
-            // data-ad-status가 'done'이 아닌 경우에만 push하여 중복 요청 방지 (선택적)
-            // 하지만 React의 key prop으로 새 요소가 보장되면 대부분 필요 없습니다.
-            // console.log("AdSense processing:", adElement); // 디버깅용
             (window.adsbygoogle || []).push({});
         });
       } catch (e) {
@@ -85,20 +82,21 @@ export default function Home() {
     }
   }, [location.pathname]); // React Router 경로가 변경될 때마다 다시 시도 (SPA에서 중요)
 
-  // ✅ Coupang 광고 위젯 재로드 로직 (중복 방지 및 미표시 해결)
-  // IMPORTANT: 이 로직이 작동하려면 public/index.html에 <script src="//ads-partners.coupang.com/g.js"></script>가 한 번만 로드되어 있어야 합니다.
+  // ✅ Coupang 광고 위젯 재로드 로직 (index.html에 g.js 추가 후 안정화)
   useEffect(() => {
     const loadCoupangWidget = () => {
         const coupangWidgetContainer = document.querySelector('[data-widget-id="864271"]');
 
         if (coupangWidgetContainer) {
-            // 기존에 쿠팡 스크립트가 삽입했을 수 있는 iframe 등의 내용을 완전히 비웁니다.
-            // 이렇게 하면 새로 광고를 삽입할 준비가 됩니다.
+            // 이전에 쿠팡 스크립트가 삽입했을 수 있는 iframe 등의 내용을 완전히 비웁니다.
+            // 이렇게 해야 중복 로드를 방지하고 새로 광고를 삽입할 준비가 됩니다.
             coupangWidgetContainer.innerHTML = '';
             // console.log("Coupang widget container cleared."); // 디버깅용
         }
 
-        // CoupangPartners 객체가 로드될 때까지 기다리거나, 이미 로드되었으면 바로 실행
+        // CoupangPartners 객체가 로드되고 setScriptLoad 함수가 사용 가능할 때까지 기다립니다.
+        // g.js가 index.html에 로드되었으므로, 대부분 바로 사용 가능하지만,
+        // 만약을 대비해 재시도 로직을 유지합니다.
         if (window.CoupangPartners && typeof window.CoupangPartners.setScriptLoad === 'function') {
             try {
                 window.CoupangPartners.setScriptLoad();
@@ -108,13 +106,12 @@ export default function Home() {
             }
         } else {
             console.warn("CoupangPartners object or setScriptLoad not found yet. Retrying...");
-            // 스크립트가 아직 로드되지 않았거나 초기화되지 않았다면, 짧은 지연 후 다시 시도합니다.
             let retryCount = 0;
             const maxRetries = 10; // 최대 10회 (2초) 시도
             const retryIntervalId = setInterval(() => {
                 if (window.CoupangPartners && typeof window.CoupangPartners.setScriptLoad === 'function') {
                     clearInterval(retryIntervalId);
-                    // 재시도 시에도 컨테이너를 다시 비워주는 것이 안전합니다.
+                    // 재시도 성공 시에도 컨테이너를 다시 비워주는 것이 안전합니다.
                     if (coupangWidgetContainer) coupangWidgetContainer.innerHTML = ''; 
                     try {
                         window.CoupangPartners.setScriptLoad();
@@ -361,7 +358,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* ✅ Google AdSense 광고 단위 (예: 시장 현황과 뉴스 섹션 사이) */}
+        {/* Google AdSense 광고 단위 (예: 시장 현황과 뉴스 섹션 사이) */}
         <div className="text-center my-8" key={location.pathname + '_adsense_2'}> {/* key 추가 */}
           <ins className="adsbygoogle"
               style={{ display: "block" }}
