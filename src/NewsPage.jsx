@@ -18,8 +18,7 @@ export default function NewsPage() {
       setLoading(true);
       setError(null);
       try {
-        // 백엔드 API 호출: 이제 include_content 파라미터는 없습니다.
-        const response = await fetch(`${API_BASE_URL}/api/news?keyword=주식 경제&count=20`); // 뉴스 목록은 20개로 유지
+        const response = await fetch(`${API_BASE_URL}/api/news?keyword=주식 경제&count=20`);
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -40,23 +39,23 @@ export default function NewsPage() {
   useEffect(() => {
     if (window.adsbygoogle) {
       try {
-        // 🚨 중요: AdSense 큐를 명시적으로 비워주는 코드 추가
-        // 이전에 푸시된 광고 요청을 초기화하여 중복 로딩 오류 방지
+        // 큐 초기화는 여전히 좋은 습관이지만, key 속성 변경이 더 효과적입니다.
         window.adsbygoogle = window.adsbygoogle || [];
         if (window.adsbygoogle.length > 0) {
-          window.adsbygoogle.length = 0; // 큐를 비웁니다.
+          window.adsbygoogle.length = 0;
         }
         
-        // 현재 컴포넌트 내의 모든 'adsbygoogle' 클래스를 가진 <ins> 요소를 찾아 처리합니다.
-        const adElements = document.querySelectorAll('ins.adsbygoogle:not([data-ad-status="done"])');
+        // DOM에서 새로 마운트된 광고 요소만 찾아서 푸시합니다.
+        // key prop 덕분에 페이지 이동 시 항상 새로운 ins 요소가 됩니다.
+        const adElements = document.querySelectorAll('ins.adsbygoogle'); // :not([data-ad-status="done"]) 제거
         adElements.forEach(adElement => {
-            (window.adsbygoogle || []).push({}); // 비워진 큐에 새로운 요청 추가
+            (window.adsbygoogle || []).push({});
         });
       } catch (e) {
         console.error("AdSense push error in NewsPage:", e);
       }
     }
-  }, [location.pathname]); // React Router 경로가 변경될 때마다 다시 시도 (SPA에서 중요)
+  }, [location.pathname]); // 경로 변경 시 useEffect 다시 실행
 
 
   if (loading) {
@@ -89,12 +88,12 @@ export default function NewsPage() {
       <h1 className="text-3xl font-bold text-white mb-6 border-b-2 border-purple-500 pb-2">최신 주식/경제 뉴스</h1>
       <p className="text-gray-300 mb-8">AI가 분석한 최신 시장 트렌드와 주요 경제 뉴스가 실시간으로 업데이트됩니다. 빠르게 시장을 파악하고 투자 기회를 잡으세요.</p>
 
-      {/* ✅ Google AdSense 인스트림 광고 단위 (추가된 부분) */}
-      <div className="text-center my-8">
+      {/* ✅ Google AdSense 인스트림 광고 단위 (key prop 추가) */}
+      <div className="text-center my-8" key={location.pathname}> {/* ✅ key={location.pathname} 추가 */}
         <ins className="adsbygoogle"
              style={{ display: "block" }}
              data-ad-client="ca-pub-1861160469675223"
-             data-ad-slot="2203204469"
+             data-ad-slot="2203204469" // BlogListPage와 동일한 슬롯 ID를 사용하셨네요
              data-ad-format="auto"
              data-full-width-responsive="true"></ins>
       </div>
@@ -105,13 +104,11 @@ export default function NewsPage() {
           {newsItems.map((newsItem, index) => (
             <article key={index} className="bg-gray-800 p-4 rounded-md shadow-lg hover:shadow-2xl transition-shadow duration-300">
               <h3 className="text-lg font-medium mb-2 text-purple-400">{newsItem.title}</h3>
-              {/* content 필드에 본문 일부/요약이 들어옴 */}
               <p className="text-gray-300 text-sm mb-3 news-item-content">
                 {newsItem.content}
               </p>
               <div className="flex justify-between items-center text-xs text-gray-400">
                 <span><i className="fas fa-calendar-alt mr-1"></i>{newsItem.post_date}</span>
-                {/* 원본 기사 링크로 직접 연결 */}
                 <a href={newsItem.link} target="_blank" rel="noopener noreferrer" className="text-purple-400 hover:text-purple-300 font-semibold">더 보기 <i className="fas fa-arrow-right ml-1"></i></a>
               </div>
             </article>
