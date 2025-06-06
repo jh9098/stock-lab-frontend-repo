@@ -10,10 +10,8 @@ import { db } from './firebaseConfig';
 import { collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
 
 export default function Home() {
-  // const [stocks, setStocks] = useState([]); // ⚠️ 기존 로컬 주식 데이터 상태 제거
-  // 💡 즐겨찾기 로직 변경: stock.code 대신 stock.id(Firebase 문서 ID)를 저장
   const [favorites, setFavorites] = useState(() => {
-    const saved = localStorage.getItem("favorites_firebase_ids"); // 💡 localStorage 키 변경
+    const saved = localStorage.getItem("favorites_firebase_ids");
     return saved ? JSON.parse(saved) : [];
   });
   const location = useLocation();
@@ -95,8 +93,22 @@ export default function Home() {
     }
   }, []);
 
-  // ⚠️ 기존 주식 데이터 로딩 로직 제거됨
-  // useEffect(() => { ... });
+  // ✅ Google AdSense 광고 단위 로드 로직 (수정)
+  // 컴포넌트가 마운트되거나 업데이트될 때마다 AdSense 광고 단위를 로드하도록 지시
+  useEffect(() => {
+    if (window.adsbygoogle) {
+      try {
+        // 모든 'adsbygoogle' 클래스를 가진 <ins> 요소를 찾아서 처리합니다.
+        // data-ad-status="done" 속성이 없는 광고만 처리하여 중복 로드를 방지합니다.
+        const adElements = document.querySelectorAll('ins.adsbygoogle:not([data-ad-status="done"])');
+        adElements.forEach(adElement => {
+            (window.adsbygoogle = window.adsbygoogle || []).push({});
+        });
+      } catch (e) {
+        console.error("AdSense push error:", e);
+      }
+    }
+  }, [location.pathname]); // React Router 경로가 변경될 때마다 다시 시도 (SPA에서 중요)
 
 
   // === Firebase에서 종목 분석 데이터 로딩 (추가) ===
@@ -241,6 +253,18 @@ export default function Home() {
         <div className="text-center mb-8">
           <div id="coupang-ad-banner" className="flex justify-center"></div>
         </div>
+        
+        {/* ✅ Google AdSense 인스트림 광고 단위 (추가된 부분) */}
+        {/* 원하는 위치에 이 div를 추가하세요. */}
+        <div className="text-center my-8">
+          <ins className="adsbygoogle"
+              style={{ display: "block", textAlign: "center" }} // JSX 스타일 객체
+              data-ad-layout="in-article"
+              data-ad-format="fluid"
+              data-ad-client="ca-pub-1861160469675223"
+              data-ad-slot="8508377494"></ins>
+        </div>
+
 
         <section id="market-status" className="mb-12 p-6 bg-gray-800 rounded-lg shadow-xl">
           <h2 className="text-2xl font-semibold mb-6 text-white border-b-2 border-blue-500 pb-2">시장 현황 및 블로그</h2>
@@ -528,6 +552,7 @@ export default function Home() {
       </main>
 
       <footer className="bg-gray-800 border-t border-gray-700 py-8 text-center">
+        {/* 카카오 광고 (기존과 동일) */}
         <div className="text-center mb-8">
           <ins className="kakao_ad_area"
             style={{ display: "none" }}
