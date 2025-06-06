@@ -1,4 +1,4 @@
-// START OF FILE frontend/src/Home.jsx
+// START OF FILE frontend/src/Home.jsx (수정: 종목 데이터 Firebase 연동 및 종목 코드 제거)
 
 import { useEffect, useState, useCallback } from "react";
 import { useLocation, Link } from "react-router-dom";
@@ -24,84 +24,80 @@ export default function Home() {
   // 최신 블로그 글 관련 상태
   const [latestBlogPosts, setLatestBlogPosts] = useState([]);
   const [blogPostLoading, setBlogPostLoading] = useState(true);
-  const [blogPostError, setBlogPostError] = null;
+  const [blogPostError, setBlogPostError] = useState(null);
 
   // 최신 뉴스 관련 상태
   const [latestNews, setLatestNews] = useState([]);
   const [newsLoading, setNewsLoading] = useState(true);
-  const [newsError, setNewsError] = null;
+  const [newsError, setNewsError] = useState(null);
 
   // === 종목 분석 관련 상태 (추가) ===
   const [latestStockAnalyses, setLatestStockAnalyses] = useState([]);
-  const [stockAnalysesLoading, setStockAnalysesLoading] = true; // ✅ 여기도 초기값을 true로 설정
-  const [stockAnalysesError, setStockAnalysesError] = null;
+  const [stockAnalysesLoading, setStockAnalysesLoading] = useState(true);
+  const [stockAnalysesError, setStockAnalysesError] = useState(null);
 
 
   // API 서버 주소 (Render 백엔드 앱의 URL)
   const API_BASE_URL = 'https://stock-lab-backend-repo.onrender.com'; // Render 배포 후 얻게 되는 실제 URL로 변경
 
-  // ✅ Coupang 광고 로직 (개선된 동적 로드 및 iframe 직접 제거 클린업)
+  // ✅ Coupang 광고 로직 (수정: 클린업 함수 추가 및 초기 로드 로직 개선)
   useEffect(() => {
-    // 쿠팡 광고 스크립트가 동적으로 생성하는 iframe을 추적하기 위한 ID
-    const coupangAdId = "864271"; // 쿠팡 위젯 ID
+    const coupangAdContainer = document.getElementById("coupang-ad-banner");
 
+    // 광고 컨테이너가 없으면 로직 실행 안 함
+    if (!coupangAdContainer) {
+      console.warn("Coupang ad banner container not found, skipping ad load.");
+      return;
+    }
+
+    // 광고 로드 함수 (재사용을 위해 분리)
     const loadCoupangAd = () => {
-      // 이전에 생성된 쿠팡 iframe이 있다면 제거 (잔상 방지)
-      const existingCoupangIframe = document.querySelector(`iframe[id^="${coupangAdId}-"]`);
-      if (existingCoupangIframe) {
-        existingCoupangIframe.parentNode.removeChild(existingCoupangIframe);
-        console.log("Existing Coupang iframe removed.");
-      }
-      
+      // 이전에 로드된 광고가 있다면 비웁니다.
+      coupangAdContainer.innerHTML = ''; 
       if (window.PartnersCoupang) {
         new window.PartnersCoupang.G({
-          id: coupangAdId,
+          id: 864271,
           trackingCode: "AF5962904",
           subId: null,
-          template: "carousel", // 템플릿이 'carousel'이면 하단 고정이 아닐 수 있음
+          template: "carousel",
           width: "680",
           height: "140",
         });
-        console.log("Coupang.G called with new settings.");
-      } else {
-        console.warn("window.PartnersCoupang is not defined, cannot load Coupang ad.");
       }
     };
 
-    // 스크립트 존재 여부 확인 후 로드 또는 재실행
-    if (!document.getElementById("coupang-script")) {
-      const script = document.createElement("script");
-      script.id = "coupang-script";
-      script.src = "https://ads-partners.coupang.com/g.js";
-      script.async = true;
-      script.onload = loadCoupangAd; // 스크립트 로드 완료 후 광고 로드
-      document.body.appendChild(script);
-      console.log("Coupang script appended to body.");
+    // Coupang 스크립트가 이미 로드되었는지 확인
+    if (window.PartnersCoupang) {
+      loadCoupangAd(); // 이미 로드되어 있다면 바로 광고 로드
     } else {
-      // 스크립트가 이미 있다면, PartnersCoupang 객체 초기화를 기다린 후 광고 로드
-      // 또는 페이지 이동 시마다 광고를 재로드
-      const retryLoad = () => {
-        if (window.PartnersCoupang) {
-          loadCoupangAd();
-        } else {
-          // PartnersCoupang이 아직 정의되지 않은 경우 다시 시도
-          setTimeout(retryLoad, 200); // 0.2초 후 다시 시도
-        }
-      };
-      retryLoad();
-      console.log("Coupang script already exists, attempting to load ad.");
+      // 스크립트가 아직 없으면 동적으로 추가
+      if (!document.getElementById("coupang-script")) {
+        const script = document.createElement("script");
+        script.id = "coupang-script";
+        script.src = "https://ads-partners.coupang.com/g.js";
+        script.async = true;
+        script.onload = loadCoupangAd; // 스크립트 로드 완료 후 광고 로드
+        document.body.appendChild(script);
+      } else {
+        // 스크립트는 있지만 PartnersCoupang이 아직 정의되지 않은 경우 (가끔 발생)
+        // 안전하게 스크립트 로드 완료를 기다리거나, 짧은 딜레이 후 시도
+        setTimeout(() => {
+          if (window.PartnersCoupang) {
+            loadCoupangAd();
+          }
+        }, 100);
+      }
     }
 
-    // 클린업 함수: 컴포넌트 언마운트 또는 경로 변경 시
+    // ✅ 클린업 함수: 컴포넌트 언마운트 시 또는 재렌더링 시 광고 영역 비우기
     return () => {
-      console.log("Coupang useEffect cleanup running...");
-      const existingCoupangIframe = document.querySelector(`iframe[id^="${coupangAdId}-"]`);
-      if (existingCoupangIframe) {
-        existingCoupangIframe.parentNode.removeChild(existingCoupangIframe);
-        console.log("Coupang iframe explicitly removed during cleanup.");
+      if (coupangAdContainer) {
+        coupangAdContainer.innerHTML = ''; // 광고 콘텐츠를 비웁니다.
       }
+      // 주의: Coupang 스크립트 자체는 document.body에 한 번만 추가되는 것이 일반적이므로 여기서 제거하지 않습니다.
+      // 다른 컴포넌트가 이 스크립트에 의존할 수 있기 때문입니다.
     };
-  }, [location.pathname]); // 경로 변경 시 이펙트 다시 실행
+  }, [location.pathname]); // 경로가 변경될 때마다 Coupang 광고도 다시 로드/정리
 
   // Daum 광고 로직 (기존과 동일)
   useEffect(() => {
@@ -121,37 +117,27 @@ export default function Home() {
     }
   }, []);
 
-  // ✅ Google AdSense 광고 단위 로드 로직 (TagError 및 404 오류 개선 시도)
+  // ✅ Google AdSense 광고 단위 로드 로직 (수정)
   useEffect(() => {
-    // window.adsbygoogle가 존재하고 배열이 아닌 경우를 처리 (TypeError 해결)
-    if (typeof window.adsbygoogle !== 'object' || !Array.isArray(window.adsbygoogle)) {
-      window.adsbygoogle = []; // 배열이 아니면 새 배열로 강제 초기화
-    }
-    
-    // 큐를 명시적으로 비움 (SPA에서 중복 로드 방지)
-    window.adsbygoogle.length = 0; 
-
-    // ✅ setTimeout으로 약간의 지연을 주어 React DOM 업데이트 완료 후 AdSense 로드 시도
-    const timeoutId = setTimeout(() => {
-        try {
-            const adElements = document.querySelectorAll('ins.adsbygoogle');
-            adElements.forEach(adElement => {
-                // AdSense 스크립트가 해당 요소를 아직 처리하지 않은 경우에만 push (안전장치)
-                // data-ad-status="filled"도 체크하여 이미 채워진 광고는 다시 push하지 않음
-                if (!adElement.hasAttribute('data-adsbygoogle-status') || adElement.getAttribute('data-adsbygoogle-status') !== 'done' || adElement.getAttribute('data-ad-status') !== 'filled') {
-                    (window.adsbygoogle || []).push({});
-                }
-            });
-        } catch (e) {
-            console.error("AdSense push error:", e);
+    if (window.adsbygoogle) {
+      try {
+        // 🚨 중요: AdSense 큐를 명시적으로 비워주는 코드 추가
+        window.adsbygoogle = window.adsbygoogle || [];
+        if (window.adsbygoogle.length > 0) {
+          window.adsbygoogle.length = 0; // 큐를 비웁니다.
         }
-    }, 300); // 300ms 지연 (충분한 시간을 줌)
 
-    // 클린업 함수: 컴포넌트 언마운트 시 timeout 제거
-    return () => clearTimeout(timeoutId);
-
-  }, [location.pathname]); // React Router 경로가 변경될 때마다 이펙트 재실행
-
+        // 모든 'adsbygoogle' 클래스를 가진 <ins> 요소를 찾아 처리합니다.
+        // key prop 덕분에 페이지 이동 시 항상 새로운 ins 요소가 됩니다.
+        const adElements = document.querySelectorAll('ins.adsbygoogle'); 
+        adElements.forEach(adElement => {
+            (window.adsbygoogle || []).push({});
+        });
+      } catch (e) {
+        console.error("AdSense push error:", e);
+      }
+    }
+  }, [location.pathname]); // React Router 경로가 변경될 때마다 다시 시도 (SPA에서 중요)
 
   // === Firebase에서 종목 분석 데이터 로딩 (추가) ===
   useEffect(() => {
@@ -160,7 +146,6 @@ export default function Home() {
       setStockAnalysesError(null);
       try {
         const stockAnalysesCollection = collection(db, "stocks"); // 'stocks' 컬렉션 사용
-        // ✅ 오타 수정: stockAnallection -> stockAnalysesCollection
         const q = query(stockAnalysesCollection, orderBy("createdAt", "desc"), limit(2)); // 최신 2개
         const querySnapshot = await getDocs(q);
         const analyses = querySnapshot.docs.map(doc => ({
@@ -290,9 +275,9 @@ export default function Home() {
         </div>
       </header>
 
-      {/* ✅ 쿠팡 광고 배너 및 대가성 문구 (상단 배치 및 ID 기반 동적 로드 유지) */}
+      {/* ✅ 쿠팡 광고 배너 및 대가성 문구 (상단으로 이동 및 문구 추가) */}
       <div className="text-center my-8">
-        <div id="coupang-ad-banner" className="flex justify-center" style={{ margin: "0 auto" }}></div>
+        <div id="coupang-ad-banner" className="flex justify-center"></div>
         <p className="text-xs text-gray-500 mt-2">이 포스팅은 쿠팡파트너스 활동의 일환으로, 이데 따른 일정액의 수수료를 제공받습니다.</p>
       </div>
 
@@ -380,7 +365,7 @@ export default function Home() {
           <ins className="adsbygoogle"
               style={{ display: "block" }}
               data-ad-client="ca-pub-1861160469675223"
-              data-ad-slot="8508377494"
+              data-ad-slot="8508377494" {/* ⚠️ 여기에 실제 광고 단위 ID를 입력하세요! */}
               data-ad-format="auto"
               data-full-width-responsive="true"></ins>
         </div>
@@ -432,7 +417,9 @@ export default function Home() {
                 // stock.id는 Firebase 문서 ID
                 <div key={stock.id} className="bg-gray-700 p-4 rounded-md shadow-lg">
                   <div className="flex justify-between items-start">
+                    {/* ⚠️ 종목 코드 표시 제거 */}
                     <h3 className="text-xl font-medium mb-1 text-teal-400">{stock.name}</h3>
+                    {/* 💡 즐겨찾기 토글 버튼: stock.id 사용 */}
                     <button
                       onClick={() => toggleFavorite(stock.id)}
                       className="bg-transparent border-none cursor-pointer text-2xl"
@@ -447,6 +434,7 @@ export default function Home() {
                   <div className="text-sm space-y-1">
                     <p><strong>설명:</strong> <span className="text-gray-300">{stock.detail || "등록된 설명 없음"}</span></p>
                   </div>
+                  {/* 상세 분석 보기 링크: /recommendations 페이지로 이동 */}
                   <Link to="/recommendations" className="mt-4 inline-block bg-teal-500 hover:bg-teal-600 text-white font-semibold py-2 px-4 rounded-md text-sm transition duration-300">
                     상세 분석 보기 <i className="fas fa-chart-line ml-1"></i>
                   </Link>
@@ -511,10 +499,10 @@ export default function Home() {
                 <span className="mx-2">|</span>
                 <span><i className="fas fa-eye mr-1"></i>조회수: 28</span>
                 <span className="mx-2">|</span>
-                <span><i class="fas fa-comments mr-1"></i>댓글: 5</span>
+                <span><i className="fas fa-comments mr-1"></i>댓글: 5</span>
               </div>
               <p className="text-gray-300 text-sm mb-3 forum-post-content">XYZ 종목 일봉 차트입니다. 현재 위치에서의 지지선과 저항선, 그리고 단기적 방향성에 대한 분석을 요청드립니다. RSI 지표도 함께 봐주시면...</p>
-              <Link to="/forum" className="text-pink-400 hover:text-pink-300 font-semibold text-sm">게시글 보기 <i class="fas fa-angle-double-right ml-1"></i></Link>
+              <Link to="/forum" className="text-pink-400 hover:text-pink-300 font-semibold text-sm">게시글 보기 <i className="fas fa-angle-double-right ml-1"></i></Link>
             </div>
           </div>
           <div className="mt-6 text-center">
@@ -534,12 +522,12 @@ export default function Home() {
               <a href="https://www.youtube.com/@stocksrlab" target="_blank" rel="noopener noreferrer" className="mt-4 inline-block bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-md text-sm transition duration-300">유튜브 채널 방문 <i className="fas fa-external-link-alt ml-1"></i></a>
             </div>
             <div className="bg-gray-700 p-4 rounded-md shadow-lg">
-              <h3 className="text-xl font-medium mb-3 text-blue-400"><i class="fab fa-threads mr-2"></i>운영자 쓰레드</h3>
+              <h3 className="text-xl font-medium mb-3 text-blue-400"><i className="fab fa-threads mr-2"></i>운영자 쓰레드</h3>
               <a href="https://www.threads.net/@stocksrlab" target="_blank" rel="noopener noreferrer" className="inline-block mb-3">
                 <img src="https://placehold.co/120x30/0077B5/FFFFFF?text=Threads+채널" alt="지지저항랩 쓰레드 채널 로고" className="rounded" onError={(e) => { e.target.src = 'https://placehold.co/120x30/0077B5/FFFFFF?text=로고+오류'; e.target.onerror = null; }} />
               </a>
               <p className="text-gray-300 text-sm">실시간 투자 아이디어와 짧은 코멘트를 확인하세요. 시장 속보를 빠르게 공유합니다.</p>
-              <a href="https://www.threads.net/@stocksrlab" target="_blank" rel="noopener noreferrer" className="mt-4 inline-block bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-md text-sm transition duration-300">쓰레드 방문하기 <i class="fas fa-external-link-alt ml-1"></i></a>
+              <a href="https://www.threads.net/@stocksrlab" target="_blank" rel="noopener noreferrer" className="mt-4 inline-block bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-md text-sm transition duration-300">쓰레드 방문하기 <i className="fas fa-external-link-alt ml-1"></i></a>
             </div>
           </div>
         <div style={{ padding: "2rem", maxWidth: "960px", margin: "auto", lineHeight: "1.8" }}>
@@ -614,25 +602,25 @@ export default function Home() {
 
         <div className="mb-4">
           <a href="https://www.youtube.com/@stocksrlab" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white mx-2 text-xl transition duration-300"><i className="fab fa-youtube"></i></a>
-          <a href="https://www.threads.net/@stocksrlab" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white mx-2 text-xl transition duration-300"><i class="fab fa-threads"></i></a>
+          <a href="https://www.threads.net/@stocksrlab" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white mx-2 text-xl transition duration-300"><i className="fab fa-threads"></i></a>
         </div>
-        <p class="text-sm text-gray-400">© 2025 지지저항 Lab. All Rights Reserved.</p>
-        <p class="text-xs text-gray-500 mt-1">
-          <a href="#" class="hover:text-gray-300 transition duration-300">이용약관</a> |
-          <a href="#" class="hover:text-gray-300 transition duration-300">개인정보처리방침</a> |
-          <a href="#" class="hover:text-gray-300 transition duration-300">고객센터</a>
+        <p className="text-sm text-gray-400">© 2025 지지저항 Lab. All Rights Reserved.</p>
+        <p className="text-xs text-gray-500 mt-1">
+          <a href="#" className="hover:text-gray-300 transition duration-300">이용약관</a> |
+          <a href="#" className="hover:text-gray-300 transition duration-300">개인정보처리방침</a> |
+          <a href="#" className="hover:text-gray-300 transition duration-300">고객센터</a>
         </p>
-        <p class="text-xs text-gray-500 mt-4">
+        <p className="text-xs text-gray-500 mt-4">
           ※ 지지저항 Lab에서 제공하는 정보는 오류 및 지연이 있을 수 있으며, 이를 기반으로 한 투자에는 손실이 발생할 수 있습니다.
         </p>
-        <p class="text-xs text-gray-500">
+        <p className="text-xs text-gray-500">
           ※ 본 서비스는 비상업적 참고용이며, 투자 자문이나 매매 유도 목적이 아닙니다.
         </p>
-        <p class="text-xs text-gray-500">
+        <p className="text-xs text-gray-500">
           ※ 문의: stocksrlab@naver.com
         </p>
       </footer>
     </div>
   );
 }
-// END OF FILE frontend/src/Home.jsx
+// END OF FILE frontend/src/Home.jsx (수정)
