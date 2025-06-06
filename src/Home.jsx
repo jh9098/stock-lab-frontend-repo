@@ -110,7 +110,6 @@ export default function Home() {
     }
   }, [location.pathname]); // React Router 경로가 변경될 때마다 다시 시도 (SPA에서 중요)
 
-
   // === Firebase에서 종목 분석 데이터 로딩 (추가) ===
   useEffect(() => {
     const fetchLatestStockAnalyses = async () => {
@@ -253,18 +252,16 @@ export default function Home() {
         <div className="text-center mb-8">
           <div id="coupang-ad-banner" className="flex justify-center"></div>
         </div>
-        
-        {/* ✅ Google AdSense 인스트림 광고 단위 (추가된 부분) */}
-        {/* 원하는 위치에 이 div를 추가하세요. */}
+
+        {/* ✅ Google AdSense 광고 단위 (예: 메인 콘텐츠 상단) */}
         <div className="text-center my-8">
           <ins className="adsbygoogle"
-              style={{ display: "block", textAlign: "center" }} // JSX 스타일 객체
-              data-ad-layout="in-article"
-              data-ad-format="fluid"
+              style={{ display: "block" }}
               data-ad-client="ca-pub-1861160469675223"
-              data-ad-slot="8508377494"></ins>
+              data-ad-slot="8508377494" {/* ⚠️ 여기에 실제 광고 단위 ID를 입력하세요! */}
+              data-ad-format="auto"
+              data-full-width-responsive="true"></ins>
         </div>
-
 
         <section id="market-status" className="mb-12 p-6 bg-gray-800 rounded-lg shadow-xl">
           <h2 className="text-2xl font-semibold mb-6 text-white border-b-2 border-blue-500 pb-2">시장 현황 및 블로그</h2>
@@ -343,6 +340,16 @@ export default function Home() {
           </div>
         </section>
 
+        {/* ✅ Google AdSense 광고 단위 (예: 시장 현황과 뉴스 섹션 사이) */}
+        <div className="text-center my-8">
+          <ins className="adsbygoogle"
+              style={{ display: "block" }}
+              data-ad-client="ca-pub-1861160469675223"
+              data-ad-slot="8508377494" {/* ⚠️ 여기에 실제 광고 단위 ID를 입력하세요! */}
+              data-ad-format="auto"
+              data-full-width-responsive="true"></ins>
+        </div>
+
         {/* 최신 주식/경제 뉴스 섹션 (기존과 동일) */}
         <section id="news" className="mb-12 p-6 bg-gray-800 rounded-lg shadow-xl">
           <h2 className="text-2xl font-semibold mb-6 text-white border-b-2 border-purple-500 pb-2">최신 주식/경제 뉴스</h2>
@@ -376,6 +383,16 @@ export default function Home() {
             </Link>
           </div>
         </section>
+
+        {/* ✅ Google AdSense 광고 단위 (예: 뉴스 섹션과 추천 종목 섹션 사이) */}
+        <div className="text-center my-8">
+          <ins className="adsbygoogle"
+              style={{ display: "block" }}
+              data-ad-client="ca-pub-1861160469675223"
+              data-ad-slot="8508377494" {/* ⚠️ 여기에 실제 광고 단위 ID를 입력하세요! */}
+              data-ad-format="auto"
+              data-full-width-responsive="true"></ins>
+        </div>
 
         {/* === 최근 등록된 종목들 및 전문가 분석 섹션 (수정) === */}
         <section id="recommendations" className="mb-12 p-6 bg-gray-800 rounded-lg shadow-xl">
@@ -424,6 +441,17 @@ export default function Home() {
             </Link>
           </div>
         </section>
+
+        {/* ✅ Google AdSense 광고 단위 (예: 추천 종목 섹션과 테마 섹션 사이) */}
+        <div className="text-center my-8">
+          <ins className="adsbygoogle"
+              style={{ display: "block" }}
+              data-ad-client="ca-pub-1861160469675223"
+              data-ad-slot="8508377494" {/* ⚠️ 여기에 실제 광고 단위 ID를 입력하세요! */}
+              data-ad-format="auto"
+              data-full-width-responsive="true"></ins>
+        </div>
+
 
         <section id="themes" className="mb-12 p-6 bg-gray-800 rounded-lg shadow-xl">
           <h2 className="text-2xl font-semibold mb-6 text-white border-b-2 border-yellow-500 pb-2">📚 테마별 종목 분석</h2>
@@ -483,12 +511,26 @@ export default function Home() {
           </div>
         </section>
 
+        {/* ✅ Google AdSense 광고 단위 (예: 종목 상담 섹션과 소셜 미디어 섹션 사이) */}
+        <div className="text-center my-8">
+          <ins className="adsbygoogle"
+              style={{ display: "block" }}
+              data-ad-client="ca-pub-1861160469675223"
+              data-ad-slot="8508377494" {/* ⚠️ 여기에 실제 광고 단위 ID를 입력하세요! */}
+              data-ad-format="auto"
+              data-full-width-responsive="true"></ins>
+        </div>
+
         <section id="social-media" className="mb-12 p-6 bg-gray-800 rounded-lg shadow-xl">
           <h2 className="text-2xl font-semibold mb-6 text-white border-b-2 border-red-500 pb-2">미디어 채널</h2>
           <div className="grid md:grid-cols-2 gap-6">
             <div className="bg-gray-700 p-4 rounded-md shadow-lg">
-                <img src="https://placehold.co/120x30/FF0000/FFFFFF?text=YouTube+채널" alt="지지저항랩 유튜브 채널 로고" className="rounded" onError={(e) => { e.target.src = 'https://placehold.co/120x30/FF0000/FFFFFF?text=로고+오류'; e.target.onerror = null; }} />
-              </a>
+                {/* FIX START: Missing <h3> and <a> tag around the image */}
+                <h3 className="text-xl font-medium mb-3 text-red-400"><i className="fab fa-youtube mr-2"></i>유튜브 채널</h3>
+                <a href="https://www.youtube.com/@stocksrlab" target="_blank" rel="noopener noreferrer" className="inline-block mb-3">
+                  <img src="https://placehold.co/120x30/FF0000/FFFFFF?text=YouTube+채널" alt="지지저항랩 유튜브 채널 로고" className="rounded" onError={(e) => { e.target.src = 'https://placehold.co/120x30/FF0000/FFFFFF?text=로고+오류'; e.target.onerror = null; }} />
+                </a>
+                {/* FIX END */}
               <p className="text-gray-300 text-sm mb-3">최신 시장 분석과 투자 전략을 영상으로 만나보세요. 다양한 주식 콘텐츠가 준비되어 있습니다.</p>
               <a href="https://www.youtube.com/@stocksrlab" target="_blank" rel="noopener noreferrer" className="mt-4 inline-block bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-md text-sm transition duration-300">유튜브 채널 방문 <i className="fas fa-external-link-alt ml-1"></i></a>
             </div>
@@ -552,7 +594,16 @@ export default function Home() {
       </main>
 
       <footer className="bg-gray-800 border-t border-gray-700 py-8 text-center">
-        {/* 카카오 광고 (기존과 동일) */}
+        {/* ✅ Google AdSense 광고 단위 (예: 푸터 상단) */}
+        <div className="text-center my-8">
+          <ins className="adsbygoogle"
+              style={{ display: "block" }}
+              data-ad-client="ca-pub-1861160469675223"
+              data-ad-slot="8508377494" {/* ⚠️ 여기에 실제 광고 단위 ID를 입력하세요! */}
+              data-ad-format="auto"
+              data-full-width-responsive="true"></ins>
+        </div>
+
         <div className="text-center mb-8">
           <ins className="kakao_ad_area"
             style={{ display: "none" }}
