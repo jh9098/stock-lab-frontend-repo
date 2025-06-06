@@ -2,13 +2,13 @@
 
 import React, { useEffect, useState } from 'react';
 import { Helmet } from 'react-helmet';
-import { Link, useLocation } from 'react-router-dom'; // ✅ useLocation 추가
+import { Link, useLocation } from 'react-router-dom';
 
 export default function NewsPage() {
   const [newsItems, setNewsItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const location = useLocation(); // ✅ useLocation 훅 사용
+  const location = useLocation();
 
   // API 서버 주소 (개발 환경 기준)
   const API_BASE_URL = 'https://stock-lab-backend-repo.onrender.com';
@@ -34,20 +34,26 @@ export default function NewsPage() {
     };
 
     fetchNews();
-  }, []); // 이펙트는 컴포넌트 마운트 시 한 번만 실행
+  }, []);
 
-  // ✅ Google AdSense 광고 단위 로드 로직 추가
+  // ✅ Google AdSense 광고 단위 로드 로직 (수정된 부분)
   useEffect(() => {
     if (window.adsbygoogle) {
       try {
+        // 🚨 중요: AdSense 큐를 명시적으로 비워주는 코드 추가
+        // 이전에 푸시된 광고 요청을 초기화하여 중복 로딩 오류 방지
+        window.adsbygoogle = window.adsbygoogle || [];
+        if (window.adsbygoogle.length > 0) {
+          window.adsbygoogle.length = 0; // 큐를 비웁니다.
+        }
+        
         // 현재 컴포넌트 내의 모든 'adsbygoogle' 클래스를 가진 <ins> 요소를 찾아 처리합니다.
-        // data-ad-status="done" 속성이 없는 광고만 처리하여 중복 로드를 방지합니다.
         const adElements = document.querySelectorAll('ins.adsbygoogle:not([data-ad-status="done"])');
         adElements.forEach(adElement => {
-            (window.adsbygoogle = window.adsbygoogle || []).push({});
+            (window.adsbygoogle || []).push({}); // 비워진 큐에 새로운 요청 추가
         });
       } catch (e) {
-        console.error("AdSense push error in NewsPage:", e); // 오류 메시지 명확화
+        console.error("AdSense push error in NewsPage:", e);
       }
     }
   }, [location.pathname]); // React Router 경로가 변경될 때마다 다시 시도 (SPA에서 중요)
@@ -84,12 +90,11 @@ export default function NewsPage() {
       <p className="text-gray-300 mb-8">AI가 분석한 최신 시장 트렌드와 주요 경제 뉴스가 실시간으로 업데이트됩니다. 빠르게 시장을 파악하고 투자 기회를 잡으세요.</p>
 
       {/* ✅ Google AdSense 인스트림 광고 단위 (추가된 부분) */}
-      {/* 원하는 위치에 이 div를 추가하세요. */}
-      <div className="text-center my-8"> {/* 광고 상하 여백 및 중앙 정렬을 위해 div로 감쌈 */}
+      <div className="text-center my-8">
         <ins className="adsbygoogle"
-             style={{ display: "block" }} // JSX 스타일 객체
+             style={{ display: "block" }}
              data-ad-client="ca-pub-1861160469675223"
-             data-ad-slot="5922871900"
+             data-ad-slot="2203204469"
              data-ad-format="auto"
              data-full-width-responsive="true"></ins>
       </div>
