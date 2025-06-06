@@ -33,113 +33,174 @@ export default function Home() {
 
   // === 종목 분석 관련 상태 (추가) ===
   const [latestStockAnalyses, setLatestStockAnalyses] = useState([]);
-  const [stockAnalysesLoading, setStockAnalysesLoading] = useState(true); // ✅ 수정: useState(true)로 변경
+  const [stockAnalysesLoading, setStockAnalysesLoading] = useState(true); 
   const [stockAnalysesError, setStockAnalysesError] = useState(null);
 
 
   // API 서버 주소 (Render 백엔드 앱의 URL)
-  const API_BASE_URL = 'https://stock-lab-backend-repo.onrender.com'; // Render 배포 후 얻게 되는 실제 URL로 변경
+  const API_BASE_URL = 'https://stock-lab-backend-repo.onrender.com'; 
 
 
-  // Daum 광고 로직 (기존과 동일)
+  // Google Analytics (gtag) 로직: index.html에 있으므로 여기서는 제거
+  // useEffect(() => {
+  //   if (window.gtag) {
+  //     window.gtag("event", "page_view", {
+  //       page_path: "/",
+  //       page_title: "Home Page",
+  //     });
+  //   }
+  // }, []);
+
+
+  // ✅ 통합 광고 로드 및 재로드 로직
   useEffect(() => {
-    const script = document.createElement("script");
-    script.async = true;
-    script.src = "//t1.daumcdn.net/kas/static/ba.min.js";
-    document.body.appendChild(script);
-  }, []);
-
-  // Google Analytics (gtag) 로직 (기존과 동일)
-  useEffect(() => {
-    if (window.gtag) {
-      window.gtag("event", "page_view", {
-        page_path: "/",
-        page_title: "Home Page",
-      });
-    }
-  }, []);
-
-  // ✅ Google AdSense 광고 단위 로드 로직 (key 속성 반영 및 큐 초기화 제거)
-  useEffect(() => {
-    if (window.adsbygoogle) {
-      try {
-        // 기존 큐를 비우는 로직 제거 (key prop을 통해 새 ins 요소가 생성되므로 불필요)
-        // window.adsbygoogle = window.adsbygoogle || [];
-        // if (window.adsbygoogle.length > 0) {
-        //   window.adsbygoogle.length = 0;
-        // }
-
-        // 모든 'adsbygoogle' 클래스를 가진 <ins> 요소를 찾아 처리합니다.
-        // key prop 덕분에 React 라우터 경로 변경 시 항상 새로운 ins 요소가 되므로
-        // AdSense 스크립트가 이를 새 광고 단위로 인식하고 로드할 것입니다.
-        const adElements = document.querySelectorAll('ins.adsbygoogle'); 
-        adElements.forEach(adElement => {
-            (window.adsbygoogle || []).push({});
-        });
-      } catch (e) {
-        console.error("AdSense push error:", e);
-      }
-    }
-  }, [location.pathname]); // React Router 경로가 변경될 때마다 다시 시도 (SPA에서 중요)
-
-  // ✅ Coupang 광고 위젯 재로드 로직 (index.html에 g.js 추가 후 안정화)
-  useEffect(() => {
-    const loadCoupangWidget = () => {
-        const coupangWidgetContainer = document.querySelector('[data-widget-id="864271"]');
-
-        if (coupangWidgetContainer) {
-            // 이전에 쿠팡 스크립트가 삽입했을 수 있는 iframe 등의 내용을 완전히 비웁니다.
-            // 이렇게 해야 중복 로드를 방지하고 새로 광고를 삽입할 준비가 됩니다.
-            coupangWidgetContainer.innerHTML = '';
-            // console.log("Coupang widget container cleared."); // 디버깅용
+    // 헬퍼 함수: 기존 스크립트 태그 제거
+    const removeScript = (src) => {
+        const script = document.querySelector(`script[src="${src}"]`);
+        if (script) {
+            script.remove();
+            // console.log(`Removed script: ${src}`); // 디버깅용
         }
+    };
 
-        // CoupangPartners 객체가 로드되고 setScriptLoad 함수가 사용 가능할 때까지 기다립니다.
-        // g.js가 index.html에 로드되었으므로, 대부분 바로 사용 가능하지만,
-        // 만약을 대비해 재시도 로직을 유지합니다.
-        if (window.CoupangPartners && typeof window.CoupangPartners.setScriptLoad === 'function') {
-            try {
-                window.CoupangPartners.setScriptLoad();
-                console.log("Coupang Partners widgets re-triggered on", location.pathname);
-            } catch (e) {
-                console.error("Error re-triggering Coupang Partners widgets:", e);
-            }
-        } else {
-            console.warn("CoupangPartners object or setScriptLoad not found yet. Retrying...");
+    // 1. Google AdSense 로드
+    const loadAdSense = () => {
+      // 기존 AdSense 스크립트 제거
+      removeScript("https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1861160469675223");
+      // 모든 AdSense 광고 단위 컨테이너 비우기
+      document.querySelectorAll('ins.adsbygoogle').forEach(adElement => {
+          adElement.innerHTML = '';
+          adElement.removeAttribute('data-ad-status'); // 혹시 모를 내부 상태 초기화
+      });
+
+      const script = document.createElement("script");
+      script.async = true;
+      script.src = "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1861160469675223";
+      script.crossOrigin = "anonymous";
+      script.onload = () => {
+        // console.log("AdSense script loaded."); // 디버깅용
+        try {
+          (window.adsbygoogle = window.adsbygoogle || []).push({}); // 전역 배열 초기화
+          const adElements = document.querySelectorAll('ins.adsbygoogle'); 
+          adElements.forEach(adElement => {
+              // 새로 삽입된 ins 요소에 대해 광고를 요청
+              // console.log("AdSense ad pushed for:", adElement); // 디버깅용
+              (window.adsbygoogle || []).push({});
+          });
+        } catch (e) {
+          console.error("AdSense push error:", e);
+        }
+      };
+      document.body.appendChild(script);
+    };
+
+    // 2. Coupang Partners 로드
+    const loadCoupangWidget = () => {
+        // 기존 Coupang 스크립트 제거
+        removeScript("//ads-partners.coupang.com/g.js");
+
+        const coupangWidgetContainer = document.querySelector('[data-widget-id="864271"]');
+        if (!coupangWidgetContainer) {
+            console.warn("Coupang widget container not found.");
+            return;
+        }
+        coupangWidgetContainer.innerHTML = ''; // 기존 내용 비우기
+
+        const script = document.createElement("script");
+        script.async = true;
+        script.src = "//ads-partners.coupang.com/g.js";
+        script.onload = () => {
+            // console.log("Coupang g.js loaded."); // 디버깅용
             let retryCount = 0;
-            const maxRetries = 10; // 최대 10회 (2초) 시도
-            const retryIntervalId = setInterval(() => {
+            const maxRetries = 20; // 최대 4초 (200ms * 20)
+            const checkInterval = setInterval(() => {
+                // CoupangPartners 객체와 setScriptLoad 함수가 완전히 로드되었는지 확인
                 if (window.CoupangPartners && typeof window.CoupangPartners.setScriptLoad === 'function') {
-                    clearInterval(retryIntervalId);
-                    // 재시도 성공 시에도 컨테이너를 다시 비워주는 것이 안전합니다.
-                    if (coupangWidgetContainer) coupangWidgetContainer.innerHTML = ''; 
+                    clearInterval(checkInterval);
+                    coupangWidgetContainer.innerHTML = ''; // 최종적으로 다시 컨테이너 비우기
                     try {
-                        window.CoupangPartners.setScriptLoad();
-                        console.log("Coupang Partners widgets re-triggered (delayed).");
+                        window.CoupangPartners.setScriptLoad(); // 위젯 재초기화
+                        console.log("Coupang Partners widgets re-triggered successfully on", location.pathname);
                     } catch (e) {
-                        console.error("Error re-triggering Coupang Partners widgets (delayed):", e);
+                        console.error("Error re-triggering Coupang Partners widgets:", e);
                     }
                 } else if (retryCount >= maxRetries) {
-                    clearInterval(retryIntervalId);
-                    console.error("Failed to load Coupang Partners widgets after multiple retries.");
+                    clearInterval(checkInterval);
+                    console.error("Failed to re-trigger Coupang Partners widgets after multiple retries. CoupangPartners object or setScriptLoad not available.");
                 }
                 retryCount++;
-            }, 200); // 200ms마다 확인
-        }
+            }, 200);
+        };
+        document.body.appendChild(script);
     };
 
-    // 컴포넌트가 마운트되거나 location.pathname이 변경될 때 호출
-    loadCoupangWidget();
+    // 3. Daum (Kakao) AdFit 로드
+    const loadDaumAdFit = () => {
+        // 기존 Daum AdFit 스크립트 제거
+        removeScript("//t1.daumcdn.net/kas/static/ba.min.js");
 
-    // 컴포넌트 언마운트 시 cleanup (선택적: 페이지를 떠날 때 광고 내용 비우기)
+        // 모든 Kakao AdFit 컨테이너 비우기
+        document.querySelectorAll('.kakao_ad_area').forEach(adElement => {
+          adElement.innerHTML = '';
+          // console.log("Cleared Kakao AdFit container:", adElement); // 디버깅용
+        });
+        
+        const script = document.createElement("script");
+        script.async = true;
+        script.src = "//t1.daumcdn.net/kas/static/ba.min.js";
+        script.onload = () => {
+            // console.log("Daum AdFit script loaded. Attempting to display ads."); // 디버깅용
+            let retryCount = 0;
+            const maxRetries = 20; // 최대 4초
+            const checkInterval = setInterval(() => {
+                // window.kakao_ad_area 객체와 display 함수가 사용 가능한지 확인
+                if (window.kakao_ad_area && typeof window.kakao_ad_area.display === 'function') {
+                    clearInterval(checkInterval);
+                    document.querySelectorAll('.kakao_ad_area').forEach(adElement => {
+                      adElement.innerHTML = ''; // 최종적으로 다시 컨테이너 비우기
+                      const unit = adElement.getAttribute('data-ad-unit');
+                      if (unit) {
+                        try {
+                          // window.kakao_ad_area.display(광고_단위_ID, DOM_엘리먼트_참조)
+                          window.kakao_ad_area.display(unit, adElement); 
+                          // console.log(`Displayed Kakao AdFit unit: ${unit}`); // 디버깅용
+                        } catch (e) {
+                          console.error("Error displaying Kakao AdFit:", e);
+                        }
+                      }
+                    });
+                } else if (retryCount >= maxRetries) {
+                    clearInterval(checkInterval);
+                    console.error("Failed to display Kakao AdFit after multiple retries. kakao_ad_area object or display function not available.");
+                }
+                retryCount++;
+            }, 200);
+        };
+        document.body.appendChild(script);
+    };
+
+    // 컴포넌트 마운트 또는 경로 변경 시 모든 광고 로드 함수 호출
+    // React DOM이 완전히 업데이트되도록 아주 짧은 지연을 줍니다.
+    const initialLoadTimer = setTimeout(() => { 
+      loadAdSense();
+      loadCoupangWidget();
+      loadDaumAdFit();
+    }, 50); 
+
+    // 컴포넌트 언마운트 시 클린업 (스크립트 및 DOM 요소 비우기)
     return () => {
-      const coupangWidgetContainer = document.querySelector('[data-widget-id="864271"]');
-      if (coupangWidgetContainer) {
-        coupangWidgetContainer.innerHTML = '';
-        // console.log("Coupang widget container cleaned up on unmount."); // 디버깅용
-      }
-    };
+      clearTimeout(initialLoadTimer); // pending timer 취소
+      
+      // 모든 광고 스크립트 태그 제거
+      removeScript("https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1861160469675223");
+      removeScript("//ads-partners.coupang.com/g.js");
+      removeScript("//t1.daumcdn.net/kas/static/ba.min.js");
 
+      // 모든 광고 컨테이너 DOM 요소 비우기 (잔류 콘텐츠 방지)
+      document.querySelectorAll('ins.adsbygoogle').forEach(el => el.innerHTML = '');
+      document.querySelectorAll('[data-widget-id="864271"]').forEach(el => el.innerHTML = '');
+      document.querySelectorAll('.kakao_ad_area').forEach(el => el.innerHTML = '');
+    };
   }, [location.pathname]); // React Router 경로가 변경될 때마다 다시 시도 (SPA에서 중요)
 
 
@@ -579,8 +640,7 @@ export default function Home() {
       </main>
 
       <footer className="bg-gray-800 border-t border-gray-700 py-8 text-center">
-        {/* ✅ 쿠팡 광고 배너 및 대가성 문구 (맨 아래로 이동 및 정적 위젯 방식 적용) */}
-        {/* key 속성을 다른 광고와 겹치지 않게 변경하여 React가 새 요소로 인식하게 함 */}
+        {/* 쿠팡 광고 배너 및 대가성 문구 (맨 아래로 이동 및 정적 위젯 방식 적용) */}
         <div className="text-center my-8" key={location.pathname + '_coupang_banner_footer'}> 
           <div 
             data-widget-id="864271" 
@@ -588,13 +648,13 @@ export default function Home() {
             data-widget-template="carousel" 
             data-widget-width="680" 
             data-widget-height="140"
-            className="flex justify-center" // Tailwind CSS 클래스 유지
-            style={{ margin: "0 auto" }} // 중앙 정렬 및 불필요한 마진 제거 (옵션)
+            className="flex justify-center" 
+            style={{ margin: "0 auto" }} 
           ></div>
           <p className="text-xs text-gray-500 mt-2">이 포스팅은 쿠팡파트너스 활동의 일환으로, 이데 따른 일정액의 수수료를 제공받습니다.</p>
         </div>
 
-        {/* ✅ Google AdSense 광고 단위 (예: 푸터 상단) */}
+        {/* Google AdSense 광고 단위 (예: 푸터 상단) */}
         <div className="text-center my-8" key={location.pathname + '_adsense_6'}> {/* key 추가 */}
           <ins className="adsbygoogle"
               style={{ display: "block" }}
