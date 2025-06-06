@@ -33,15 +33,17 @@ export default function Home() {
 
   // === 종목 분석 관련 상태 (추가) ===
   const [latestStockAnalyses, setLatestStockAnalyses] = useState([]);
-  const [stockAnalysesLoading, setStockAnalysesLoading] = true;
+  const [stockAnalysesLoading, setStockAnalysesLoading] = useState(true);
   const [stockAnalysesError, setStockAnalysesError] = useState(null);
 
 
   // API 서버 주소 (Render 백엔드 앱의 URL)
   const API_BASE_URL = 'https://stock-lab-backend-repo.onrender.com'; // Render 배포 후 얻게 되는 실제 URL로 변경
 
-  // ✅ Coupang 광고 로직 제거 (아래 JSX에서 정적 위젯 방식으로 처리)
-  // useEffect(() => { /* 이전에 있던 쿠팡 로직 전체를 제거합니다. */ }, []);
+  // ✅ Coupang 광고 로직 (useEffect 제거, 정적 위젯 방식으로 변경)
+  // 쿠팡 파트너스 위젯은 data- 속성을 가진 div를 찾아서 자동으로 로드되므로,
+  // 별도의 useEffect 로직이 필요 없습니다. 스크립트는 index.html에서 로드됩니다.
+  // 페이지 이동 시 광고 잔상을 제거하기 위해 해당 div에 key prop을 사용합니다.
 
 
   // Daum 광고 로직 (기존과 동일)
@@ -62,28 +64,31 @@ export default function Home() {
     }
   }, []);
 
-  // ✅ Google AdSense 광고 단위 로드 로직 (key 속성 추가 반영)
+  // ✅ Google AdSense 광고 단위 로드 로직 (TypeError: true is not iterable 해결을 위한 강화된 버전)
   useEffect(() => {
-    if (window.adsbygoogle) {
-      try {
-        // AdSense 큐를 명시적으로 비워주는 코드 추가
-        window.adsbygoogle = window.adsbygoogle || [];
-        if (window.adsbygoogle.length > 0) {
-          window.adsbygoogle.length = 0; // 큐를 비웁니다.
-        }
-
-        // 모든 'adsbygoogle' 클래스를 가진 <ins> 요소를 찾아 처리합니다.
-        // key prop 덕분에 페이지 이동 시 항상 새로운 ins 요소가 되므로
-        // data-ad-status="done" 체크는 제거하여 더 확실하게 재로드를 유도합니다.
-        const adElements = document.querySelectorAll('ins.adsbygoogle'); 
-        adElements.forEach(adElement => {
-            (window.adsbygoogle || []).push({});
-        });
-      } catch (e) {
-        console.error("AdSense push error:", e);
-      }
+    // window.adsbygoogle가 존재하고 배열이 아닌 경우를 처리
+    // 이는 'TypeError: true is not iterable' 오류를 해결하는 핵심입니다.
+    if (typeof window.adsbygoogle !== 'object' || !Array.isArray(window.adsbygoogle)) {
+      window.adsbygoogle = []; // 배열이 아니면 새 배열로 강제 초기화
     }
-  }, [location.pathname]); // React Router 경로가 변경될 때마다 다시 시도 (SPA에서 중요)
+    
+    // 이전에 푸시된 광고 요청을 초기화 (큐를 비움)
+    // SPA에서 페이지 이동 시 광고가 중복 로드되거나 잔상이 남는 것을 방지
+    window.adsbygoogle.length = 0; 
+
+    try {
+      // 현재 DOM에 있는 모든 'adsbygoogle' 클래스를 가진 <ins> 요소를 찾아
+      // 각 광고 단위에 대해 AdSense에 광고 로드를 요청
+      // key prop을 사용하므로 :not([data-ad-status="done"]) 체크는 제거
+      const adElements = document.querySelectorAll('ins.adsbygoogle');
+      adElements.forEach(adElement => {
+          (window.adsbygoogle || []).push({}); // 안전한 push 호출
+      });
+    } catch (e) {
+      console.error("AdSense push error:", e);
+    }
+  }, [location.pathname]); // React Router 경로가 변경될 때마다 이펙트 재실행
+
 
   // === Firebase에서 종목 분석 데이터 로딩 (추가) ===
   useEffect(() => {
@@ -221,7 +226,8 @@ export default function Home() {
         </div>
       </header>
 
-      {/* ✅ 쿠팡 광고 배너 및 대가성 문구 (상단으로 이동 및 정적 위젯 방식 적용) */}
+      {/* ✅ 쿠팡 광고 배너 및 대가성 문구 (상단 배치 및 정적 위젯 방식 적용) */}
+      {/* key prop을 사용하여 React가 페이지 전환 시 이 요소를 새로 마운트하도록 함 */}
       <div className="text-center my-8" key={location.pathname + '_coupang_banner'}> 
         <div 
           data-widget-id="864271" 
@@ -229,14 +235,13 @@ export default function Home() {
           data-widget-template="carousel" 
           data-widget-width="680" 
           data-widget-height="140"
-          className="flex justify-center" // Tailwind CSS 클래스 유지
-          style={{ margin: "0 auto" }} // 중앙 정렬 및 불필요한 마진 제거 (옵션)
+          className="flex justify-center" 
+          style={{ margin: "0 auto" }} 
         ></div>
         <p className="text-xs text-gray-500 mt-2">이 포스팅은 쿠팡파트너스 활동의 일환으로, 이데 따른 일정액의 수수료를 제공받습니다.</p>
       </div>
 
       <main className="container mx-auto px-4 py-8">
-
         <section id="market-status" className="mb-12 p-6 bg-gray-800 rounded-lg shadow-xl">
           <h2 className="text-2xl font-semibold mb-6 text-white border-b-2 border-blue-500 pb-2">시장 현황 및 블로그</h2>
           <div className="grid md:grid-cols-2 gap-6 mb-6">
