@@ -94,9 +94,28 @@ export default function Home() {
       });
     }
   }, []);
+  // ✅ Google AdSense 광고 단위 로드 로직 (key 속성 추가 반영)
+  useEffect(() => {
+    if (window.adsbygoogle) {
+      try {
+        // AdSense 큐를 명시적으로 비워주는 코드 추가
+        window.adsbygoogle = window.adsbygoogle || [];
+        if (window.adsbygoogle.length > 0) {
+          window.adsbygoogle.length = 0; // 큐를 비웁니다.
+        }
 
-  // ⚠️ 기존 주식 데이터 로딩 로직 제거됨
-  // useEffect(() => { ... });
+        // 모든 'adsbygoogle' 클래스를 가진 <ins> 요소를 찾아 처리합니다.
+        // key prop 덕분에 페이지 이동 시 항상 새로운 ins 요소가 되므로
+        // data-ad-status="done" 체크는 제거하여 더 확실하게 재로드를 유도합니다.
+        const adElements = document.querySelectorAll('ins.adsbygoogle'); 
+        adElements.forEach(adElement => {
+            (window.adsbygoogle || []).push({});
+        });
+      } catch (e) {
+        console.error("AdSense push error:", e);
+      }
+    }
+  }, [location.pathname]); // React Router 경로가 변경될 때마다 다시 시도 (SPA에서 중요)
 
 
   // === Firebase에서 종목 분석 데이터 로딩 (추가) ===
@@ -318,7 +337,15 @@ export default function Home() {
             </div>
           </div>
         </section>
-
+        {/* ✅ Google AdSense 광고 단위 (예: 시장 현황과 뉴스 섹션 사이) */}
+        <div className="text-center my-8" key={location.pathname + '_adsense_2'}> {/* key 추가 */}
+          <ins className="adsbygoogle"
+              style={{ display: "block" }}
+              data-ad-client="ca-pub-1861160469675223"
+              data-ad-slot="8508377494"
+              data-ad-format="auto"
+              data-full-width-responsive="true"></ins>
+        </div>
         {/* 최신 주식/경제 뉴스 섹션 (기존과 동일) */}
         <section id="news" className="mb-12 p-6 bg-gray-800 rounded-lg shadow-xl">
           <h2 className="text-2xl font-semibold mb-6 text-white border-b-2 border-purple-500 pb-2">최신 주식/경제 뉴스</h2>
