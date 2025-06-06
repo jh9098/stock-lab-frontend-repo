@@ -14,7 +14,7 @@
     <!-- Helmet이 관리할 것이므로, 여기서 title/meta description/keywords는 제거 -->
     <title>지지저항 Lab</title> 
     
-    <!-- Google AdSense 메인 스크립트 추가 (✅ 여기에 추가) -->
+    <!-- Google AdSense 메인 스크립트 추가 -->
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1861160469675223"
             crossorigin="anonymous"></script>
 
@@ -30,5 +30,9 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
+    
+    <!-- ✅ 쿠팡 파트너스 스크립트 추가: </body> 닫는 태그 바로 위에 위치 -->
+    <!-- 이 스크립트가 전역적으로 로드되어 CoupangPartners 객체를 생성합니다. -->
+    <script src="//ads-partners.coupang.com/g.js"></script> 
   </body>
 </html>
