@@ -32,17 +32,13 @@ export default function Home() {
   const [newsError, setNewsError] = useState(null);
 
   // === 종목 분석 관련 상태 (추가) ===
-  // ✅ 수정: stockAnalysesLoading 초기화가 `true`로 직접 되어있던 것을 `useState(true)`로 변경
   const [latestStockAnalyses, setLatestStockAnalyses] = useState([]);
-  const [stockAnalysesLoading, setStockAnalysesLoading] = useState(true); 
+  const [stockAnalysesLoading, setStockAnalysesLoading] = useState(true); // ✅ 수정: useState(true)로 변경
   const [stockAnalysesError, setStockAnalysesError] = useState(null);
 
 
   // API 서버 주소 (Render 백엔드 앱의 URL)
   const API_BASE_URL = 'https://stock-lab-backend-repo.onrender.com'; // Render 배포 후 얻게 되는 실제 URL로 변경
-
-  // ✅ Coupang 광고 로직 제거 (아래 JSX에서 정적 위젯 방식으로 처리)
-  // useEffect(() => { /* 이전에 있던 쿠팡 로직 전체를 제거합니다. */ }, []);
 
 
   // Daum 광고 로직 (기존과 동일)
@@ -63,21 +59,24 @@ export default function Home() {
     }
   }, []);
 
-  // ✅ Google AdSense 광고 단위 로드 로직 (key 속성 추가 반영)
+  // ✅ Google AdSense 광고 단위 로드 로직 (key 속성 추가 반영 및 reset 제거)
   useEffect(() => {
     if (window.adsbygoogle) {
       try {
-        // AdSense 큐를 명시적으로 비워주는 코드 추가
-        window.adsbygoogle = window.adsbygoogle || [];
-        if (window.adsbygoogle.length > 0) {
-          window.adsbygoogle.length = 0; // 큐를 비웁니다.
-        }
+        // 기존 큐를 비우는 로직 제거 (key prop을 통해 새 ins 요소가 생성되므로 불필요)
+        // window.adsbygoogle = window.adsbygoogle || [];
+        // if (window.adsbygoogle.length > 0) {
+        //   window.adsbygoogle.length = 0;
+        // }
 
         // 모든 'adsbygoogle' 클래스를 가진 <ins> 요소를 찾아 처리합니다.
         // key prop 덕분에 페이지 이동 시 항상 새로운 ins 요소가 되므로
-        // data-ad-status="done" 체크는 제거하여 더 확실하게 재로드를 유도합니다.
+        // AdSense 스크립트가 이를 새 광고 단위로 인식하고 로드할 것입니다.
         const adElements = document.querySelectorAll('ins.adsbygoogle'); 
         adElements.forEach(adElement => {
+            // data-ad-status가 'done'이 아닌 경우에만 push하여 중복 요청 방지 (선택적)
+            // 하지만 React의 key prop으로 새 요소가 보장되면 대부분 필요 없습니다.
+            // console.log("AdSense processing:", adElement); // 디버깅용
             (window.adsbygoogle || []).push({});
         });
       } catch (e) {
@@ -86,41 +85,63 @@ export default function Home() {
     }
   }, [location.pathname]); // React Router 경로가 변경될 때마다 다시 시도 (SPA에서 중요)
 
-  // ✅ Coupang 광고 위젯 재로드 로직 (중복 방지)
+  // ✅ Coupang 광고 위젯 재로드 로직 (중복 방지 및 미표시 해결)
   // IMPORTANT: 이 로직이 작동하려면 public/index.html에 <script src="//ads-partners.coupang.com/g.js"></script>가 한 번만 로드되어 있어야 합니다.
   useEffect(() => {
-    const checkCoupangWidgets = () => {
-        // Coupang 스크립트(g.js)가 로드되면 `window.CoupangPartners` 객체와 `setScriptLoad` 함수를 노출합니다.
-        // 이 함수는 동적으로 추가된 위젯 요소를 다시 스캔하고 렌더링하는 데 사용됩니다.
+    const loadCoupangWidget = () => {
+        const coupangWidgetContainer = document.querySelector('[data-widget-id="864271"]');
+
+        if (coupangWidgetContainer) {
+            // 기존에 쿠팡 스크립트가 삽입했을 수 있는 iframe 등의 내용을 완전히 비웁니다.
+            // 이렇게 하면 새로 광고를 삽입할 준비가 됩니다.
+            coupangWidgetContainer.innerHTML = '';
+            // console.log("Coupang widget container cleared."); // 디버깅용
+        }
+
+        // CoupangPartners 객체가 로드될 때까지 기다리거나, 이미 로드되었으면 바로 실행
         if (window.CoupangPartners && typeof window.CoupangPartners.setScriptLoad === 'function') {
             try {
-                // 이 함수를 호출하여 페이지에 있는 data-widget-id 요소를 다시 스캔하고 렌더링하도록 지시합니다.
-                window.CoupangPartners.setScriptLoad(); 
+                window.CoupangPartners.setScriptLoad();
                 console.log("Coupang Partners widgets re-triggered on", location.pathname);
             } catch (e) {
                 console.error("Error re-triggering Coupang Partners widgets:", e);
             }
         } else {
-            console.warn("CoupangPartners object or setScriptLoad not found. Coupang widget might not render correctly on navigation.");
-            // 만약 스크립트가 아직 로드되지 않았다면, 짧은 지연 후 다시 시도할 수 있습니다.
-            // 하지만 g.js가 index.html에 로드되어 있다면, 대부분 이 지연은 필요 없을 것입니다.
-            const retryInterval = setInterval(() => {
+            console.warn("CoupangPartners object or setScriptLoad not found yet. Retrying...");
+            // 스크립트가 아직 로드되지 않았거나 초기화되지 않았다면, 짧은 지연 후 다시 시도합니다.
+            let retryCount = 0;
+            const maxRetries = 10; // 최대 10회 (2초) 시도
+            const retryIntervalId = setInterval(() => {
                 if (window.CoupangPartners && typeof window.CoupangPartners.setScriptLoad === 'function') {
-                    clearInterval(retryInterval);
+                    clearInterval(retryIntervalId);
+                    // 재시도 시에도 컨테이너를 다시 비워주는 것이 안전합니다.
+                    if (coupangWidgetContainer) coupangWidgetContainer.innerHTML = ''; 
                     try {
                         window.CoupangPartners.setScriptLoad();
                         console.log("Coupang Partners widgets re-triggered (delayed).");
                     } catch (e) {
                         console.error("Error re-triggering Coupang Partners widgets (delayed):", e);
                     }
+                } else if (retryCount >= maxRetries) {
+                    clearInterval(retryIntervalId);
+                    console.error("Failed to load Coupang Partners widgets after multiple retries.");
                 }
+                retryCount++;
             }, 200); // 200ms마다 확인
-            setTimeout(() => clearInterval(retryInterval), 3000); // 최대 3초까지만 시도
         }
     };
 
-    // 컴포넌트가 마운트되거나 location.pathname이 변경될 때 즉시 호출
-    checkCoupangWidgets();
+    // 컴포넌트가 마운트되거나 location.pathname이 변경될 때 호출
+    loadCoupangWidget();
+
+    // 컴포넌트 언마운트 시 cleanup (선택적: 페이지를 떠날 때 광고 내용 비우기)
+    return () => {
+      const coupangWidgetContainer = document.querySelector('[data-widget-id="864271"]');
+      if (coupangWidgetContainer) {
+        coupangWidgetContainer.innerHTML = '';
+        // console.log("Coupang widget container cleaned up on unmount."); // 디버깅용
+      }
+    };
 
   }, [location.pathname]); // React Router 경로가 변경될 때마다 다시 시도 (SPA에서 중요)
 
@@ -260,20 +281,6 @@ export default function Home() {
           </nav>
         </div>
       </header>
-
-      {/* ✅ 쿠팡 광고 배너 및 대가성 문구는 아래 푸터 위로 이동했습니다. */}
-      {/* <div className="text-center my-8" key={location.pathname + '_coupang_banner'}> 
-        <div 
-          data-widget-id="864271" 
-          data-widget-tracking-code="AF5962904" 
-          data-widget-template="carousel" 
-          data-widget-width="680" 
-          data-widget-height="140"
-          className="flex justify-center"
-          style={{ margin: "0 auto" }}
-        ></div>
-        <p className="text-xs text-gray-500 mt-2">이 포스팅은 쿠팡파트너스 활동의 일환으로, 이데 따른 일정액의 수수료를 제공받습니다.</p>
-      </div> */}
 
       <main className="container mx-auto px-4 py-8">
 
