@@ -40,19 +40,18 @@ export default function Home() {
   // API 서버 주소 (Render 백엔드 앱의 URL)
   const API_BASE_URL = 'https://stock-lab-backend-repo.onrender.com'; // Render 배포 후 얻게 되는 실제 URL로 변경
 
-  // ✅ Coupang 광고 로직 (수정: 클린업 함수 추가 및 초기 로드 로직 개선)
+  // ✅ Coupang 광고 로직 (수정: 상단 배치, 대가성 문구, 클린업 함수 강화)
   useEffect(() => {
     const coupangAdContainer = document.getElementById("coupang-ad-banner");
 
-    // 광고 컨테이너가 없으면 로직 실행 안 함
     if (!coupangAdContainer) {
       console.warn("Coupang ad banner container not found, skipping ad load.");
       return;
     }
 
-    // 광고 로드 함수 (재사용을 위해 분리)
+    // 광고 로드 함수
     const loadCoupangAd = () => {
-      // 이전에 로드된 광고가 있다면 비웁니다.
+      // 기존 광고 내용 비우기 (중요: 페이지 전환 시 잔상 제거)
       coupangAdContainer.innerHTML = ''; 
       if (window.PartnersCoupang) {
         new window.PartnersCoupang.G({
@@ -80,7 +79,6 @@ export default function Home() {
         document.body.appendChild(script);
       } else {
         // 스크립트는 있지만 PartnersCoupang이 아직 정의되지 않은 경우 (가끔 발생)
-        // 안전하게 스크립트 로드 완료를 기다리거나, 짧은 딜레이 후 시도
         setTimeout(() => {
           if (window.PartnersCoupang) {
             loadCoupangAd();
@@ -89,13 +87,12 @@ export default function Home() {
       }
     }
 
-    // ✅ 클린업 함수: 컴포넌트 언마운트 시 또는 재렌더링 시 광고 영역 비우기
+    // ✅ 클린업 함수: 컴포넌트 언마운트 시 또는 경로 변경 시 광고 영역 비우기
     return () => {
       if (coupangAdContainer) {
         coupangAdContainer.innerHTML = ''; // 광고 콘텐츠를 비웁니다.
       }
-      // 주의: Coupang 스크립트 자체는 document.body에 한 번만 추가되는 것이 일반적이므로 여기서 제거하지 않습니다.
-      // 다른 컴포넌트가 이 스크립트에 의존할 수 있기 때문입니다.
+      // Coupang 스크립트 자체는 document.body에서 제거하지 않습니다. (다른 컴포넌트가 의존할 수 있음)
     };
   }, [location.pathname]); // 경로가 변경될 때마다 Coupang 광고도 다시 로드/정리
 
@@ -117,18 +114,19 @@ export default function Home() {
     }
   }, []);
 
-  // ✅ Google AdSense 광고 단위 로드 로직 (수정)
+  // ✅ Google AdSense 광고 단위 로드 로직 (key 속성 추가 반영)
   useEffect(() => {
     if (window.adsbygoogle) {
       try {
-        // 🚨 중요: AdSense 큐를 명시적으로 비워주는 코드 추가
+        // AdSense 큐를 명시적으로 비워주는 코드 추가
         window.adsbygoogle = window.adsbygoogle || [];
         if (window.adsbygoogle.length > 0) {
           window.adsbygoogle.length = 0; // 큐를 비웁니다.
         }
 
         // 모든 'adsbygoogle' 클래스를 가진 <ins> 요소를 찾아 처리합니다.
-        // key prop 덕분에 페이지 이동 시 항상 새로운 ins 요소가 됩니다.
+        // key prop 덕분에 페이지 이동 시 항상 새로운 ins 요소가 되므로
+        // data-ad-status="done" 체크는 제거하여 더 확실하게 재로드를 유도합니다.
         const adElements = document.querySelectorAll('ins.adsbygoogle'); 
         adElements.forEach(adElement => {
             (window.adsbygoogle || []).push({});
@@ -275,8 +273,8 @@ export default function Home() {
         </div>
       </header>
 
-      {/* ✅ 쿠팡 광고 배너 및 대가성 문구 (상단으로 이동 및 문구 추가) */}
-      <div className="text-center my-8">
+      {/* ✅ 쿠팡 광고 배너 및 대가성 문구 (상단으로 이동) */}
+      <div className="text-center my-8" key={location.pathname + '_coupang_banner'}> {/* key 추가 */}
         <div id="coupang-ad-banner" className="flex justify-center"></div>
         <p className="text-xs text-gray-500 mt-2">이 포스팅은 쿠팡파트너스 활동의 일환으로, 이데 따른 일정액의 수수료를 제공받습니다.</p>
       </div>
