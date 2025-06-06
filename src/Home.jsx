@@ -32,8 +32,9 @@ export default function Home() {
   const [newsError, setNewsError] = useState(null);
 
   // === 종목 분석 관련 상태 (추가) ===
+  // ✅ 수정: stockAnalysesLoading 초기화가 `true`로 직접 되어있던 것을 `useState(true)`로 변경
   const [latestStockAnalyses, setLatestStockAnalyses] = useState([]);
-  const [stockAnalysesLoading, setStockAnalysesLoading] = true;
+  const [stockAnalysesLoading, setStockAnalysesLoading] = useState(true); 
   const [stockAnalysesError, setStockAnalysesError] = useState(null);
 
 
@@ -84,6 +85,45 @@ export default function Home() {
       }
     }
   }, [location.pathname]); // React Router 경로가 변경될 때마다 다시 시도 (SPA에서 중요)
+
+  // ✅ Coupang 광고 위젯 재로드 로직 (중복 방지)
+  // IMPORTANT: 이 로직이 작동하려면 public/index.html에 <script src="//ads-partners.coupang.com/g.js"></script>가 한 번만 로드되어 있어야 합니다.
+  useEffect(() => {
+    const checkCoupangWidgets = () => {
+        // Coupang 스크립트(g.js)가 로드되면 `window.CoupangPartners` 객체와 `setScriptLoad` 함수를 노출합니다.
+        // 이 함수는 동적으로 추가된 위젯 요소를 다시 스캔하고 렌더링하는 데 사용됩니다.
+        if (window.CoupangPartners && typeof window.CoupangPartners.setScriptLoad === 'function') {
+            try {
+                // 이 함수를 호출하여 페이지에 있는 data-widget-id 요소를 다시 스캔하고 렌더링하도록 지시합니다.
+                window.CoupangPartners.setScriptLoad(); 
+                console.log("Coupang Partners widgets re-triggered on", location.pathname);
+            } catch (e) {
+                console.error("Error re-triggering Coupang Partners widgets:", e);
+            }
+        } else {
+            console.warn("CoupangPartners object or setScriptLoad not found. Coupang widget might not render correctly on navigation.");
+            // 만약 스크립트가 아직 로드되지 않았다면, 짧은 지연 후 다시 시도할 수 있습니다.
+            // 하지만 g.js가 index.html에 로드되어 있다면, 대부분 이 지연은 필요 없을 것입니다.
+            const retryInterval = setInterval(() => {
+                if (window.CoupangPartners && typeof window.CoupangPartners.setScriptLoad === 'function') {
+                    clearInterval(retryInterval);
+                    try {
+                        window.CoupangPartners.setScriptLoad();
+                        console.log("Coupang Partners widgets re-triggered (delayed).");
+                    } catch (e) {
+                        console.error("Error re-triggering Coupang Partners widgets (delayed):", e);
+                    }
+                }
+            }, 200); // 200ms마다 확인
+            setTimeout(() => clearInterval(retryInterval), 3000); // 최대 3초까지만 시도
+        }
+    };
+
+    // 컴포넌트가 마운트되거나 location.pathname이 변경될 때 즉시 호출
+    checkCoupangWidgets();
+
+  }, [location.pathname]); // React Router 경로가 변경될 때마다 다시 시도 (SPA에서 중요)
+
 
   // === Firebase에서 종목 분석 데이터 로딩 (추가) ===
   useEffect(() => {
@@ -221,19 +261,19 @@ export default function Home() {
         </div>
       </header>
 
-      {/* ✅ 쿠팡 광고 배너 및 대가성 문구 (상단으로 이동 및 정적 위젯 방식 적용) */}
-      <div className="text-center my-8" key={location.pathname + '_coupang_banner'}> 
+      {/* ✅ 쿠팡 광고 배너 및 대가성 문구는 아래 푸터 위로 이동했습니다. */}
+      {/* <div className="text-center my-8" key={location.pathname + '_coupang_banner'}> 
         <div 
           data-widget-id="864271" 
           data-widget-tracking-code="AF5962904" 
           data-widget-template="carousel" 
           data-widget-width="680" 
           data-widget-height="140"
-          className="flex justify-center" // Tailwind CSS 클래스 유지
-          style={{ margin: "0 auto" }} // 중앙 정렬 및 불필요한 마진 제거 (옵션)
+          className="flex justify-center"
+          style={{ margin: "0 auto" }}
         ></div>
         <p className="text-xs text-gray-500 mt-2">이 포스팅은 쿠팡파트너스 활동의 일환으로, 이데 따른 일정액의 수수료를 제공받습니다.</p>
-      </div>
+      </div> */}
 
       <main className="container mx-auto px-4 py-8">
 
@@ -535,6 +575,21 @@ export default function Home() {
       </main>
 
       <footer className="bg-gray-800 border-t border-gray-700 py-8 text-center">
+        {/* ✅ 쿠팡 광고 배너 및 대가성 문구 (맨 아래로 이동 및 정적 위젯 방식 적용) */}
+        {/* key 속성을 다른 광고와 겹치지 않게 변경하여 React가 새 요소로 인식하게 함 */}
+        <div className="text-center my-8" key={location.pathname + '_coupang_banner_footer'}> 
+          <div 
+            data-widget-id="864271" 
+            data-widget-tracking-code="AF5962904" 
+            data-widget-template="carousel" 
+            data-widget-width="680" 
+            data-widget-height="140"
+            className="flex justify-center" // Tailwind CSS 클래스 유지
+            style={{ margin: "0 auto" }} // 중앙 정렬 및 불필요한 마진 제거 (옵션)
+          ></div>
+          <p className="text-xs text-gray-500 mt-2">이 포스팅은 쿠팡파트너스 활동의 일환으로, 이데 따른 일정액의 수수료를 제공받습니다.</p>
+        </div>
+
         {/* ✅ Google AdSense 광고 단위 (예: 푸터 상단) */}
         <div className="text-center my-8" key={location.pathname + '_adsense_6'}> {/* key 추가 */}
           <ins className="adsbygoogle"
