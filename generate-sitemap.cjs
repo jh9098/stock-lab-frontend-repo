@@ -1,69 +1,105 @@
+// generate-sitemap.cjs
+
 const { SitemapStream, streamToPromise } = require('sitemap');
-const { createWriteStream } = require('fs');
+const { createWriteStream, existsSync, mkdirSync } = require('fs');
 const path = require('path');
-const axios = require('axios'); // Node.js 18 이상에서는 require('node-fetch') 또는 fetch를 직접 사용 가능
+const axios = require('axios'); // axios는 이제 더 이상 필요 없지만, 혹시 몰라 남겨둡니다.
+const admin = require('firebase-admin'); // Firebase Admin SDK 임포트
 
 async function generateSitemap() {
-    const hostname = 'https://stocksrlab.netlify.app'; // 웹사이트의 기본 URL
+    const hostname = 'https://stocksrlab.netlify.app';
     const sitemap = new SitemapStream({ hostname });
 
-    // 1. 정적 페이지 추가 (필수)
-    sitemap.write({ url: '/', changefreq: 'daily', priority: 1.0 }); // 메인 페이지
-    sitemap.write({ url: '/blog', changefreq: 'daily', priority: 0.9 }); // 블로그 목록 페이지
-    sitemap.write({ url: '/news', changefreq: 'daily', priority: 0.8 }); // 뉴스 목록 페이지
-    sitemap.write({ url: '/ai-summaries', changefreq: 'daily', priority: 0.7 }); // AI 요약 목록 페이지
-    // 기타 정적 페이지가 있다면 여기에 추가:
-    // sitemap.write({ url: '/about', changefreq: 'monthly', priority: 0.7 });
+    // dist 폴더 존재 여부 확인 및 생성
+    const distDir = path.resolve(__dirname, 'dist');
+    if (!existsSync(distDir)) {
+        mkdirSync(distDir, { recursive: true });
+        console.log(`DEBUG: 'dist' 폴더가 없어 생성했습니다: ${distDir}`);
+    }
 
-    // 2. 동적 블로그 글 추가 (가장 중요!)
+    // --- Firebase Admin SDK 초기화 ---
+    // Netlify 환경 변수에서 서비스 계정 정보 가져오기
+    const serviceAccountBase64 = process.env.FIREBASE_SERVICE_ACCOUNT;
+
+    if (!serviceAccountBase64) {
+        console.error('ERROR: FIREBASE_SERVICE_ACCOUNT 환경 변수가 설정되지 않았습니다. Firestore 연동 실패.');
+        // 환경 변수가 없으면 동적 URL 추가 없이 정적 사이트맵만 생성하고 종료
+        sitemap.end();
+        const sitemapFilePath = path.resolve(distDir, 'sitemap.xml'); 
+        const writable = createWriteStream(sitemapFilePath);
+        await streamToPromise(sitemap).then(data => writable.write(data.toString()));
+        writable.end();
+        console.log('Sitemap.xml 파일이 환경 변수 없이 (정적 URL만) 생성되었습니다.');
+        return; // 스크립트 종료
+    }
+
+    let serviceAccount;
     try {
-        // --- 여기를 수정하세요: 백엔드 API 엔드포인트 ---
-        // Render 백엔드 주소: https://stock-lab-backend-repo.onrender.com
-        // blogPostsApiUrl: 모든 블로그 글의 목록을 JSON 형태로 반환하는 백엔드 API 엔드포인트
-        // 예시: 백엔드가 '/posts' 경로로 모든 글을 반환한다고 가정
-        const blogPostsApiUrl = 'https://stock-lab-backend-repo.onrender.com/posts'; 
+        serviceAccount = JSON.parse(Buffer.from(serviceAccountBase64, 'base64').toString('utf8'));
+    } catch (e) {
+        console.error('ERROR: FIREBASE_SERVICE_ACCOUNT 환경 변수가 올바른 JSON/Base64 형식이 아닙니다:', e);
+        // 오류 발생 시에도 정적 사이트맵만 생성하고 종료
+        sitemap.end();
+        const sitemapFilePath = path.resolve(distDir, 'sitemap.xml'); 
+        const writable = createWriteStream(sitemapFilePath);
+        await streamToPromise(sitemap).then(data => writable.write(data.toString()));
+        writable.end();
+        console.log('Sitemap.xml 파일이 (정적 URL만) 생성되었습니다. (Firebase 초기화 오류)');
+        return; // 스크립트 종료
+    }
 
-        console.log(`백엔드 API 호출 중: ${blogPostsApiUrl}`);
-        const response = await axios.get(blogPostsApiUrl);
-        
-        // API 응답 형태에 따라 .data.data 또는 .data 등 적절히 접근
-        // 예시: API가 [{ _id: '...', title: '...' }, ...] 형태의 배열을 반환한다고 가정
-        const posts = response.data; 
+    if (!admin.apps.length) { // 이미 초기화되지 않은 경우에만 초기화
+        admin.initializeApp({
+            credential: admin.credential.cert(serviceAccount)
+        });
+        console.log('Firebase Admin SDK가 성공적으로 초기화되었습니다.');
+    } else {
+        console.log('Firebase Admin SDK가 이미 초기화되어 있습니다.');
+    }
 
-        if (Array.isArray(posts)) {
-            for (const post of posts) {
-                // 각 블로그 글의 고유 ID를 사용하여 URL 생성
-                // post._id 또는 post.id (백엔드에서 사용하는 실제 고유 식별자 필드명)
-                // 만약 백엔드에서 글 ID를 `_id`로 제공한다면 `post._id`
-                // 만약 백엔드에서 글 ID를 `id`로 제공한다면 `post.id`
-                // `https://stocksrlab.netlify.app/blog/Q4LTFFbHwK8JdutA5UMF` 패턴이므로 /blog/ 다음에 ID
-                if (post._id) { // _id 필드가 존재한다고 가정
-                    sitemap.write({ url: `/blog/${post._id}`, changefreq: 'weekly', priority: 0.8 });
-                } else if (post.id) { // id 필드가 존재한다면 (_id가 없을 경우 대비)
-                    sitemap.write({ url: `/blog/${post.id}`, changefreq: 'weekly', priority: 0.8 });
-                } else {
-                    console.warn('API 응답에서 블로그 글의 고유 ID(_id 또는 id)를 찾을 수 없습니다:', post);
-                }
-            }
-            console.log(`총 ${posts.length}개의 블로그 글 URL이 사이트맵에 추가되었습니다.`);
+    const db = admin.firestore();
+
+    // 1. 정적 페이지 추가 (필수)
+    sitemap.write({ url: '/', changefreq: 'daily', priority: 1.0 });
+    sitemap.write({ url: '/blog', changefreq: 'daily', priority: 0.9 });
+    sitemap.write({ url: '/news', changefreq: 'daily', priority: 0.8 });
+    sitemap.write({ url: '/ai-summaries', changefreq: 'daily', priority: 0.7 });
+    sitemap.write({ url: '/list', changefreq: 'weekly', priority: 0.6 });
+    sitemap.write({ url: '/recommendations', changefreq: 'weekly', priority: 0.6 });
+    sitemap.write({ url: '/theme/energy', changefreq: 'weekly', priority: 0.5 });
+    sitemap.write({ url: '/theme/forex', changefreq: 'weekly', priority: 0.5 });
+    sitemap.write({ url: '/theme/bci', changefreq: 'weekly', priority: 0.5 });
+
+    // 2. 동적 블로그 글 추가 (Firestore에서 가져오기)
+    let dynamicUrlsAdded = 0;
+    try {
+        // --- 여기를 수정하세요: Firestore 컬렉션 이름 ---
+        // 블로그 글이 저장된 Firestore 컬렉션 이름으로 변경하세요.
+        // 예: 'blogPosts' 또는 'posts'
+        const blogPostsCollectionRef = db.collection('FIREBASE_SERVICE_ACCOUNT'); // <-- 이 부분!
+
+        console.log(`Firestore 컬렉션 '${blogPostsCollectionRef.path}'에서 블로그 글 가져오는 중...`);
+        const snapshot = await blogPostsCollectionRef.get();
+
+        if (snapshot.empty) {
+            console.warn('Firestore에서 블로그 글을 찾을 수 없습니다.');
         } else {
-            console.warn('API 응답이 예상과 다릅니다. 배열 형태의 데이터를 기대했습니다:', posts);
+            snapshot.forEach(doc => {
+                // doc.id는 Firestore 문서의 실제 ID입니다.
+                sitemap.write({ url: `/blog/${doc.id}`, changefreq: 'weekly', priority: 0.8 });
+                dynamicUrlsAdded++;
+            });
+            console.log(`총 ${dynamicUrlsAdded}개의 블로그 글 URL이 사이트맵에 추가되었습니다.`);
         }
 
     } catch (error) {
-        console.error('블로그 글 API를 가져오는 중 오류 발생:', error.message);
-        if (error.response) {
-            console.error('API 응답 상태:', error.response.status);
-            console.error('API 응답 데이터:', error.response.data);
-        }
-        // 오류가 발생해도 정적 페이지는 사이트맵에 포함될 수 있도록 스크립트가 중단되지 않게 합니다.
+        console.error('Firestore에서 블로그 글을 가져오는 중 오류 발생:', error.message);
+        console.warn('Firestore 오류로 인해 동적 블로그 글 URL은 사이트맵에 추가되지 않았습니다.');
     }
 
-    sitemap.end(); // 사이트맵 스트림 종료
-
-    // 사이트맵 파일을 public 폴더에 저장
-    // Netlify는 public 폴더의 내용을 루트 경로에 배포합니다.
-    const sitemapFilePath = path.resolve(__dirname, 'public', 'sitemap.xml'); 
+    // 최종 사이트맵 파일 생성
+    sitemap.end(); 
+    const sitemapFilePath = path.resolve(distDir, 'sitemap.xml'); 
     console.log(`사이트맵 파일을 ${sitemapFilePath} 에 생성 중...`);
 
     const writable = createWriteStream(sitemapFilePath);
@@ -71,10 +107,10 @@ async function generateSitemap() {
         await streamToPromise(sitemap).then(data => {
             writable.write(data.toString());
             writable.end();
-            console.log('Sitemap.xml 파일이 성공적으로 생성되었습니다.');
+            console.log(`Sitemap.xml 파일이 성공적으로 생성되었습니다. (동적 URL ${dynamicUrlsAdded}개 포함)`);
         });
     } catch (error) {
-        console.error('사이트맵 파일 생성 중 오류 발생:', error);
+        console.error('사이트맵 파일 최종 생성 중 오류 발생:', error);
     }
 }
 
