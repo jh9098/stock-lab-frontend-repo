@@ -1,0 +1,3 @@
+[build]
+  command = "npm run build && node generate-sitemap.js"
+  publish = "dist" # Vite 빌드 결과물이 dist 폴더에 생성될 것으로 가정
