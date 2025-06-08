@@ -21,7 +21,7 @@ async function generateSitemap() {
         // Render 백엔드 주소: https://stock-lab-backend-repo.onrender.com
         // blogPostsApiUrl: 모든 블로그 글의 목록을 JSON 형태로 반환하는 백엔드 API 엔드포인트
         // 예시: 백엔드가 '/posts' 경로로 모든 글을 반환한다고 가정
-        const blogPostsApiUrl = 'https://stock-lab-backend-repo.onrender.com/posts'; 
+        const blogPostsApiUrl = 'https://stock-lab-backend-repo.onrender.com/api/blog/posts-list';
 
         console.log(`백엔드 API 호출 중: ${blogPostsApiUrl}`);
         const response = await axios.get(blogPostsApiUrl);
