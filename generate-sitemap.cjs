@@ -76,7 +76,7 @@ async function generateSitemap() {
         // --- 여기를 수정하세요: Firestore 컬렉션 이름 ---
         // 블로그 글이 저장된 Firestore 컬렉션 이름으로 변경하세요.
         // 예: 'blogPosts' 또는 'posts'
-        const blogPostsCollectionRef = db.collection('FIREBASE_SERVICE_ACCOUNT'); // <-- 이 부분!
+        const blogPostsCollectionRef = db.collection('blogPosts'); // <-- 이 부분!
 
         console.log(`Firestore 컬렉션 '${blogPostsCollectionRef.path}'에서 블로그 글 가져오는 중...`);
         const snapshot = await blogPostsCollectionRef.get();
