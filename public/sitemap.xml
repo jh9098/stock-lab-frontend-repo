@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+
+  <url>
+    <loc>https://stocksrlab.netlify.app/</loc>
+    <changefreq>weekly</changefreq>
+  </url>
+  <url>
+    <loc>https://stocksrlab.netlify.app/list</loc>
+    <changefreq>weekly</changefreq>
+  </url>
+  <url>
+    <loc>https://stocksrlab.netlify.app/blog</loc>
+    <changefreq>weekly</changefreq>
+  </url>
+  <url>
+    <loc>https://stocksrlab.netlify.app/news</loc>
+    <changefreq>weekly</changefreq>
+  </url>
+  <url>
+    <loc>https://stocksrlab.netlify.app/ai-summaries</loc>
+    <changefreq>weekly</changefreq>
+  </url>
+  <url>
+    <loc>https://stocksrlab.netlify.app/recommendations</loc>
+    <changefreq>weekly</changefreq>
+  </url>
+  <url>
+    <loc>https://stocksrlab.netlify.app/theme/energy</loc>
+    <changefreq>weekly</changefreq>
+  </url>
+  <url>
+    <loc>https://stocksrlab.netlify.app/theme/forex</loc>
+    <changefreq>weekly</changefreq>
+  </url>
+  <url>
+    <loc>https://stocksrlab.netlify.app/theme/bci</loc>
+    <changefreq>weekly</changefreq>
+  </url>
+</urlset>
