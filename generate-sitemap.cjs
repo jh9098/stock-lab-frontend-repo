@@ -63,7 +63,7 @@ async function generateSitemap() {
 
     // 사이트맵 파일을 public 폴더에 저장
     // Netlify는 public 폴더의 내용을 루트 경로에 배포합니다.
-    const sitemapFilePath = path.resolve(__dirname, 'public', 'sitemap.xml'); 
+    const sitemapFilePath = path.resolve(__dirname, 'dist', 'sitemap.xml'); 
     console.log(`사이트맵 파일을 ${sitemapFilePath} 에 생성 중...`);
 
     const writable = createWriteStream(sitemapFilePath);
