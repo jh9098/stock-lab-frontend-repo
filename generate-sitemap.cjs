@@ -97,6 +97,7 @@ async function generateSitemap() {
         console.warn('Firestore 오류로 인해 동적 블로그 글 URL은 사이트맵에 추가되지 않았습니다.');
     }
 
+
     // 최종 사이트맵 파일 생성
     sitemap.end(); 
     const sitemapFilePath = path.resolve(distDir, 'sitemap.xml'); 
