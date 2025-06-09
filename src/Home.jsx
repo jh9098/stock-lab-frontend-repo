@@ -556,11 +556,11 @@ export default function Home() {
               <button className="mt-4 bg-yellow-500 hover:bg-yellow-600 text-gray-900 font-semibold py-2 px-3 rounded-md text-xs transition duration-300">관심종목 관리</button>
             </div>
             <div className="bg-gray-700 p-4 rounded-md shadow-lg">
-              <h3 className="text-lg font-medium mb-3 text-yellow-400"><i className="fas fa-book-open mr-2"></i>초보 투자 가이드</h3>
+              <h3 className="text-lg font-medium mb-3 text-yellow-400"><i className="fas fa-book-open mr-2"></i>지지저항랩 이용 가이드</h3>
               <ul className="text-sm space-y-1">
-                <li><a href="#" className="text-gray-300 hover:text-yellow-400 transition duration-300">주식 용어 정리 A-Z</a></li>
-                <li><a href="#" className="text-gray-300 hover:text-yellow-400 transition duration-300">기본적 분석이란?</a></li>
-                <li><a href="#" className="text-gray-300 hover:text-yellow-400 transition duration-300">기술적 분석 기초</a></li>
+                <li><a href="#" className="text-gray-300 hover:text-yellow-400 transition duration-300">아래 가이드를 꼭 숙지하세요</a></li>
+                <li><a href="#" className="text-gray-300 hover:text-yellow-400 transition duration-300">지지선과 저항선</a></li>
+                <li><a href="#" className="text-gray-300 hover:text-yellow-400 transition duration-300">매매 가이드</a></li>
               </ul>
             </div>
           </div>
