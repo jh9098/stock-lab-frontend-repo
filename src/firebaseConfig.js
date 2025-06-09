@@ -2,6 +2,7 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
+import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 
 // Firebase 콘솔에서 복사한 firebaseConfig 객체를 여기에 붙여넣습니다.
 const firebaseConfig = {
@@ -23,4 +24,8 @@ const db = getFirestore(app);
 // Storage 인스턴스 가져오기
 const storage = getStorage(app);
 
-export { db, storage }; // 다른 파일에서 사용할 수 있도록 내보내기
+// Auth 및 Google 로그인 제공자
+const auth = getAuth(app);
+const googleProvider = new GoogleAuthProvider();
+
+export { db, storage, auth, googleProvider }; // 다른 파일에서 사용할 수 있도록 내보내기

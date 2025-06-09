@@ -38,6 +38,11 @@ export default function Home() {
   const [stockAnalysesLoading, setStockAnalysesLoading] = useState(true);
   const [stockAnalysesError, setStockAnalysesError] = useState(null);
 
+  // 최근 포럼 글 상태
+  const [latestForumPosts, setLatestForumPosts] = useState([]);
+  const [forumLoading, setForumLoading] = useState(true);
+  const [forumError, setForumError] = useState(null);
+
 
   // API 서버 주소 (Render 백엔드 앱의 URL)
   const API_BASE_URL = 'https://stock-lab-backend-repo.onrender.com'; // Render 배포 후 얻게 되는 실제 URL로 변경
@@ -140,6 +145,26 @@ export default function Home() {
       }
     };
     fetchLatestStockAnalyses();
+  }, []);
+
+  // 최근 포럼 글 2개 불러오기
+  useEffect(() => {
+    const fetchForumPosts = async () => {
+      setForumLoading(true);
+      setForumError(null);
+      try {
+        const q = query(collection(db, 'consultRequests'), orderBy('createdAt', 'desc'), limit(2));
+        const snap = await getDocs(q);
+        const posts = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setLatestForumPosts(posts);
+      } catch (e) {
+        console.error('포럼 글 불러오기 실패:', e);
+        setForumError('포럼 글을 불러올 수 없습니다.');
+      } finally {
+        setForumLoading(false);
+      }
+    };
+    fetchForumPosts();
   }, []);
 
 
@@ -455,32 +480,22 @@ export default function Home() {
           <div className="flex justify-end mb-4">
             <Link to="/forum/write" className="bg-pink-500 hover:bg-pink-600 text-white font-semibold py-2 px-4 rounded-md text-sm transition duration-300"><i className="fas fa-edit mr-1"></i> 새 글 작성하기</Link>
           </div>
-          <div className="space-y-4">
-            <div className="bg-gray-700 p-4 rounded-md shadow-lg">
-              <h4 className="text-lg font-medium mb-1 text-pink-400">[상담 요청] ZZZ 종목 향후 전망이 궁금합니다.</h4>
-              <div className="flex items-center text-xs text-gray-400 mb-2">
-                <span><i className="fas fa-user mr-1"></i>작성자: 투자초보</span>
-                <span className="mx-2">|</span>
-                <span><i className="fas fa-eye mr-1"></i>조회수: 15</span>
-                <span className="mx-2">|</span>
-                <span><i className="fas fa-comments mr-1"></i>댓글: 2</span>
-              </div>
-              <p className="text-gray-300 text-sm mb-3 forum-post-content">안녕하세요. ZZZ 종목을 현재 보유 중인데, 최근 주가 흐름과 향후 전망에 대해 전문가님의 의견을 듣고 싶습니다. 특히...</p>
-              <Link to="/forum" className="text-pink-400 hover:text-pink-300 font-semibold text-sm">게시글 보기 <i className="fas fa-angle-double-right ml-1"></i></Link>
+          {forumLoading ? (
+            <p className="text-gray-300">불러오는 중...</p>
+          ) : forumError ? (
+            <p className="text-red-400">{forumError}</p>
+          ) : (
+            <div className="space-y-4">
+              {latestForumPosts.map(post => (
+                <div key={post.id} className="bg-gray-700 p-4 rounded-md shadow-lg">
+                  <h4 className="text-lg font-medium mb-1 text-pink-400">{post.title}</h4>
+                  <p className="text-xs text-gray-400 mb-2">작성자: {post.author} {post.expertComment && <span className="ml-2 text-green-400">전문가 코멘트 완료</span>}</p>
+                  <p className="text-gray-300 text-sm mb-3 forum-post-content whitespace-pre-wrap">{post.content.slice(0, 80)}{post.content.length > 80 ? '...' : ''}</p>
+                  <Link to={`/forum/${post.id}`} className="text-pink-400 hover:text-pink-300 font-semibold text-sm">게시글 보기 <i className="fas fa-angle-double-right ml-1"></i></Link>
+                </div>
+              ))}
             </div>
-            <div className="bg-gray-700 p-4 rounded-md shadow-lg">
-              <h4 className="text-lg font-medium mb-1 text-pink-400">[질문] XYZ 기술적 분석 부탁드립니다.</h4>
-              <div className="flex items-center text-xs text-gray-400 mb-2">
-                <span><i className="fas fa-user mr-1"></i>작성자: 차트분석가</span>
-                <span className="mx-2">|</span>
-                <span><i className="fas fa-eye mr-1"></i>조회수: 28</span>
-                <span className="mx-2">|</span>
-                <span><i className="fas fa-comments mr-1"></i>댓글: 5</span>
-              </div>
-              <p className="text-gray-300 text-sm mb-3 forum-post-content">XYZ 종목 일봉 차트입니다. 현재 위치에서의 지지선과 저항선, 그리고 단기적 방향성에 대한 분석을 요청드립니다. RSI 지표도 함께 봐주시면...</p>
-              <Link to="/forum" className="text-pink-400 hover:text-pink-300 font-semibold text-sm">게시글 보기 <i className="fas fa-angle-double-right ml-1"></i></Link>
-            </div>
-          </div>
+          )}
           <div className="mt-6 text-center">
             <Link to="/forum" className="bg-gray-600 hover:bg-gray-500 text-white font-semibold py-2 px-6 rounded-md text-sm transition duration-300">게시판 전체 보기</Link>
           </div>
