@@ -33,7 +33,7 @@ body {
   background-color: #334155 !important; /* bg-gray-700 */
 }
 
-.quill-dark-theme .ql-container.ql.snow {
+.quill-dark-theme .ql-container.ql-snow {
   border-color: #475569 !important; /* border-gray-600 */
 }
 
