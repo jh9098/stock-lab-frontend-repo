@@ -454,7 +454,7 @@ export default function Home() {
         </section>
 
         <section id="themes" className="mb-12 p-6 bg-gray-800 rounded-lg shadow-xl">
-          <h2 className="text-2xl font-semibold mb-6 text-white border-b-2 border-yellow-500 pb-2">📚 테마별 종목 분석</h2>
+          <h2 className="text-2xl font-semibold mb-6 text-white border-b-2 border-yellow-500 pb-2">📚 테마별 종목 분석(오픈예정)</h2>
           <p className="text-gray-300 text-sm mb-4">
             주식 시장의 주요 테마를 중심으로 대장주 종목을 정리했습니다. 추후 오픈예정입니다..
           </p>
