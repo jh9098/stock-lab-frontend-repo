@@ -456,17 +456,16 @@ export default function Home() {
         <section id="themes" className="mb-12 p-6 bg-gray-800 rounded-lg shadow-xl">
           <h2 className="text-2xl font-semibold mb-6 text-white border-b-2 border-yellow-500 pb-2">📚 테마별 종목 분석</h2>
           <p className="text-gray-300 text-sm mb-4">
-            주식 시장의 주요 테마를 중심으로 대장주 종목을 정리했습니다. 테마별로 선정해서 계속 업데이트 하고 확장될 예정입니다.
+            주식 시장의 주요 테마를 중심으로 대장주 종목을 정리했습니다. 추후 오픈예정입니다..
           </p>
           <div className="flex gap-4 flex-wrap">
             <Link to="/theme/energy" className="py-2 px-4 bg-gray-700 rounded-md text-gray-200 hover:bg-gray-600 transition duration-300">⚡ 에너지/전력 인프라</Link>
             <Link to="/theme/forex" className="py-2 px-4 bg-gray-700 rounded-md text-gray-200 hover:bg-gray-600 transition duration-300">💱 원화 강세 수혜주</Link>
             <Link to="/theme/bci" className="py-2 px-4 bg-gray-700 rounded-md text-gray-200 hover:bg-gray-600 transition duration-300">🧠 BCI·뇌 인터페이스</Link>
-            {/*
-              <Link to="/theme/battery" className="py-2 px-4 bg-gray-700 rounded-md text-gray-200 hover:bg-gray-600 transition duration-300">🔋 2차전지</Link>
-              <Link to="/theme/semicon" className="py-2 px-4 bg-gray-700 rounded-md text-gray-200 hover:bg-gray-600 transition duration-300">💾 반도체</Link>
-              <Link to="/theme/etc" className="py-2 px-4 bg-gray-700 rounded-md text-gray-200 hover:bg-gray-600 transition duration-300">📌 기타 테마</Link>
-            */}
+            <Link to="/theme/battery" className="py-2 px-4 bg-gray-700 rounded-md text-gray-200 hover:bg-gray-600 transition duration-300">🔋 2차전지</Link>
+            <Link to="/theme/semicon" className="py-2 px-4 bg-gray-700 rounded-md text-gray-200 hover:bg-gray-600 transition duration-300">💾 반도체</Link>
+            <Link to="/theme/etc" className="py-2 px-4 bg-gray-700 rounded-md text-gray-200 hover:bg-gray-600 transition duration-300">📌 기타 테마</Link>
+
           </div>
           <div className="mt-6 text-center">
             <Link to="/themes" className="bg-gray-600 hover:bg-gray-500 text-white font-semibold py-2 px-6 rounded-md text-sm transition duration-300">
