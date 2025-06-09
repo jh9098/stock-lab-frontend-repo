@@ -49,6 +49,13 @@ export default function AdminPage() {
   const [stockAnalysesLoading, setStockAnalysesLoading] = useState(true);
   const [stockAnalysesError, setStockAnalysesError] = useState(null);
 
+  // 포럼 글 상태
+  const [consultPosts, setConsultPosts] = useState([]);
+  const [consultLoading, setConsultLoading] = useState(true);
+  const [consultError, setConsultError] = useState(null);
+  const [commentDraft, setCommentDraft] = useState('');
+  const [commentTargetId, setCommentTargetId] = useState(null);
+
   // 💡 ReactQuill 강제 리마운트를 위한 Key (새로 추가됨)
   const [blogQuillKey, setBlogQuillKey] = useState(0); 
   const [aiSummaryQuillKey, setAiSummaryQuillKey] = useState(0);
@@ -116,13 +123,10 @@ export default function AdminPage() {
     setStockAnalysesLoading(true);
     setStockAnalysesError(null);
     try {
-      const stockAnalysesCollection = collection(db, "stocks"); // 'stocks' 컬렉션 사용
+      const stockAnalysesCollection = collection(db, "stocks");
       const q = query(stockAnalysesCollection, orderBy("createdAt", "desc"));
       const querySnapshot = await getDocs(q);
-      const analyses = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
+      const analyses = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setExistingStockAnalyses(analyses);
     } catch (err) {
       console.error("기존 종목 분석 데이터를 불러오는 데 실패했습니다:", err);
@@ -132,14 +136,31 @@ export default function AdminPage() {
     }
   }, []);
 
+  const fetchConsultPosts = useCallback(async () => {
+    setConsultLoading(true);
+    setConsultError(null);
+    try {
+      const q = query(collection(db, 'consultRequests'), orderBy('createdAt', 'desc'));
+      const snap = await getDocs(q);
+      const posts = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setConsultPosts(posts);
+    } catch (e) {
+      console.error('포럼 글 불러오기 실패:', e);
+      setConsultError('포럼 글을 불러올 수 없습니다.');
+    } finally {
+      setConsultLoading(false);
+    }
+  }, []);
+
 
   useEffect(() => {
     if (loggedIn) {
       fetchExistingPosts();
       fetchExistingAiSummaries();
       fetchExistingStockAnalyses(); // 종목 분석 목록도 함께 불러오기
+      fetchConsultPosts();
     }
-  }, [loggedIn, fetchExistingPosts, fetchExistingAiSummaries, fetchExistingStockAnalyses]);
+  }, [loggedIn, fetchExistingPosts, fetchExistingAiSummaries, fetchExistingStockAnalyses, fetchConsultPosts]);
 
   // 💡 useEffect를 사용하여 newPostContent를 동기화
   useEffect(() => {
@@ -570,6 +591,27 @@ export default function AdminPage() {
     }
   };
 
+  const handleSaveComment = async (postId) => {
+    if (!commentDraft.trim()) {
+      setMessage('코멘트를 입력하세요.');
+      return;
+    }
+    try {
+      const postRef = doc(db, 'consultRequests', postId);
+      await updateDoc(postRef, {
+        expertComment: commentDraft,
+        commentedAt: new Date()
+      });
+      setMessage('코멘트가 저장되었습니다.');
+      setCommentDraft('');
+      setCommentTargetId(null);
+      await fetchConsultPosts();
+    } catch (e) {
+      console.error('코멘트 저장 실패:', e);
+      setMessage('코멘트 저장에 실패했습니다.');
+    }
+  };
+
 
   return (
     <div className="min-h-screen bg-gray-900 text-gray-100 p-4 py-8">
@@ -703,6 +745,50 @@ export default function AdminPage() {
                   {editingPostId ? '수정 완료 (Firebase에 저장)' : '블로그 글 게시 (Firebase에 저장)'}
                 </button>
               </div>
+            </section>
+
+            {/* === 포럼 상담 글 목록 및 코멘트 작성 섹션 === */}
+            <section className="space-y-4 pt-6">
+              <h2 className="text-2xl font-semibold text-white border-b-2 border-gray-700 pb-2">종목 상담 요청</h2>
+              {consultLoading ? (
+                <p className="text-gray-400 text-center">글을 불러오는 중...</p>
+              ) : consultError ? (
+                <p className="text-red-400 text-center">{consultError}</p>
+              ) : consultPosts.length === 0 ? (
+                <p className="text-gray-400 text-center">등록된 상담 요청이 없습니다.</p>
+              ) : (
+                <div className="space-y-4">
+                  {consultPosts.map(post => (
+                    <div key={post.id} className="bg-gray-700 p-4 rounded-md">
+                      <h3 className="text-lg font-semibold text-white mb-1">{post.title}</h3>
+                      <p className="text-sm text-gray-400 mb-2">작성자: {post.author}</p>
+                      <p className="whitespace-pre-wrap text-gray-300 mb-2">{post.content}</p>
+                      {commentTargetId === post.id ? (
+                        <div className="space-y-2">
+                          <textarea
+                            className="w-full p-2 rounded bg-gray-800 text-gray-100"
+                            value={commentDraft}
+                            onChange={(e) => setCommentDraft(e.target.value)}
+                          ></textarea>
+                          <div className="flex justify-end space-x-2">
+                            <button onClick={() => setCommentTargetId(null)} className="px-3 py-1 bg-gray-600 rounded text-sm">취소</button>
+                            <button onClick={() => handleSaveComment(post.id)} className="px-3 py-1 bg-blue-600 rounded text-sm">저장</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex justify-between items-center">
+                          {post.expertComment ? (
+                            <p className="text-green-400 text-sm">전문가 코멘트 완료</p>
+                          ) : (
+                            <button onClick={() => {setCommentTargetId(post.id); setCommentDraft(post.expertComment || '');}} className="px-3 py-1 bg-indigo-600 rounded text-sm">코멘트 작성</button>
+                          )}
+                          {post.expertComment && <p className="text-gray-300 text-sm">{post.expertComment}</p>}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </section>
 
             {/* 블로그 글 목록 섹션 */}

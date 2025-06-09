@@ -8,6 +8,8 @@ import NewsPage from "./NewsPage";
 import RecommendationsPage from "./RecommendationsPage";
 import ThemesPage from "./ThemesPage";
 import ForumPage from "./ForumPage";
+import ForumWritePage from "./ForumWritePage";
+import ForumDetailPage from "./ForumDetailPage";
 import AdminPage from "./AdminPage";
 import AiSummaryListPage from "./AiSummaryListPage";
 import AiSummaryDetailPage from "./AiSummaryDetailPage";
@@ -23,6 +25,8 @@ function App() {
       <Route path="/recommendations" element={<RecommendationsPage />} />
       <Route path="/themes" element={<ThemesPage />} />
       <Route path="/forum" element={<ForumPage />} />
+      <Route path="/forum/write" element={<ForumWritePage />} />
+      <Route path="/forum/:postId" element={<ForumDetailPage />} />
       <Route path="/admin" element={<AdminPage />} />
 
       {/* AI 시장 이슈 요약 관련 라우트 */}
