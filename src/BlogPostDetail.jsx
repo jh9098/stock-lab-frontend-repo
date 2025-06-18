@@ -75,10 +75,6 @@ export default function BlogPostDetail() {
     );
   }
 
-// src/BlogPostDetail.jsx (약 47번째 줄)
-
-// src/BlogPostDetail.jsx (약 90번째 줄 return 부분을 교체하세요)
-
   return (
     <div className="min-h-screen bg-gray-900 text-gray-100 p-4 py-8">
       <Helmet>
@@ -87,9 +83,10 @@ export default function BlogPostDetail() {
       </Helmet>
 
       {/* 
-        이제 post.contentHtml이 직접 페이지의 메인 콘텐츠가 됩니다.
-        HTML 내부에 포함된 반응형 스타일(<style> 태그)이 
-        화면 너비에 따라 레이아웃을 자동으로 조정합니다.
+        수정의 핵심:
+        불필요한 카드 div를 모두 제거하고, HTML 콘텐츠를 직접 렌더링합니다.
+        이렇게 하면 HTML 내부의 <style> 태그가 정상적으로 작동하여
+        화면 너비에 따라 2단 레이아웃으로 자동 전환됩니다.
       */}
       <div dangerouslySetInnerHTML={{ __html: post.contentHtml }} />
 
