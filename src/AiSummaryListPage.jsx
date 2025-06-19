@@ -1,3 +1,5 @@
+// src/AiSummaryListPage.jsx
+
 import React, { useEffect, useState } from 'react';
 import { Helmet } from 'react-helmet';
 import { Link } from 'react-router-dom';
@@ -62,9 +64,11 @@ export default function AiSummaryListPage() {
         <meta name="description" content="AI가 분석한 최신 시장 트렌드와 경제 이슈 요약 글 목록." />
       </Helmet>
       
-      <div className="text-center mb-10">
-        <h1 className="text-4xl font-extrabold text-white mb-3">AI 시장 이슈 요약</h1>
-        <p className="text-gray-300 max-w-2xl mx-auto">
+      <div className="text-center mb-12">
+        <h1 className="text-4xl font-extrabold text-white mb-3 bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent">
+          AI 시장 이슈 요약
+        </h1>
+        <p className="text-gray-400 max-w-2xl mx-auto">
           AI가 실시간으로 분석한 최신 시장 트렌드와 주요 이슈를 한눈에 확인하세요.
         </p>
       </div>
@@ -72,24 +76,21 @@ export default function AiSummaryListPage() {
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
         {aiSummaries.length > 0 ? (
           aiSummaries.map((summary) => (
-            // 개선점 3: 카드 전체를 링크로 감싸기
-            <Link key={summary.id} to={`/ai-summaries/${summary.id}`} className="block bg-gray-800 rounded-lg shadow-lg hover:shadow-cyan-500/20 hover:-translate-y-1 transition-all duration-300 flex flex-col">
+            <Link key={summary.id} to={`/ai-summaries/${summary.id}`} className="block bg-gray-800 rounded-lg shadow-lg border border-transparent hover:border-blue-500 hover:-translate-y-1 transition-all duration-300 flex flex-col overflow-hidden">
               <div className="p-6 flex-grow">
-                {/* 개선점 1: createdAt Timestamp를 직접 포맷 */}
-                <p className="text-gray-400 text-sm mb-3">
+                <span className="inline-block bg-gray-700 text-gray-300 text-xs font-semibold px-2.5 py-1 rounded-full mb-4">
                   {summary.createdAt ? new Date(summary.createdAt.toDate()).toLocaleDateString('ko-KR') : '날짜 없음'}
-                </p>
-                <h2 className="text-xl font-semibold text-white mb-4">{summary.title}</h2>
-                {/* 개선점 2: 요약 내용 표시 (일정 길이로 잘라서) */}
+                </span>
+                <h2 className="text-xl font-bold text-white mb-3">{summary.title}</h2>
                 {summary.summary && (
                   <p className="text-gray-300 text-sm leading-relaxed">
                     {summary.summary.substring(0, 120)}{summary.summary.length > 120 ? '...' : ''}
                   </p>
                 )}
               </div>
-              <div className="p-6 pt-0 mt-auto">
-                <span className="text-blue-400 font-semibold">
-                  전체 내용 보기 →
+              <div className="mt-auto border-t border-gray-700/50 px-6 py-4 bg-gray-800/50">
+                <span className="text-blue-400 font-semibold text-sm">
+                  자세히 보기 →
                 </span>
               </div>
             </Link>
@@ -106,3 +107,5 @@ export default function AiSummaryListPage() {
       </div>
     </div>
   );
+// ▼▼▼ 이 부분이 빠져있었습니다! AiSummaryListPage 함수를 닫는 중괄호입니다. ▼▼▼
+}
