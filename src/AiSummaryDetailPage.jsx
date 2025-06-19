@@ -80,36 +80,31 @@ export default function AiSummaryDetailPage() {
     <div className="min-h-screen bg-gray-900 text-gray-100 p-4 py-8">
       <Helmet>
         <title>{summary.title} - 지지저항 Lab</title>
-        {/* AI 요약은 별도 summary 필드가 없으므로, 제목을 description으로 사용 */}
-        <meta name="description" content={summary.title} /> 
+        {/*
+          개선점:
+          meta description에 제목 대신 더 풍부한 내용의 '요약' 필드를 사용합니다.
+          summary 필드가 없을 경우를 대비해 제목을 대체 값으로 사용합니다.
+        */}
+        <meta name="description" content={summary.summary || summary.title} /> 
       </Helmet>
 
-      {/* AI 요약 글 전체를 감싸는 카드 형태의 div */}
-      <div className="bg-gray-800 rounded-lg shadow-xl overflow-hidden">
-        {/* AI 요약 포스트 상세 제목 영역 (카드 상단 헤더) */}
-        <div className="px-6 pt-6 pb-2 border-b-2 border-blue-500">
-          <h1 className="text-3xl font-bold text-white mb-2">AI 시장 이슈 요약 상세</h1>
-          <h2 className="text-xl font-semibold text-blue-400 mb-2">{summary.title}</h2>
-          <p className="text-gray-400 text-sm">
-            업데이트: {summary.date}
-          </p>
-        </div>
+      {/* 
+        수정의 핵심:
+        불필요한 카드 div와 헤더를 모두 제거하고 HTML 콘텐츠를 직접 렌더링합니다.
+        이제 HTML 내부의 <style> 태그가 외부 CSS의 제약 없이 정상적으로 작동하여
+        화면 너비에 따라 2단 레이아웃으로 자동 전환됩니다.
+      */}
+      <div dangerouslySetInnerHTML={{ __html: summary.contentHtml }} />
 
-        {/* dangerouslySetInnerHTML을 사용하여 HTML 본문 렌더링 */}
-        {/* .blog-article 클래스가 max-width, margin, padding을 모두 가집니다. */}
-        <div className="blog-article" dangerouslySetInnerHTML={{ __html: summary.contentHtml }} />
-
-        {/* 하단 버튼들 */}
-        <div className="mt-12 text-center px-6 pb-6 border-t border-gray-700"> {/* 하단 영역에 패딩 추가 */}
-          <Link to="/ai-summaries" className="bg-gray-700 hover:bg-gray-600 text-white font-semibold py-2 px-6 rounded-md text-sm transition duration-300">
-            AI 요약 목록으로 돌아가기
-          </Link>
-          <Link to="/" className="ml-4 bg-gray-700 hover:bg-gray-600 text-white font-semibold py-2 px-6 rounded-md text-sm transition duration-300">
-            홈으로 돌아가기
-          </Link>
-        </div>
+      {/* 하단 버튼들은 글 내용과 분리하여 페이지 하단에 배치합니다. */}
+      <div className="max-w-5xl mx-auto mt-12 text-center px-4 sm:px-6 pb-6">
+        <Link to="/ai-summaries" className="bg-gray-700 hover:bg-gray-600 text-white font-semibold py-2 px-6 rounded-md text-sm transition duration-300">
+          AI 요약 목록으로 돌아가기
+        </Link>
+        <Link to="/" className="ml-4 bg-gray-700 hover:bg-gray-600 text-white font-semibold py-2 px-6 rounded-md text-sm transition duration-300">
+          홈으로 돌아가기
+        </Link>
       </div>
     </div>
   );
 }
-// END OF FILE AiSummaryDetailPage.jsx
