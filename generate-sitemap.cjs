@@ -122,6 +122,13 @@ async function generateSitemap() {
             writable.end();
             console.log(`Sitemap.xml 파일이 성공적으로 생성되었습니다. (동적 URL ${dynamicUrlsAdded}개 포함)`);
         });
+        const sitemapUrl = `${hostname}/sitemap.xml`;
+        try {
+            await axios.get('https://www.google.com/ping?sitemap=' + encodeURIComponent(sitemapUrl));
+            console.log('구글 서치콘솔에 사이트맵 제출 완료');
+        } catch (e) {
+            console.error('구글 서치콘솔 제출 실패:', e.message);
+        }
     } catch (error) {
         console.error('사이트맵 파일 최종 생성 중 오류 발생:', error);
     }
