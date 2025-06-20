@@ -86,7 +86,19 @@ async function generateSitemap() {
         } else {
             snapshot.forEach(doc => {
                 // doc.id는 Firestore 문서의 실제 ID입니다.
-                sitemap.write({ url: `/blog/${doc.id}`, changefreq: 'weekly', priority: 0.8 });
+                const data = doc.data();
+                let lastModDate = null;
+                if (data.updatedAt && typeof data.updatedAt.toDate === 'function') {
+                    lastModDate = data.updatedAt.toDate();
+                } else if (data.createdAt && typeof data.createdAt.toDate === 'function') {
+                    lastModDate = data.createdAt.toDate();
+                }
+                sitemap.write({
+                    url: `/blog/${doc.id}`,
+                    changefreq: 'weekly',
+                    priority: 0.8,
+                    ...(lastModDate ? { lastmod: lastModDate.toISOString() } : {})
+                });
                 dynamicUrlsAdded++;
             });
             console.log(`총 ${dynamicUrlsAdded}개의 블로그 글 URL이 사이트맵에 추가되었습니다.`);
