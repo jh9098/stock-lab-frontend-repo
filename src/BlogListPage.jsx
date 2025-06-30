@@ -10,6 +10,8 @@ export default function BlogListPage() {
   const [blogPosts, setBlogPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
   const location = useLocation();
 
   useEffect(() => {
@@ -35,6 +37,10 @@ export default function BlogListPage() {
     fetchBlogPosts();
   }, []);
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
+
   // ✅ Google AdSense 광고 단위 로드 로직 (수정)
   useEffect(() => {
     if (window.adsbygoogle) {
@@ -57,6 +63,22 @@ export default function BlogListPage() {
       }
     }
   }, [location.pathname]); // 경로 변경 시 useEffect 다시 실행
+
+  const postsPerPage = 10;
+
+  const filteredPosts = blogPosts.filter(post => {
+    const t = searchTerm.toLowerCase();
+    return (
+      post.title.toLowerCase().includes(t) ||
+      (post.summary && post.summary.toLowerCase().includes(t))
+    );
+  });
+
+  const totalPages = Math.ceil(filteredPosts.length / postsPerPage) || 1;
+  const paginatedPosts = filteredPosts.slice(
+    (currentPage - 1) * postsPerPage,
+    currentPage * postsPerPage
+  );
 
   if (loading) {
     return (
@@ -99,16 +121,44 @@ export default function BlogListPage() {
       </div>
       {/* 광고 끝 */}
 
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {blogPosts.map((post) => (
-          <div key={post.id} className="bg-gray-800 p-6 rounded-lg shadow-lg hover:shadow-2xl transition-shadow duration-300">
-            <h2 className="text-xl font-semibold text-white mb-2">{post.title}</h2>
-            <p className="text-gray-400 text-sm mb-3">작성일: {post.date} | 저자: {post.author}</p>
-            <p className="text-gray-300 text-sm">{post.summary}</p>
-            <Link to={`/blog/${post.id}`} className="text-green-400 hover:text-green-300 mt-4 inline-block">전체 내용 보기 →</Link>
-          </div>
-        ))}
+      <div className="mb-6">
+        <input
+          type="text"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          placeholder="검색어를 입력하세요"
+          className="w-full md:w-1/2 p-2 rounded bg-gray-800 text-gray-100 border border-gray-700"
+        />
       </div>
+
+      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {paginatedPosts.length > 0 ? (
+          paginatedPosts.map((post) => (
+            <div key={post.id} className="bg-gray-800 p-6 rounded-lg shadow-lg hover:shadow-2xl transition-shadow duration-300">
+              <h2 className="text-xl font-semibold text-white mb-2">{post.title}</h2>
+              <p className="text-gray-400 text-sm mb-3">작성일: {post.date} | 저자: {post.author}</p>
+              <p className="text-gray-300 text-sm">{post.summary}</p>
+              <Link to={`/blog/${post.id}`} className="text-green-400 hover:text-green-300 mt-4 inline-block">전체 내용 보기 →</Link>
+            </div>
+          ))
+        ) : (
+          <p className="text-gray-400 col-span-full text-center">검색 결과가 없습니다.</p>
+        )}
+      </div>
+
+      {totalPages > 1 && (
+        <div className="flex justify-center space-x-2 mt-8">
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map(num => (
+            <button
+              key={num}
+              onClick={() => setCurrentPage(num)}
+              className={`px-3 py-1 rounded ${currentPage === num ? 'bg-green-600' : 'bg-gray-700'}`}
+            >
+              {num}
+            </button>
+          ))}
+        </div>
+      )}
 
       <div className="mt-12 text-center">
         <Link to="/" className="bg-gray-700 hover:bg-gray-600 text-white font-semibold py-2 px-6 rounded-md text-sm transition duration-300">
