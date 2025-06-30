@@ -97,7 +97,7 @@ export default function RecommendationsPage() {
 
               return (
                 <tr key={analysis.id} className="border-b border-gray-600 hover:bg-gray-500">
-                  <td className="px-6 py-4">{analysis.date}</td>
+                  <td className="px-6 py-4">{analysis.createdAt ? new Date(analysis.createdAt.toDate()).toLocaleDateString('ko-KR') : ''}</td>
                   <td className="px-6 py-4 font-medium text-white">{analysis.name}</td>
                   <td className="px-6 py-4">{analysis.strategy}</td>
                   <td className="px-6 py-4">{analysis.detail}</td>

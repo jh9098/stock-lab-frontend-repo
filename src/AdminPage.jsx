@@ -486,9 +486,8 @@ export default function AdminPage() {
         name: newStockAnalysisName,
         strategy: newStockAnalysisStrategy,
         detail: newStockAnalysisDetail,
-        status: newStockAnalysisStatus, 
-        returnRate: newStockAnalysisReturnRate, 
-        date: new Date().toISOString().split('T')[0], 
+        status: newStockAnalysisStatus,
+        returnRate: newStockAnalysisReturnRate,
         updatedAt: new Date(),
       };
 
@@ -1051,7 +1050,7 @@ export default function AdminPage() {
                       <div key={analysis.id} className="bg-gray-700 p-4 rounded-lg shadow-md flex flex-col justify-between">
                         <div>
                           <h3 className="text-xl font-semibold text-white mb-2">{analysis.name}</h3>
-                          <p className="text-gray-400 text-sm mb-1">등록일: {analysis.date}</p>
+                          <p className="text-gray-400 text-sm mb-1">등록일: {analysis.createdAt ? new Date(analysis.createdAt.toDate()).toLocaleDateString('ko-KR') : '날짜 없음'}</p>
                           <p className="text-gray-400 text-sm mb-1">전략: {analysis.strategy}</p>
                           <p className="text-gray-400 text-sm mb-1">설명: {analysis.detail}</p>
                           {/* 💡 상태 및 수익률 표시 */}

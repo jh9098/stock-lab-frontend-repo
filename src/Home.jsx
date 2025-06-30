@@ -428,7 +428,7 @@ export default function Home() {
                       {favorites.includes(stock.id) ? "❤️" : "🤍"}
                     </button>
                   </div>
-                  <p className="text-xs text-gray-400 mb-3">업데이트: {stock.date}</p>
+                  <p className="text-xs text-gray-400 mb-3">업데이트: {stock.createdAt ? new Date(stock.createdAt.toDate()).toLocaleDateString('ko-KR') : ''}</p>
                   <p className="text-gray-300 text-sm mb-3 recommendation-item-content">
                     <strong>전략:</strong> {stock.strategy || "등록된 전략 없음"}
                   </p>
