@@ -8,8 +8,9 @@ import 'react-quill/dist/quill.snow.css';
 import './styles/custom-styles.css';
 
 // Firebase import
-import { db, storage } from './firebaseConfig';
+import { db, storage, auth } from './firebaseConfig';
 import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, orderBy } from 'firebase/firestore';
+import { signInAnonymously } from 'firebase/auth';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 
 export default function AdminPage() {
@@ -201,6 +202,11 @@ export default function AdminPage() {
       if (response.ok) {
         const data = await response.json();
         if (data.success) {
+          try {
+            await signInAnonymously(auth);
+          } catch (authError) {
+            console.error('Firebase 익명 로그인 실패:', authError);
+          }
           setLoggedIn(true);
           sessionStorage.setItem('adminLoggedIn', 'true');
           setMessage('로그인 성공! 데이터를 불러오는 중...');
