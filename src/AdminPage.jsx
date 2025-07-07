@@ -50,6 +50,12 @@ export default function AdminPage() {
   const [stockAnalysesLoading, setStockAnalysesLoading] = useState(true);
   const [stockAnalysesError, setStockAnalysesError] = useState(null);
 
+  // Pagination states
+  const POSTS_PER_PAGE = 10;
+  const [blogPage, setBlogPage] = useState(1);
+  const [aiPage, setAiPage] = useState(1);
+  const [stockPage, setStockPage] = useState(1);
+
   // 포럼 글 상태
   const [consultPosts, setConsultPosts] = useState([]);
   const [consultLoading, setConsultLoading] = useState(true);
@@ -162,6 +168,11 @@ export default function AdminPage() {
       fetchConsultPosts();
     }
   }, [loggedIn, fetchExistingPosts, fetchExistingAiSummaries, fetchExistingStockAnalyses, fetchConsultPosts]);
+
+  // Reset pages when data changes
+  useEffect(() => { setBlogPage(1); }, [existingPosts.length]);
+  useEffect(() => { setAiPage(1); }, [existingAiSummaries.length]);
+  useEffect(() => { setStockPage(1); }, [existingStockAnalyses.length]);
 
   // 💡 useEffect를 사용하여 newPostContent를 동기화
   useEffect(() => {
@@ -617,6 +628,25 @@ export default function AdminPage() {
     }
   };
 
+  // Pagination calculations
+  const totalBlogPages = Math.ceil(existingPosts.length / POSTS_PER_PAGE) || 1;
+  const paginatedPosts = existingPosts.slice(
+    (blogPage - 1) * POSTS_PER_PAGE,
+    blogPage * POSTS_PER_PAGE
+  );
+
+  const totalAiPages = Math.ceil(existingAiSummaries.length / POSTS_PER_PAGE) || 1;
+  const paginatedAiSummaries = existingAiSummaries.slice(
+    (aiPage - 1) * POSTS_PER_PAGE,
+    aiPage * POSTS_PER_PAGE
+  );
+
+  const totalStockPages = Math.ceil(existingStockAnalyses.length / POSTS_PER_PAGE) || 1;
+  const paginatedStockAnalyses = existingStockAnalyses.slice(
+    (stockPage - 1) * POSTS_PER_PAGE,
+    stockPage * POSTS_PER_PAGE
+  );
+
 
   return (
     <div className="min-h-screen bg-gray-900 text-gray-100 p-4 py-8">
@@ -807,7 +837,7 @@ export default function AdminPage() {
                 <p className="text-gray-400 text-center">작성된 블로그 글이 없습니다.</p>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {existingPosts.map((post) => (
+                  {paginatedPosts.map((post) => (
                     <div key={post.id} className="bg-gray-700 p-4 rounded-lg shadow-md flex flex-col justify-between">
                       <div>
                         <h3 className="text-xl font-semibold text-white mb-2">{post.title}</h3>
@@ -834,6 +864,19 @@ export default function AdminPage() {
                     </div>
                   ))}
                 </div>
+                {totalBlogPages > 1 && (
+                  <div className="flex justify-center space-x-2 mt-4">
+                    {Array.from({ length: totalBlogPages }, (_, i) => i + 1).map(num => (
+                      <button
+                        key={num}
+                        onClick={() => setBlogPage(num)}
+                        className={`px-3 py-1 rounded ${blogPage === num ? 'bg-blue-600' : 'bg-gray-700'}`}
+                      >
+                        {num}
+                      </button>
+                    ))}
+                  </div>
+                )}
               )}
             </section>
 
@@ -919,7 +962,7 @@ export default function AdminPage() {
                 <p className="text-gray-400 text-center">작성된 AI 요약 글이 없습니다.</p>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {existingAiSummaries.map((summary) => (
+                  {paginatedAiSummaries.map((summary) => (
                     <div key={summary.id} className="bg-gray-700 p-4 rounded-lg shadow-md flex flex-col justify-between">
                       <div>
                         <h3 className="text-xl font-semibold text-white mb-2">{summary.title}</h3>
@@ -945,6 +988,19 @@ export default function AdminPage() {
                     </div>
                   ))}
                 </div>
+                {totalAiPages > 1 && (
+                  <div className="flex justify-center space-x-2 mt-4">
+                    {Array.from({ length: totalAiPages }, (_, i) => i + 1).map(num => (
+                      <button
+                        key={num}
+                        onClick={() => setAiPage(num)}
+                        className={`px-3 py-1 rounded ${aiPage === num ? 'bg-blue-600' : 'bg-gray-700'}`}
+                      >
+                        {num}
+                      </button>
+                    ))}
+                  </div>
+                )}
               )}
             </section>
 
@@ -1044,7 +1100,7 @@ export default function AdminPage() {
                 <p className="text-gray-400 text-center">작성된 종목 분석이 없습니다.</p>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4"> {/* lg:grid-cols-3 제거 (아이템당 공간 더 필요) */}
-                  {existingStockAnalyses.map((analysis) => {
+                  {paginatedStockAnalyses.map((analysis) => {
                     let statusBadgeClass = 'bg-blue-500 text-blue-100';
                     if (analysis.status === '목표달성') {
                       statusBadgeClass = 'bg-green-500 text-green-100';
@@ -1091,6 +1147,19 @@ export default function AdminPage() {
                     );
                   })}
                 </div>
+                {totalStockPages > 1 && (
+                  <div className="flex justify-center space-x-2 mt-4">
+                    {Array.from({ length: totalStockPages }, (_, i) => i + 1).map(num => (
+                      <button
+                        key={num}
+                        onClick={() => setStockPage(num)}
+                        className={`px-3 py-1 rounded ${stockPage === num ? 'bg-blue-600' : 'bg-gray-700'}`}
+                      >
+                        {num}
+                      </button>
+                    ))}
+                  </div>
+                )}
               )}
             </section>
 
