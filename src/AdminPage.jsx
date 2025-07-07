@@ -1,8 +1,8 @@
 // START OF FILE frontend/src/AdminPage.jsx (수정: ReactQuill 'delta' 오류 해결 - useEffect 동기화 및 key prop 개선)
-
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Helmet } from 'react-helmet';
-import { Link, useNavigate } from 'react-router-dom';
+// 1. [수정] 사용하지 않는 useNavigate 제거
+import { Link } from 'react-router-dom'; 
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 import './styles/custom-styles.css';
@@ -14,7 +14,8 @@ import { signInAnonymously } from 'firebase/auth';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 
 export default function AdminPage() {
-  const navigate = useNavigate();
+  // 1. [수정] 사용하지 않는 navigate 선언 제거
+  // const navigate = useNavigate(); 
   const [password, setPassword] = useState('');
   const [loggedIn, setLoggedIn] = useState(false);
   const [message, setMessage] = useState('');
@@ -55,6 +56,7 @@ export default function AdminPage() {
   const [blogPage, setBlogPage] = useState(1);
   const [aiPage, setAiPage] = useState(1);
   const [stockPage, setStockPage] = useState(1);
+  const [consultPage, setConsultPage] = useState(1); // 2. [추가] 종목 상담 요청 페이지 상태
 
   // 포럼 글 상태
   const [consultPosts, setConsultPosts] = useState([]);
@@ -64,7 +66,7 @@ export default function AdminPage() {
   const [commentTargetId, setCommentTargetId] = useState(null);
 
   // 💡 ReactQuill 강제 리마운트를 위한 Key (새로 추가됨)
-  const [blogQuillKey, setBlogQuillKey] = useState(0); 
+  const [blogQuillKey, setBlogQuillKey] = useState(0);
   const [aiSummaryQuillKey, setAiSummaryQuillKey] = useState(0);
 
   const quillRef = useRef(null);
@@ -72,6 +74,7 @@ export default function AdminPage() {
   const aiSummaryQuillRef = useRef(null);
   const aiSummaryFormRef = useRef(null);
   const stockAnalysisFormRef = useRef(null); // 종목 분석 폼 참조 추가
+
 
   // API 서버 주소 (Render 백엔드 앱의 URL)
   const API_BASE_URL = 'https://stock-lab-backend-repo.onrender.com'; // Render 배포 후 얻게 되는 실제 URL로 변경
@@ -173,6 +176,7 @@ export default function AdminPage() {
   useEffect(() => { setBlogPage(1); }, [existingPosts.length]);
   useEffect(() => { setAiPage(1); }, [existingAiSummaries.length]);
   useEffect(() => { setStockPage(1); }, [existingStockAnalyses.length]);
+  useEffect(() => { setConsultPage(1); }, [consultPosts.length]); // 2. [추가] 상담 요청 글 변경 시 페이지 리셋
 
   // 💡 useEffect를 사용하여 newPostContent를 동기화
   useEffect(() => {
@@ -646,9 +650,13 @@ export default function AdminPage() {
     (stockPage - 1) * POSTS_PER_PAGE,
     stockPage * POSTS_PER_PAGE
   );
-
-
-  return (
+  
+  // 2. [추가] 종목 상담 요청 페이지네이션 계산
+  const totalConsultPages = Math.ceil(consultPosts.length / POSTS_PER_PAGE) || 1;
+  const paginatedConsultPosts = consultPosts.slice(
+    (consultPage - 1) * POSTS_PER_PAGE,
+    consultPage * POSTS_PER_PAGE
+  );
     <div className="min-h-screen bg-gray-900 text-gray-100 p-4 py-8">
       <Helmet>
         <title>관리자 페이지 - 지지저항 Lab</title>
@@ -793,7 +801,8 @@ export default function AdminPage() {
                 <p className="text-gray-400 text-center">등록된 상담 요청이 없습니다.</p>
               ) : (
                 <div className="space-y-4">
-                  {consultPosts.map(post => (
+                  {/* 2. [수정] 페이지네이션된 배열 사용 */}
+                  {paginatedConsultPosts.map(post => (
                     <div key={post.id} className="bg-gray-700 p-4 rounded-md">
                       <h3 className="text-lg font-semibold text-white mb-1">{post.title}</h3>
                       <p className="text-sm text-gray-400 mb-2">작성자: {post.author}</p>
@@ -815,16 +824,31 @@ export default function AdminPage() {
                           {post.expertComment ? (
                             <p className="text-green-400 text-sm">전문가 코멘트 완료</p>
                           ) : (
-                            <button onClick={() => {setCommentTargetId(post.id); setCommentDraft(post.expertComment || '');}} className="px-3 py-1 bg-indigo-600 rounded text-sm">코멘트 작성</button>
+                            <button onClick={() => { setCommentTargetId(post.id); setCommentDraft(post.expertComment || ''); }} className="px-3 py-1 bg-indigo-600 rounded text-sm">코멘트 작성</button>
                           )}
                           {post.expertComment && <p className="text-gray-300 text-sm">{post.expertComment}</p>}
                         </div>
                       )}
                     </div>
                   ))}
+                  {/* 2. [추가] 종목 상담 요청 페이지네이션 버튼 */}
+                  {totalConsultPages > 1 && (
+                    <div className="flex justify-center space-x-2 mt-4">
+                      {Array.from({ length: totalConsultPages }, (_, i) => i + 1).map(num => (
+                        <button
+                          key={num}
+                          onClick={() => setConsultPage(num)}
+                          className={`px-3 py-1 rounded ${consultPage === num ? 'bg-blue-600' : 'bg-gray-700'}`}
+                        >
+                          {num}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </section>
+
 
             {/* 블로그 글 목록 섹션 */}
             <section className="space-y-4 pt-6 pb-6 border-b border-gray-700">
