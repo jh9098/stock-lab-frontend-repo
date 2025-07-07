@@ -657,6 +657,7 @@ export default function AdminPage() {
     (consultPage - 1) * POSTS_PER_PAGE,
     consultPage * POSTS_PER_PAGE
   );
+  return (
     <div className="min-h-screen bg-gray-900 text-gray-100 p-4 py-8">
       <Helmet>
         <title>관리자 페이지 - 지지저항 Lab</title>
@@ -696,9 +697,8 @@ export default function AdminPage() {
                 로그아웃
               </button>
             </div>
-            {message && <p className="text-center text-sm text-yellow-400 mb-4">{message}</p>} {/* 로그인 후 메시지 */}
+            {message && <p className="text-center text-sm text-yellow-400 mb-4">{message}</p>}
 
-            {/* 블로그 글 작성/수정 섹션 */}
             <section ref={blogFormRef} className="space-y-6 pb-6 border-b border-gray-700">
               <div className="flex justify-between items-center">
                 <h2 className="text-2xl font-semibold text-white">
@@ -713,7 +713,6 @@ export default function AdminPage() {
                   </button>
                 )}
               </div>
-
               <div className="space-y-4">
                 <div>
                   <label htmlFor="title" className="block text-gray-300 text-sm font-bold mb-2">제목:</label>
@@ -759,12 +758,10 @@ export default function AdminPage() {
                     ></textarea>
                   ) : (
                     <ReactQuill
-                      // 💡 key prop 수정: editingPostId가 변경될 때마다 Quill 컴포넌트를 재마운트
-                      // 새 글 작성 모드일 때는 blogQuillKey를 사용하여 강제 리마운트 유도 (수정됨)
-                      key={editingPostId ? editingPostId : `new-post-${blogQuillKey}`} 
+                      key={editingPostId ? editingPostId : `new-post-${blogQuillKey}`}
                       ref={quillRef}
                       theme="snow"
-                      value={newPostContent} // useEffect에서 관리
+                      value={newPostContent}
                       onChange={setNewPostContent}
                       modules={blogQuillModules}
                       className="bg-gray-700 text-gray-100 quill-dark-theme"
@@ -772,13 +769,13 @@ export default function AdminPage() {
                     />
                   )}
                   <button
-                      onClick={() => setEditHtmlMode(!editHtmlMode)}
-                      className="mt-2 bg-gray-600 hover:bg-gray-500 text-white font-semibold py-1 px-3 rounded-md text-sm transition duration-300"
+                    onClick={() => setEditHtmlMode(!editHtmlMode)}
+                    className="mt-2 bg-gray-600 hover:bg-gray-500 text-white font-semibold py-1 px-3 rounded-md text-sm transition duration-300"
                   >
-                      {editHtmlMode ? 'WYSIWYG 에디터로 전환' : 'HTML 소스 코드 편집'}
+                    {editHtmlMode ? 'WYSIWYG 에디터로 전환' : 'HTML 소스 코드 편집'}
                   </button>
                   <p className="text-gray-500 text-xs mt-2">
-                      이미지는 WYSIWYG 에디터 모드에서 이미지 버튼을 클릭하여 직접 업로드하면 Firebase Storage에 저장됩니다.<br/>
+                    이미지는 WYSIWYG 에디터 모드에서 이미지 버튼을 클릭하여 직접 업로드하면 Firebase Storage에 저장됩니다.<br />
                   </p>
                 </div>
                 <button
@@ -790,7 +787,6 @@ export default function AdminPage() {
               </div>
             </section>
 
-            {/* === 포럼 상담 글 목록 및 코멘트 작성 섹션 === */}
             <section className="space-y-4 pt-6">
               <h2 className="text-2xl font-semibold text-white border-b-2 border-gray-700 pb-2">종목 상담 요청</h2>
               {consultLoading ? (
@@ -801,7 +797,6 @@ export default function AdminPage() {
                 <p className="text-gray-400 text-center">등록된 상담 요청이 없습니다.</p>
               ) : (
                 <div className="space-y-4">
-                  {/* 2. [수정] 페이지네이션된 배열 사용 */}
                   {paginatedConsultPosts.map(post => (
                     <div key={post.id} className="bg-gray-700 p-4 rounded-md">
                       <h3 className="text-lg font-semibold text-white mb-1">{post.title}</h3>
@@ -831,7 +826,6 @@ export default function AdminPage() {
                       )}
                     </div>
                   ))}
-                  {/* 2. [추가] 종목 상담 요청 페이지네이션 버튼 */}
                   {totalConsultPages > 1 && (
                     <div className="flex justify-center space-x-2 mt-4">
                       {Array.from({ length: totalConsultPages }, (_, i) => i + 1).map(num => (
@@ -849,8 +843,6 @@ export default function AdminPage() {
               )}
             </section>
 
-
-            {/* 블로그 글 목록 섹션 */}
             <section className="space-y-4 pt-6 pb-6 border-b border-gray-700">
               <h2 className="text-2xl font-semibold text-white border-b-2 border-gray-700 pb-2">블로그 글 목록</h2>
               {postsLoading ? (
@@ -860,51 +852,52 @@ export default function AdminPage() {
               ) : existingPosts.length === 0 ? (
                 <p className="text-gray-400 text-center">작성된 블로그 글이 없습니다.</p>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {paginatedPosts.map((post) => (
-                    <div key={post.id} className="bg-gray-700 p-4 rounded-lg shadow-md flex flex-col justify-between">
-                      <div>
-                        <h3 className="text-xl font-semibold text-white mb-2">{post.title}</h3>
-                        <p className="text-gray-400 text-sm mb-1">작성자: {post.author}</p>
-                        <p className="text-gray-400 text-xs">작성일: {post.date}</p>
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {paginatedPosts.map((post) => (
+                      <div key={post.id} className="bg-gray-700 p-4 rounded-lg shadow-md flex flex-col justify-between">
+                        <div>
+                          <h3 className="text-xl font-semibold text-white mb-2">{post.title}</h3>
+                          <p className="text-gray-400 text-sm mb-1">작성자: {post.author}</p>
+                          <p className="text-gray-400 text-xs">작성일: {post.date}</p>
+                        </div>
+                        <div className="flex justify-end space-x-2 mt-4">
+                          <Link to={`/blog/${post.id}`} target="_blank" rel="noopener noreferrer" className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-1 px-3 rounded-md text-xs transition duration-300">
+                            보기
+                          </Link>
+                          <button
+                            onClick={() => handleEditPost(post)}
+                            className="bg-yellow-600 hover:bg-yellow-700 text-white font-semibold py-1 px-3 rounded-md text-xs transition duration-300"
+                          >
+                            수정
+                          </button>
+                          <button
+                            onClick={() => handleDeletePost(post.id, post.title)}
+                            className="bg-red-600 hover:bg-red-700 text-white font-semibold py-1 px-3 rounded-md text-xs transition duration-300"
+                          >
+                            삭제
+                          </button>
+                        </div>
                       </div>
-                      <div className="flex justify-end space-x-2 mt-4">
-                        <Link to={`/blog/${post.id}`} target="_blank" rel="noopener noreferrer" className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-1 px-3 rounded-md text-xs transition duration-300">
-                          보기
-                        </Link>
-                        <button
-                          onClick={() => handleEditPost(post)}
-                          className="bg-yellow-600 hover:bg-yellow-700 text-white font-semibold py-1 px-3 rounded-md text-xs transition duration-300"
-                        >
-                          수정
-                        </button>
-                        <button
-                          onClick={() => handleDeletePost(post.id, post.title)}
-                          className="bg-red-600 hover:bg-red-700 text-white font-semibold py-1 px-3 rounded-md text-xs transition duration-300"
-                        >
-                          삭제
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                {totalBlogPages > 1 && (
-                  <div className="flex justify-center space-x-2 mt-4">
-                    {Array.from({ length: totalBlogPages }, (_, i) => i + 1).map(num => (
-                      <button
-                        key={num}
-                        onClick={() => setBlogPage(num)}
-                        className={`px-3 py-1 rounded ${blogPage === num ? 'bg-blue-600' : 'bg-gray-700'}`}
-                      >
-                        {num}
-                      </button>
                     ))}
                   </div>
-                )}
+                  {totalBlogPages > 1 && (
+                    <div className="flex justify-center space-x-2 mt-4">
+                      {Array.from({ length: totalBlogPages }, (_, i) => i + 1).map(num => (
+                        <button
+                          key={num}
+                          onClick={() => setBlogPage(num)}
+                          className={`px-3 py-1 rounded ${blogPage === num ? 'bg-blue-600' : 'bg-gray-700'}`}
+                        >
+                          {num}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </>
               )}
             </section>
 
-            {/* AI 시장 이슈 요약 작성/수정 섹션 */}
             <section ref={aiSummaryFormRef} className="space-y-6 pt-6 pb-6 border-b border-gray-700">
               <div className="flex justify-between items-center">
                 <h2 className="text-2xl font-semibold text-white">
@@ -919,7 +912,6 @@ export default function AdminPage() {
                   </button>
                 )}
               </div>
-
               <div className="space-y-4">
                 <div>
                   <label htmlFor="aiSummaryTitle" className="block text-gray-300 text-sm font-bold mb-2">제목:</label>
@@ -944,12 +936,10 @@ export default function AdminPage() {
                     ></textarea>
                   ) : (
                     <ReactQuill
-                      // 💡 key prop 수정: editingAiSummaryId가 변경될 때마다 Quill 컴포넌트를 재마운트
-                      // 새 글 작성 모드일 때는 aiSummaryQuillKey를 사용하여 강제 리마운트 유도 (수정됨)
-                      key={editingAiSummaryId ? editingAiSummaryId : `new-ai-summary-${aiSummaryQuillKey}`} 
+                      key={editingAiSummaryId ? editingAiSummaryId : `new-ai-summary-${aiSummaryQuillKey}`}
                       ref={aiSummaryQuillRef}
                       theme="snow"
-                      value={newAiSummaryContent} // useEffect에서 관리
+                      value={newAiSummaryContent}
                       onChange={setNewAiSummaryContent}
                       modules={aiSummaryQuillModules}
                       className="bg-gray-700 text-gray-100 quill-dark-theme"
@@ -957,10 +947,10 @@ export default function AdminPage() {
                     />
                   )}
                   <button
-                      onClick={() => setAiSummaryEditHtmlMode(!aiSummaryEditHtmlMode)}
-                      className="mt-2 bg-gray-600 hover:bg-gray-500 text-white font-semibold py-1 px-3 rounded-md text-sm transition duration-300"
+                    onClick={() => setAiSummaryEditHtmlMode(!aiSummaryEditHtmlMode)}
+                    className="mt-2 bg-gray-600 hover:bg-gray-500 text-white font-semibold py-1 px-3 rounded-md text-sm transition duration-300"
                   >
-                      {aiSummaryEditHtmlMode ? 'WYSIWYG 에디터로 전환' : 'HTML 소스 코드 편집'}
+                    {aiSummaryEditHtmlMode ? 'WYSIWYG 에디터로 전환' : 'HTML 소스 코드 편집'}
                   </button>
                   <p className="text-gray-500 text-xs mt-2">
                     여기에 작성된 내용은 홈 화면의 'AI 기반 시장 이슈 요약' 섹션에 표시됩니다.
@@ -975,7 +965,6 @@ export default function AdminPage() {
               </div>
             </section>
 
-            {/* AI 시장 이슈 요약 목록 섹션 */}
             <section className="space-y-4 pt-6 pb-6 border-b border-gray-700">
               <h2 className="text-2xl font-semibold text-white border-b-2 border-gray-700 pb-2">AI 시장 이슈 요약 목록</h2>
               {aiSummariesLoading ? (
@@ -985,50 +974,51 @@ export default function AdminPage() {
               ) : existingAiSummaries.length === 0 ? (
                 <p className="text-gray-400 text-center">작성된 AI 요약 글이 없습니다.</p>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {paginatedAiSummaries.map((summary) => (
-                    <div key={summary.id} className="bg-gray-700 p-4 rounded-lg shadow-md flex flex-col justify-between">
-                      <div>
-                        <h3 className="text-xl font-semibold text-white mb-2">{summary.title}</h3>
-                        <p className="text-gray-400 text-xs">작성일: {summary.date}</p>
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {paginatedAiSummaries.map((summary) => (
+                      <div key={summary.id} className="bg-gray-700 p-4 rounded-lg shadow-md flex flex-col justify-between">
+                        <div>
+                          <h3 className="text-xl font-semibold text-white mb-2">{summary.title}</h3>
+                          <p className="text-gray-400 text-xs">작성일: {summary.date}</p>
+                        </div>
+                        <div className="flex justify-end space-x-2 mt-4">
+                          <Link to={`/ai-summaries/${summary.id}`} target="_blank" rel="noopener noreferrer" className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-1 px-3 rounded-md text-xs transition duration-300">
+                            보기
+                          </Link>
+                          <button
+                            onClick={() => handleEditAiSummary(summary)}
+                            className="bg-yellow-600 hover:bg-yellow-700 text-white font-semibold py-1 px-3 rounded-md text-xs transition duration-300"
+                          >
+                            수정
+                          </button>
+                          <button
+                            onClick={() => handleDeleteAiSummary(summary.id, summary.title)}
+                            className="bg-red-600 hover:bg-red-700 text-white font-semibold py-1 px-3 rounded-md text-xs transition duration-300"
+                          >
+                            삭제
+                          </button>
+                        </div>
                       </div>
-                      <div className="flex justify-end space-x-2 mt-4">
-                        <Link to={`/ai-summaries/${summary.id}`} target="_blank" rel="noopener noreferrer" className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-1 px-3 rounded-md text-xs transition duration-300">
-                          보기
-                        </Link>
-                        <button
-                          onClick={() => handleEditAiSummary(summary)}
-                          className="bg-yellow-600 hover:bg-yellow-700 text-white font-semibold py-1 px-3 rounded-md text-xs transition duration-300"
-                        >
-                          수정
-                        </button>
-                        <button
-                          onClick={() => handleDeleteAiSummary(summary.id, summary.title)}
-                          className="bg-red-600 hover:bg-red-700 text-white font-semibold py-1 px-3 rounded-md text-xs transition duration-300"
-                        >
-                          삭제
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                {totalAiPages > 1 && (
-                  <div className="flex justify-center space-x-2 mt-4">
-                    {Array.from({ length: totalAiPages }, (_, i) => i + 1).map(num => (
-                      <button
-                        key={num}
-                        onClick={() => setAiPage(num)}
-                        className={`px-3 py-1 rounded ${aiPage === num ? 'bg-blue-600' : 'bg-gray-700'}`}
-                      >
-                        {num}
-                      </button>
                     ))}
                   </div>
-                )}
+                  {totalAiPages > 1 && (
+                    <div className="flex justify-center space-x-2 mt-4">
+                      {Array.from({ length: totalAiPages }, (_, i) => i + 1).map(num => (
+                        <button
+                          key={num}
+                          onClick={() => setAiPage(num)}
+                          className={`px-3 py-1 rounded ${aiPage === num ? 'bg-blue-600' : 'bg-gray-700'}`}
+                        >
+                          {num}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </>
               )}
             </section>
 
-            {/* === 종목 분석 작성/수정 섹션 (종목 코드 제거, 상태/수익률 추가) === */}
             <section ref={stockAnalysisFormRef} className="space-y-6 pt-6 pb-6 border-b border-gray-700">
               <div className="flex justify-between items-center">
                 <h2 className="text-2xl font-semibold text-white">
@@ -1043,7 +1033,6 @@ export default function AdminPage() {
                   </button>
                 )}
               </div>
-
               <div className="space-y-4">
                 <div>
                   <label htmlFor="stockName" className="block text-gray-300 text-sm font-bold mb-2">종목명:</label>
@@ -1076,7 +1065,6 @@ export default function AdminPage() {
                     placeholder="예: AI 반도체 관련주로 최근 강한 상승세를 보였으며, 실적 기대감 유효."
                   ></textarea>
                 </div>
-                {/* 💡 상태 선택 필드 추가 */}
                 <div>
                   <label htmlFor="stockStatus" className="block text-gray-300 text-sm font-bold mb-2">상태:</label>
                   <select
@@ -1090,7 +1078,6 @@ export default function AdminPage() {
                     <option value="손절">손절</option>
                   </select>
                 </div>
-                {/* 💡 수익률 입력 필드 추가 (상태가 목표달성 또는 손절일 때만 표시) */}
                 {(newStockAnalysisStatus === '목표달성' || newStockAnalysisStatus === '손절') && (
                   <div>
                     <label htmlFor="stockReturnRate" className="block text-gray-300 text-sm font-bold mb-2">수익률:</label>
@@ -1113,7 +1100,6 @@ export default function AdminPage() {
               </div>
             </section>
 
-            {/* === 종목 분석 목록 섹션 (종목 코드 제거, 상태/수익률 표시 및 변경 버튼 추가) === */}
             <section className="space-y-4 pt-6">
               <h2 className="text-2xl font-semibold text-white border-b-2 border-gray-700 pb-2">종목 분석 목록</h2>
               {stockAnalysesLoading ? (
@@ -1123,67 +1109,67 @@ export default function AdminPage() {
               ) : existingStockAnalyses.length === 0 ? (
                 <p className="text-gray-400 text-center">작성된 종목 분석이 없습니다.</p>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4"> {/* lg:grid-cols-3 제거 (아이템당 공간 더 필요) */}
-                  {paginatedStockAnalyses.map((analysis) => {
-                    let statusBadgeClass = 'bg-blue-500 text-blue-100';
-                    if (analysis.status === '목표달성') {
-                      statusBadgeClass = 'bg-green-500 text-green-100';
-                    } else if (analysis.status === '손절') {
-                      statusBadgeClass = 'bg-red-500 text-red-100';
-                    }
-                    
-                    return (
-                      <div key={analysis.id} className="bg-gray-700 p-4 rounded-lg shadow-md flex flex-col justify-between">
-                        <div>
-                          <h3 className="text-xl font-semibold text-white mb-2">{analysis.name}</h3>
-                          <p className="text-gray-400 text-sm mb-1">등록일: {analysis.createdAt ? new Date(analysis.createdAt.toDate()).toLocaleDateString('ko-KR') : '날짜 없음'}</p>
-                          <p className="text-gray-400 text-sm mb-1">전략: {analysis.strategy}</p>
-                          <p className="text-gray-400 text-sm mb-1">설명: {analysis.detail}</p>
-                          {/* 💡 상태 및 수익률 표시 */}
-                          <p className="text-gray-400 text-sm mt-2">
-                            상태: <span className={`${statusBadgeClass} text-xs font-semibold px-2.5 py-0.5 rounded-full`}>
-                              {analysis.status || '진행중'}
-                            </span>
-                            {analysis.returnRate && <span className="ml-2">수익률: {analysis.returnRate}</span>}
-                          </p>
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {paginatedStockAnalyses.map((analysis) => {
+                      let statusBadgeClass = 'bg-blue-500 text-blue-100';
+                      if (analysis.status === '목표달성') {
+                        statusBadgeClass = 'bg-green-500 text-green-100';
+                      } else if (analysis.status === '손절') {
+                        statusBadgeClass = 'bg-red-500 text-red-100';
+                      }
+                      return (
+                        <div key={analysis.id} className="bg-gray-700 p-4 rounded-lg shadow-md flex flex-col justify-between">
+                          <div>
+                            <h3 className="text-xl font-semibold text-white mb-2">{analysis.name}</h3>
+                            <p className="text-gray-400 text-sm mb-1">등록일: {analysis.createdAt ? new Date(analysis.createdAt.toDate()).toLocaleDateString('ko-KR') : '날짜 없음'}</p>
+                            <p className="text-gray-400 text-sm mb-1">전략: {analysis.strategy}</p>
+                            <p className="text-gray-400 text-sm mb-1">설명: {analysis.detail}</p>
+                            <p className="text-gray-400 text-sm mt-2">
+                              상태: <span className={`${statusBadgeClass} text-xs font-semibold px-2.5 py-0.5 rounded-full`}>
+                                {analysis.status || '진행중'}
+                              </span>
+                              {analysis.returnRate && <span className="ml-2">수익률: {analysis.returnRate}</span>}
+                            </p>
+                          </div>
+                          <div className="flex flex-wrap justify-end space-x-2 mt-4">
+                            <button
+                              onClick={() => handleStockAnalysisStatusChange(analysis.id, analysis.status, analysis.returnRate, analysis.name)}
+                              className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-1 px-3 rounded-md text-xs transition duration-300"
+                            >
+                              상태 변경
+                            </button>
+                            <button
+                              onClick={() => handleEditStockAnalysis(analysis)}
+                              className="bg-yellow-600 hover:bg-yellow-700 text-white font-semibold py-1 px-3 rounded-md text-xs transition duration-300"
+                            >
+                              수정
+                            </button>
+                            <button
+                              onClick={() => handleDeleteStockAnalysis(analysis.id, analysis.name)}
+                              className="bg-red-600 hover:bg-red-700 text-white font-semibold py-1 px-3 rounded-md text-xs transition duration-300"
+                            >
+                              삭제
+                            </button>
+                          </div>
                         </div>
-                        <div className="flex flex-wrap justify-end space-x-2 mt-4">
-                          <button
-                            onClick={() => handleStockAnalysisStatusChange(analysis.id, analysis.status, analysis.returnRate, analysis.name)}
-                            className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-1 px-3 rounded-md text-xs transition duration-300"
-                          >
-                            상태 변경
-                          </button>
-                          <button
-                            onClick={() => handleEditStockAnalysis(analysis)}
-                            className="bg-yellow-600 hover:bg-yellow-700 text-white font-semibold py-1 px-3 rounded-md text-xs transition duration-300"
-                          >
-                            수정
-                          </button>
-                          <button
-                            onClick={() => handleDeleteStockAnalysis(analysis.id, analysis.name)}
-                            className="bg-red-600 hover:bg-red-700 text-white font-semibold py-1 px-3 rounded-md text-xs transition duration-300"
-                          >
-                            삭제
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-                {totalStockPages > 1 && (
-                  <div className="flex justify-center space-x-2 mt-4">
-                    {Array.from({ length: totalStockPages }, (_, i) => i + 1).map(num => (
-                      <button
-                        key={num}
-                        onClick={() => setStockPage(num)}
-                        className={`px-3 py-1 rounded ${stockPage === num ? 'bg-blue-600' : 'bg-gray-700'}`}
-                      >
-                        {num}
-                      </button>
-                    ))}
+                      );
+                    })}
                   </div>
-                )}
+                  {totalStockPages > 1 && (
+                    <div className="flex justify-center space-x-2 mt-4">
+                      {Array.from({ length: totalStockPages }, (_, i) => i + 1).map(num => (
+                        <button
+                          key={num}
+                          onClick={() => setStockPage(num)}
+                          className={`px-3 py-1 rounded ${stockPage === num ? 'bg-blue-600' : 'bg-gray-700'}`}
+                        >
+                          {num}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </>
               )}
             </section>
 
@@ -1204,4 +1190,3 @@ export default function AdminPage() {
     </div>
   );
 }
-// END OF FILE AdminPage.jsx
