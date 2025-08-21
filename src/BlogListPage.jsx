@@ -41,20 +41,15 @@ export default function BlogListPage() {
     setCurrentPage(1);
   }, [searchTerm]);
 
-  // ✅ Google AdSense 광고 단위 로드 로직 (수정)
+  /* 광고 코드 주석 처리
   useEffect(() => {
     if (window.adsbygoogle) {
       try {
-        // 큐 초기화는 여전히 좋은 습관이지만, key 속성 변경이 더 효과적입니다.
         window.adsbygoogle = window.adsbygoogle || [];
-        // 큐를 비워주는 것은 여러 광고 슬롯이 있을 때 이전에 푸시된 것이 중복으로 처리되지 않도록 돕습니다.
         if (window.adsbygoogle.length > 0) {
            window.adsbygoogle.length = 0;
         }
-
-        // DOM에서 새로 마운트된 광고 요소만 찾아서 푸시합니다.
-        // key prop 덕분에 페이지 이동 시 항상 새로운 ins 요소가 됩니다.
-        const adElements = document.querySelectorAll('ins.adsbygoogle'); // :not([data-ad-status="done"]) 제거
+        const adElements = document.querySelectorAll('ins.adsbygoogle');
         adElements.forEach(adElement => {
             (window.adsbygoogle || []).push({});
         });
@@ -62,7 +57,8 @@ export default function BlogListPage() {
         console.error("AdSense push error in BlogListPage:", e);
       }
     }
-  }, [location.pathname]); // 경로 변경 시 useEffect 다시 실행
+  }, [location.pathname]);
+  */
 
   const postsPerPage = 10;
 
@@ -110,8 +106,8 @@ export default function BlogListPage() {
       <h1 className="text-3xl font-bold text-white mb-6 border-b-2 border-green-500 pb-2">최신 블로그 포스트</h1>
       <p className="text-gray-300 mb-8">실전 투자 전략, 시장 분석 팁, 그리고 투자 심리 관리에 대한 심도 깊은 블로그 포스트들을 확인하세요.</p>
 
-      {/* ✅ Google AdSense 인스트림 광고 단위 (key prop 추가) */}
-      <div className="text-center my-8" key={location.pathname}> {/* ✅ key={location.pathname} 추가 */}
+      {/**
+      <div className="text-center my-8" key={location.pathname}>
         <ins className="adsbygoogle"
              style={{ display: "block" }}
              data-ad-client="ca-pub-1861160469675223"
@@ -119,7 +115,7 @@ export default function BlogListPage() {
              data-ad-format="auto"
              data-full-width-responsive="true"></ins>
       </div>
-      {/* 광고 끝 */}
+      */}
 
       <div className="mb-6">
         <input
