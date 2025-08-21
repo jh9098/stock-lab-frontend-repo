@@ -35,19 +35,15 @@ export default function NewsPage() {
     fetchNews();
   }, []);
 
-  // ✅ Google AdSense 광고 단위 로드 로직 (수정된 부분)
+  /* 광고 코드 주석 처리
   useEffect(() => {
     if (window.adsbygoogle) {
       try {
-        // 큐 초기화는 여전히 좋은 습관이지만, key 속성 변경이 더 효과적입니다.
         window.adsbygoogle = window.adsbygoogle || [];
         if (window.adsbygoogle.length > 0) {
           window.adsbygoogle.length = 0;
         }
-        
-        // DOM에서 새로 마운트된 광고 요소만 찾아서 푸시합니다.
-        // key prop 덕분에 페이지 이동 시 항상 새로운 ins 요소가 됩니다.
-        const adElements = document.querySelectorAll('ins.adsbygoogle'); // :not([data-ad-status="done"]) 제거
+        const adElements = document.querySelectorAll('ins.adsbygoogle');
         adElements.forEach(adElement => {
             (window.adsbygoogle || []).push({});
         });
@@ -55,7 +51,8 @@ export default function NewsPage() {
         console.error("AdSense push error in NewsPage:", e);
       }
     }
-  }, [location.pathname]); // 경로 변경 시 useEffect 다시 실행
+  }, [location.pathname]);
+  */
 
 
   if (loading) {
@@ -88,16 +85,16 @@ export default function NewsPage() {
       <h1 className="text-3xl font-bold text-white mb-6 border-b-2 border-purple-500 pb-2">최신 주식/경제 뉴스</h1>
       <p className="text-gray-300 mb-8">AI가 분석한 최신 시장 트렌드와 주요 경제 뉴스가 실시간으로 업데이트됩니다. 빠르게 시장을 파악하고 투자 기회를 잡으세요.</p>
 
-      {/* ✅ Google AdSense 인스트림 광고 단위 (key prop 추가) */}
-      <div className="text-center my-8" key={location.pathname}> {/* ✅ key={location.pathname} 추가 */}
+      {/**
+      <div className="text-center my-8" key={location.pathname}>
         <ins className="adsbygoogle"
              style={{ display: "block" }}
              data-ad-client="ca-pub-1861160469675223"
-             data-ad-slot="2203204469" // BlogListPage와 동일한 슬롯 ID를 사용하셨네요
+             data-ad-slot="2203204469"
              data-ad-format="auto"
              data-full-width-responsive="true"></ins>
       </div>
-      {/* 광고 끝 */}
+      */}
 
       {newsItems.length > 0 ? (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
