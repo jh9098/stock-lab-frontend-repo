@@ -45,7 +45,7 @@ export default function Home() {
 
 
   // API 서버 주소 (Render 백엔드 앱의 URL)
-  const API_BASE_URL = 'https://stock-lab-backend-repo.onrender.com'; // Render 배포 후 얻게 되는 실제 URL로 변경
+  const API_BASE_URL = 'https://stock-lab-ac18.onrender.com'; // Render 배포 후 얻게 되는 실제 URL로 변경
 
   /* 광고 코드 주석 처리
   useEffect(() => {
