@@ -7,6 +7,7 @@ import PathList from "../components/PathList";
 import CausalGraph from "../components/CausalGraph";
 import { inferCausalPaths, ApiError } from "../lib/api";
 import { formatPercent, formatScore, formatDirectionLabel } from "../lib/format";
+import { buildSampleCausalResponse } from "../data/sampleCausalResponse";
 
 function getDirectionBadge(direction) {
   switch (direction) {
@@ -28,18 +29,42 @@ export default function CausalInference() {
   const [error, setError] = useState(null);
   const [status, setStatus] = useState("idle");
   const [statusMessage, setStatusMessage] = useState("");
+  const [isUsingSampleData, setIsUsingSampleData] = useState(false);
+  const [sampleNotice, setSampleNotice] = useState("");
 
   const apiBase = import.meta.env.VITE_API_BASE;
   const isApiConfigured = Boolean(apiBase);
 
-  const handleSubmit = async ({ start, end, direction, minStrength }) => {
-    if (!isApiConfigured) {
-      setError("API 기본 URL이 설정되지 않아 요청을 보낼 수 없습니다. .env 파일을 확인해주세요.");
-      setStatus("error");
-      setStatusMessage("");
-      return;
+  const applySampleData = (payload = {}, notice) => {
+    const sampleResponse = buildSampleCausalResponse({
+      start: payload.start,
+      end: payload.end,
+      start_direction: payload.start_direction,
+    });
+
+    setResult(sampleResponse);
+    const samplePaths = sampleResponse?.top_paths ?? [];
+    setPaths(samplePaths);
+
+    if (!samplePaths || samplePaths.length === 0) {
+      setStatus("empty");
+      setStatusMessage("샘플 데이터에서 경로를 찾지 못했습니다.");
+    } else {
+      setStatus("success");
+      setStatusMessage(
+        `샘플 데이터: 총 ${samplePaths.length}개 경로 중 상위 ${Math.min(8, samplePaths.length)}개를 보여줍니다.`
+      );
     }
 
+    setError(null);
+    setIsUsingSampleData(true);
+    setSampleNotice(
+      notice ?? "실제 API 대신 제공된 causal_graph.json 기반 샘플 데이터를 표시하고 있습니다."
+    );
+    setLoading(false);
+  };
+
+  const handleSubmit = async ({ start, end, direction, minStrength }) => {
     const normalizedDirection = direction === "down" || direction === "하락" ? "down" : "up";
     const payload = {
       start,
@@ -49,6 +74,15 @@ export default function CausalInference() {
       max_hops: 6,
       max_paths: 5000,
     };
+
+    setError(null);
+    setIsUsingSampleData(false);
+    setSampleNotice("");
+
+    if (!isApiConfigured) {
+      applySampleData(payload, "API 기본 URL이 설정되지 않아 샘플 데이터를 표시합니다.");
+      return;
+    }
 
     setLoading(true);
     setError(null);
@@ -68,6 +102,9 @@ export default function CausalInference() {
         setStatus("success");
         setStatusMessage(`총 ${topPaths.length}개 경로 중 상위 ${Math.min(8, topPaths.length)}개를 보여줍니다.`);
       }
+
+      setIsUsingSampleData(false);
+      setSampleNotice("");
     } catch (err) {
       let message = "연쇄효과 추론 중 오류가 발생했습니다.";
       if (err instanceof ApiError) {
@@ -85,12 +122,7 @@ export default function CausalInference() {
       } else if (err?.message) {
         message = err.message;
       }
-
-      setError(message);
-      setStatus("error");
-      setStatusMessage("");
-      setResult(null);
-      setPaths([]);
+      applySampleData(payload, `${message} 대신 제공된 샘플 데이터를 표시합니다.`);
     } finally {
       setLoading(false);
     }
@@ -135,6 +167,12 @@ export default function CausalInference() {
           </div>
         )}
 
+        {sampleNotice && (
+          <div className="rounded-lg border border-sky-500/40 bg-sky-500/10 p-4 text-sm text-sky-100" role="status">
+            {sampleNotice}
+          </div>
+        )}
+
         <CausalForm onSubmit={handleSubmit} loading={loading} />
 
         <section className="space-y-4 rounded-xl border border-gray-700 bg-gray-800/70 p-6 shadow-lg">
@@ -143,9 +181,16 @@ export default function CausalInference() {
               <h2 className="text-xl font-semibold text-white">결과 요약</h2>
               <p className="text-sm text-gray-300">응답에 포함된 핵심 지표를 한눈에 확인하세요.</p>
             </div>
-            {statusMessage && (
-              <span className="rounded-full bg-slate-700 px-3 py-1 text-xs text-slate-200">{statusMessage}</span>
-            )}
+            <div className="flex flex-wrap gap-2">
+              {isUsingSampleData && (
+                <span className="rounded-full border border-sky-500/60 bg-sky-500/15 px-3 py-1 text-xs font-semibold text-sky-100">
+                  샘플 데이터
+                </span>
+              )}
+              {statusMessage && (
+                <span className="rounded-full bg-slate-700 px-3 py-1 text-xs text-slate-200">{statusMessage}</span>
+              )}
+            </div>
           </div>
 
           {loading && (
