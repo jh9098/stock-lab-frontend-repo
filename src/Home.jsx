@@ -270,6 +270,7 @@ export default function Home() {
               <li><Link to="/news" className="text-gray-300 hover:text-white transition duration-300">뉴스룸</Link></li>
               <li><Link to="/recommendations" className="text-gray-300 hover:text-white transition duration-300">종목추천</Link></li>
               <li><Link to="/forum" className="text-gray-300 hover:text-white transition duration-300">종목상담</Link></li>
+              <li><Link to="/causal" className="text-gray-300 hover:text-white transition duration-300">연쇄효과 추론</Link></li>
               <li><a href="#social-media" className="text-gray-300 hover:text-white transition duration-300">미디어</a></li>
               <li><a href="#extra-features" className="text-gray-300 hover:text-white transition duration-300">부가기능</a></li>
             </ul>
