@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>판매자 체험단 현황</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="page-header">
+      <h1>판매자 체험단 현황</h1>
+      <p class="description">
+        판매자 상품과 체험단 진행 현황을 실시간으로 확인할 수 있는 관리자 페이지입니다.
+        <span class="note">체험단 진행 건수는 통계 응답을 상품 ID 기준으로 매칭하여 계산합니다.</span>
+      </p>
+      <div class="controls">
+        <button id="refreshButton" class="refresh-button" type="button">데이터 새로고침</button>
+        <span id="lastUpdated" class="last-updated">최근 업데이트: -</span>
+      </div>
+    </header>
+
+    <main class="content">
+      <div id="alertContainer" class="alert-container" role="alert"></div>
+
+      <section class="table-wrapper" aria-live="polite">
+        <table class="seller-table">
+          <caption>판매자별 체험단 진행 현황</caption>
+          <thead>
+            <tr>
+              <th scope="col">상품명</th>
+              <th scope="col">판매자</th>
+              <th scope="col">플랫폼</th>
+              <th scope="col">총 체험단</th>
+              <th scope="col">모집</th>
+              <th scope="col">진행</th>
+              <th scope="col">완료</th>
+            </tr>
+          </thead>
+          <tbody id="sellerTableBody">
+            <tr class="placeholder-row">
+              <td colspan="7">데이터를 불러오는 중입니다...</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+    </main>
+
+    <template id="rowTemplate">
+      <tr>
+        <th scope="row" class="product-name"></th>
+        <td class="seller-name"></td>
+        <td class="platform"></td>
+        <td class="total"></td>
+        <td class="recruiting"></td>
+        <td class="progress"></td>
+        <td class="completed"></td>
+      </tr>
+    </template>
+
+    <script type="module" src="./script.js"></script>
+  </body>
+</html>
