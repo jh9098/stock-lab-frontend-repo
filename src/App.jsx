@@ -13,6 +13,7 @@ import ForumDetailPage from "./ForumDetailPage";
 import AdminPage from "./AdminPage";
 import AiSummaryListPage from "./AiSummaryListPage";
 import AiSummaryDetailPage from "./AiSummaryDetailPage";
+import PortfolioPage from "./PortfolioPage";
 import CausalInference from "./pages/CausalInference";
 // NewsDetailPage는 이제 필요 없으므로 제거
 
@@ -30,6 +31,7 @@ function App() {
       <Route path="/forum/:postId" element={<ForumDetailPage />} />
       <Route path="/admin" element={<AdminPage />} />
       <Route path="/causal" element={<CausalInference />} />
+      <Route path="/portfolio" element={<PortfolioPage />} />
 
       {/* AI 시장 이슈 요약 관련 라우트 */}
       <Route path="/ai-summaries" element={<AiSummaryListPage />} />
