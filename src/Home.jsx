@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useLocation, Link } from "react-router-dom";
 import PopularStocksCompact from "./components/PopularStocksCompact";
 import { Helmet } from "react-helmet";
+import { API_BASE_URL } from "./lib/apiConfig";
 
 // Firebase imports
 import { db } from './firebaseConfig';
@@ -43,9 +44,6 @@ export default function Home() {
   const [forumLoading, setForumLoading] = useState(true);
   const [forumError, setForumError] = useState(null);
 
-
-  // API 서버 주소 (Render 백엔드 앱의 URL)
-  const API_BASE_URL = 'https://stock-lab-ac18.onrender.com'; // Render 배포 후 얻게 되는 실제 URL로 변경
 
   /* 광고 코드 주석 처리
   useEffect(() => {
