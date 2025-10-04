@@ -3,15 +3,13 @@
 import React, { useEffect, useState } from 'react';
 import { Helmet } from 'react-helmet';
 import { Link, useLocation } from 'react-router-dom';
+import { API_BASE_URL } from './lib/apiConfig';
 
 export default function NewsPage() {
   const [newsItems, setNewsItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const location = useLocation();
-
-  // API 서버 주소 (개발 환경 기준)
-  const API_BASE_URL = 'https://stock-lab-backend-repo.onrender.com';
 
   useEffect(() => {
     const fetchNews = async () => {

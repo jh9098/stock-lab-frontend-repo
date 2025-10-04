@@ -10,11 +10,17 @@ import ThemesPage from "./ThemesPage";
 import ForumPage from "./ForumPage";
 import ForumWritePage from "./ForumWritePage";
 import ForumDetailPage from "./ForumDetailPage";
-import AdminPage from "./AdminPage";
 import AiSummaryListPage from "./AiSummaryListPage";
 import AiSummaryDetailPage from "./AiSummaryDetailPage";
 import PortfolioPage from "./PortfolioPage";
 import CausalInference from "./pages/CausalInference";
+import AdminLayout from "./admin/AdminLayout";
+import AdminDashboard from "./admin/sections/AdminDashboard";
+import BlogManager from "./admin/sections/BlogManager";
+import AiSummaryManager from "./admin/sections/AiSummaryManager";
+import StockAnalysisManager from "./admin/sections/StockAnalysisManager";
+import ConsultManager from "./admin/sections/ConsultManager";
+import PortfolioManager from "./admin/sections/PortfolioManager";
 // NewsDetailPage는 이제 필요 없으므로 제거
 
 function App() {
@@ -29,7 +35,14 @@ function App() {
       <Route path="/forum" element={<ForumPage />} />
       <Route path="/forum/write" element={<ForumWritePage />} />
       <Route path="/forum/:postId" element={<ForumDetailPage />} />
-      <Route path="/admin" element={<AdminPage />} />
+      <Route path="/admin" element={<AdminLayout />}>
+        <Route index element={<AdminDashboard />} />
+        <Route path="blog" element={<BlogManager />} />
+        <Route path="ai-summaries" element={<AiSummaryManager />} />
+        <Route path="stocks" element={<StockAnalysisManager />} />
+        <Route path="forum" element={<ConsultManager />} />
+        <Route path="portfolio" element={<PortfolioManager />} />
+      </Route>
       <Route path="/causal" element={<CausalInference />} />
       <Route path="/portfolio" element={<PortfolioPage />} />
 
