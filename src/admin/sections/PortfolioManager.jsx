@@ -16,7 +16,7 @@ import {
 import { db } from "../../firebaseConfig";
 import { useAdminContext } from "../AdminContext";
 
-const STOCK_PRICE_COLLECTION = "stockPrices";
+const STOCK_PRICE_COLLECTION = "stock_prices";
 
 const STATUS_OPTIONS = [
   { value: "진행중", label: "진행중" },

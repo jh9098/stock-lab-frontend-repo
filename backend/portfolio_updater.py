@@ -12,7 +12,7 @@ from pykrx import stock
 LOGGER = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
-FIRESTORE_COLLECTION_PRICES = "stockPrices"
+FIRESTORE_COLLECTION_PRICES = "stock_prices"
 PORTFOLIO_COLLECTION = "portfolioStocks"
 BATCH_WRITE_LIMIT = 400
 FETCH_DAYS = 365
