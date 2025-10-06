@@ -180,10 +180,25 @@ export default function PortfolioPage() {
     loading: priceLoading,
     error: priceError,
   } = useStockPrices(selectedStock?.ticker, { days: 400 });
-  const recentPrices = useMemo(
-    () => priceHistory.slice(-10).reverse(),
-    [priceHistory]
-  );
+  const recentPrices = useMemo(() => {
+    if (!priceHistory.length) {
+      return [];
+    }
+
+    return priceHistory
+      .map((item) => ({
+        original: item,
+        dateValue: new Date(item.date),
+      }))
+      .filter(
+        (item) =>
+          item.dateValue instanceof Date &&
+          !Number.isNaN(item.dateValue.getTime())
+      )
+      .sort((a, b) => b.dateValue - a.dateValue)
+      .slice(0, 10)
+      .map((item) => item.original);
+  }, [priceHistory]);
 
   const targetAnalysis = useMemo(() => {
     if (!selectedStock || !priceHistory.length) {
