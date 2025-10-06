@@ -1,4 +1,4 @@
-import causalGraph from "./causal_graph.json" with { type: "json" };
+import causalGraph from "./causal_graph.json";
 
 const PATH_SEQUENCES = [
   {
