@@ -28,8 +28,20 @@ function buildUrl(path = "", { ensureApiPrefix = false } = {}) {
     }
   }
 
-  const combined = normalizedBase ? `${normalizedBase}/${trimmedPath}` : `/${trimmedPath}`;
-  return combined.replace(/\/\/+/, "/");
+  if (!normalizedBase) {
+    return trimmedPath ? `/${trimmedPath}` : "/";
+  }
+
+  if (/^https?:\/\//i.test(normalizedBase)) {
+    try {
+      const url = new URL(trimmedPath, `${normalizedBase}/`);
+      return url.toString().replace(/\/$/, "");
+    } catch (error) {
+      // URL 생성에 실패한 경우에는 안전하게 폴백합니다.
+    }
+  }
+
+  return trimmedPath ? `${normalizedBase}/${trimmedPath}` : normalizedBase;
 }
 
 export async function fetchWithTimeout(url, { method = "GET", headers = {}, body, timeout = DEFAULT_TIMEOUT, signal } = {}) {
