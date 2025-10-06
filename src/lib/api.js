@@ -1,5 +1,8 @@
 // START OF FILE src/lib/api.js
 
+import { resolveApiBase } from "./apiConfig";
+export { resolveApiBase } from "./apiConfig";
+
 const DEFAULT_TIMEOUT = 12000;
 
 export class ApiError extends Error {
@@ -11,11 +14,34 @@ export class ApiError extends Error {
   }
 }
 
-function buildUrl(path = "") {
-  const base = import.meta.env.VITE_API_BASE || "";
-  const trimmedBase = base.replace(/\/$/, "");
+function buildUrl(path = "", { ensureApiPrefix = false } = {}) {
+  const base = resolveApiBase() || "";
   const trimmedPath = path.replace(/^\//, "");
-  return `${trimmedBase}/${trimmedPath}`.replace(/\/\/+/, "/");
+
+  let normalizedBase = base.replace(/\/$/, "");
+
+  if (ensureApiPrefix) {
+    if (!normalizedBase) {
+      normalizedBase = "/api";
+    } else if (!normalizedBase.endsWith("/api")) {
+      normalizedBase = `${normalizedBase}/api`;
+    }
+  }
+
+  if (!normalizedBase) {
+    return trimmedPath ? `/${trimmedPath}` : "/";
+  }
+
+  if (/^https?:\/\//i.test(normalizedBase)) {
+    try {
+      const url = new URL(trimmedPath, `${normalizedBase}/`);
+      return url.toString().replace(/\/$/, "");
+    } catch (error) {
+      // URL 생성에 실패한 경우에는 안전하게 폴백합니다.
+    }
+  }
+
+  return trimmedPath ? `${normalizedBase}/${trimmedPath}` : normalizedBase;
 }
 
 export async function fetchWithTimeout(url, { method = "GET", headers = {}, body, timeout = DEFAULT_TIMEOUT, signal } = {}) {
@@ -99,11 +125,7 @@ function composeAbortSignal(...signals) {
 }
 
 export async function inferCausalPaths(payload, options = {}) {
-  if (!import.meta.env.VITE_API_BASE) {
-    throw new ApiError("API 기본 URL(VITE_API_BASE)이 설정되지 않았습니다.");
-  }
-
-  const url = buildUrl("/infer");
+  const url = buildUrl("infer-paths", { ensureApiPrefix: true });
   const body = JSON.stringify(payload);
 
   return fetchWithTimeout(url, {

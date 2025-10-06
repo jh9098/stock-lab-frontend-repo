@@ -5,7 +5,7 @@ import { Helmet } from "react-helmet";
 import CausalForm from "../components/CausalForm";
 import PathList from "../components/PathList";
 import CausalGraph from "../components/CausalGraph";
-import { inferCausalPaths, ApiError } from "../lib/api";
+import { inferCausalPaths, ApiError, resolveApiBase } from "../lib/api";
 import { formatPercent, formatScore, formatDirectionLabel } from "../lib/format";
 import { buildSampleCausalResponse } from "../data/sampleCausalResponse";
 
@@ -32,8 +32,8 @@ export default function CausalInference() {
   const [isUsingSampleData, setIsUsingSampleData] = useState(false);
   const [sampleNotice, setSampleNotice] = useState("");
 
-  const apiBase = import.meta.env.VITE_API_BASE;
-  const isApiConfigured = Boolean(apiBase);
+  const apiBase = resolveApiBase();
+  const isApiConfigured = typeof apiBase === "string" && apiBase.length > 0;
 
   const applySampleData = (payload = {}, notice) => {
     const sampleResponse = buildSampleCausalResponse({
