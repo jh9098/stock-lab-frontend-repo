@@ -12,6 +12,7 @@ import {
   startAt,
   endAt,
   updateDoc,
+  serverTimestamp,
 } from "firebase/firestore";
 import { db } from "../../firebaseConfig";
 import { useAdminContext } from "../AdminContext";
@@ -51,6 +52,26 @@ function toNumber(value) {
   if (value === "" || value === null || value === undefined) return null;
   const num = Number(value);
   return Number.isFinite(num) ? num : null;
+}
+
+function formatTimestamp(value) {
+  if (!value) return "-";
+  let dateValue = value;
+  if (typeof value?.toDate === "function") {
+    try {
+      dateValue = value.toDate();
+    } catch (error) {
+      console.warn("타임스탬프 변환 실패", error);
+      dateValue = value;
+    }
+  }
+  if (!(dateValue instanceof Date)) {
+    dateValue = new Date(dateValue);
+  }
+  if (!(dateValue instanceof Date) || Number.isNaN(dateValue.getTime())) {
+    return "-";
+  }
+  return dateValue.toISOString().slice(0, 10);
 }
 
 export default function PortfolioManager() {
@@ -317,7 +338,7 @@ export default function PortfolioManager() {
       aggregatedReturn: toNumber(stockForm.aggregatedReturn),
       strategyNote: stockForm.strategyNote,
       orderIndex: toNumber(stockForm.orderIndex) ?? stocks.length + 1,
-      updatedAt: new Date(),
+      updatedAt: serverTimestamp(),
     };
 
     try {
@@ -327,7 +348,7 @@ export default function PortfolioManager() {
       } else {
         const docRef = await addDoc(collection(db, "portfolioStocks"), {
           ...payload,
-          createdAt: new Date(),
+          createdAt: serverTimestamp(),
         });
         setSelectedId(docRef.id);
         setMessage("새 포트폴리오 종목이 등록되었습니다.");
@@ -387,7 +408,7 @@ export default function PortfolioManager() {
       targetPrice: Number(legForm.targetPrice),
       weight: Number(legForm.weightPercent) / 100,
       filled: Boolean(legForm.filled),
-      updatedAt: new Date(),
+      updatedAt: serverTimestamp(),
     };
 
     try {
@@ -398,7 +419,7 @@ export default function PortfolioManager() {
       } else {
         await addDoc(legsCollection, {
           ...legData,
-          createdAt: new Date(),
+          createdAt: serverTimestamp(),
         });
         setMessage("새 전략 단계가 추가되었습니다.");
       }
@@ -542,6 +563,12 @@ export default function PortfolioManager() {
                   )}
                 </label>
               </div>
+              {selectedStock && (
+                <div className="rounded-lg bg-gray-950 px-4 py-2 text-xs text-gray-400">
+                  <p>최근 업데이트: {formatTimestamp(selectedStock.updatedAt)}</p>
+                  <p className="mt-1">등록일: {formatTimestamp(selectedStock.createdAt)}</p>
+                </div>
+              )}
               <div className="grid md:grid-cols-2 gap-4">
                 <label className="flex flex-col gap-2 text-sm text-gray-300">
                   목표 비중 (%)
