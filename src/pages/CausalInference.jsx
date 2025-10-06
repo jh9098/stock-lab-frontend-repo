@@ -36,11 +36,7 @@ export default function CausalInference() {
   const isApiConfigured = typeof apiBase === "string" && apiBase.length > 0;
 
   const applySampleData = (payload = {}, notice) => {
-    const sampleResponse = buildSampleCausalResponse({
-      start: payload.start,
-      end: payload.end,
-      start_direction: payload.start_direction,
-    });
+    const sampleResponse = buildSampleCausalResponse(payload);
 
     setResult(sampleResponse);
     const samplePaths = sampleResponse?.top_paths ?? [];
