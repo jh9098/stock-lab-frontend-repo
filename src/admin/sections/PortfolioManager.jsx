@@ -1,16 +1,22 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   addDoc,
   collection,
   deleteDoc,
   doc,
+  getDoc,
   getDocs,
   orderBy,
   query,
+  limit,
+  startAt,
+  endAt,
   updateDoc,
 } from "firebase/firestore";
 import { db } from "../../firebaseConfig";
 import { useAdminContext } from "../AdminContext";
+
+const STOCK_PRICE_COLLECTION = "stockPrices";
 
 const STATUS_OPTIONS = [
   { value: "진행중", label: "진행중" },
@@ -56,6 +62,14 @@ export default function PortfolioManager() {
   const [stockForm, setStockForm] = useState(emptyStockForm);
   const [legForm, setLegForm] = useState(emptyLegForm);
   const [editingLegId, setEditingLegId] = useState(null);
+  const autocompleteBypassRef = useRef(false);
+  const closeSuggestionsTimeoutRef = useRef(null);
+  const [stockSuggestions, setStockSuggestions] = useState({
+    open: false,
+    loading: false,
+    items: [],
+    error: null,
+  });
 
   const fetchStocks = useCallback(async () => {
     setLoading(true);
@@ -84,6 +98,8 @@ export default function PortfolioManager() {
   }, [fetchStocks]);
 
   useEffect(() => {
+    autocompleteBypassRef.current = true;
+    setStockSuggestions({ open: false, loading: false, items: [], error: null });
     if (!selectedId) {
       setStockForm((prev) => ({ ...emptyStockForm, orderIndex: stocks.length + 1 }));
       setLegForm(emptyLegForm);
@@ -108,6 +124,139 @@ export default function PortfolioManager() {
     setEditingLegId(null);
   }, [selectedId, stocks]);
 
+  useEffect(() => {
+    return () => {
+      if (closeSuggestionsTimeoutRef.current) {
+        clearTimeout(closeSuggestionsTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    const trimmedName = stockForm.name.trim();
+
+    if (autocompleteBypassRef.current) {
+      autocompleteBypassRef.current = false;
+      return;
+    }
+
+    if (!trimmedName) {
+      setStockSuggestions((prev) => ({ ...prev, loading: false, items: [], error: null }));
+      return;
+    }
+
+    setStockSuggestions((prev) => ({ ...prev, loading: true, error: null }));
+
+    let active = true;
+    const debounceTimer = setTimeout(async () => {
+      try {
+        const keyword = trimmedName;
+        const nameQuery = query(
+          collection(db, STOCK_PRICE_COLLECTION),
+          orderBy("name"),
+          startAt(keyword),
+          endAt(`${keyword}${String.fromCharCode(0xf8ff)}`),
+          limit(15)
+        );
+        const snapshot = await getDocs(nameQuery);
+        if (!active) {
+          return;
+        }
+
+        const suggestionItems = snapshot.docs.map((docSnap) => ({
+          ticker: docSnap.id,
+          name: docSnap.data().name ?? docSnap.id,
+        }));
+
+        const normalize = (value) => value.replace(/\s+/g, "").toLowerCase();
+        const normalizedInput = normalize(trimmedName);
+        const exactMatchDoc = snapshot.docs.find((docSnap) => {
+          const candidate = docSnap.data().name ?? docSnap.id;
+          if (!candidate) return false;
+          return (
+            normalize(candidate).localeCompare(normalizedInput, undefined, { sensitivity: "base" }) === 0
+          );
+        });
+
+        if (exactMatchDoc) {
+          autocompleteBypassRef.current = true;
+          setStockForm((prev) => ({
+            ...prev,
+            ticker: exactMatchDoc.id,
+          }));
+        }
+
+        setStockSuggestions((prev) => ({
+          ...prev,
+          loading: false,
+          items: suggestionItems,
+          error: null,
+        }));
+      } catch (fetchError) {
+        console.error("종목 자동완성 조회 실패", fetchError);
+        if (active) {
+          setStockSuggestions((prev) => ({
+            ...prev,
+            loading: false,
+            error: "자동완성 결과를 불러오지 못했습니다.",
+          }));
+          setMessage("종목 정보를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.");
+        }
+      }
+    }, 250);
+
+    return () => {
+      active = false;
+      clearTimeout(debounceTimer);
+    };
+  }, [stockForm.name, setMessage]);
+
+  useEffect(() => {
+    const trimmedTicker = stockForm.ticker.trim().toUpperCase();
+    if (!trimmedTicker || stockForm.name.trim()) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const fetchTickerName = async () => {
+      try {
+        const priceDocRef = doc(db, STOCK_PRICE_COLLECTION, trimmedTicker);
+        const docSnap = await getDoc(priceDocRef);
+        if (cancelled) return;
+        if (!docSnap.exists()) {
+          setMessage("종목 코드를 다시 확인해주세요.");
+          setStockSuggestions((prev) => ({ ...prev, error: "해당 종목을 찾을 수 없습니다." }));
+          return;
+        }
+        const fetchedName = docSnap.data()?.name ?? "";
+        if (fetchedName) {
+          autocompleteBypassRef.current = true;
+          setStockForm((prev) => ({
+            ...prev,
+            ticker: trimmedTicker,
+            name: fetchedName,
+          }));
+        }
+      } catch (tickerError) {
+        console.error("종목 단일 조회 실패", tickerError);
+        if (!cancelled) {
+          setMessage("종목 정보를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.");
+          setStockSuggestions((prev) => ({
+            ...prev,
+            error: "종목 정보를 불러오지 못했습니다.",
+          }));
+        }
+      }
+    };
+
+    fetchTickerName();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [stockForm.ticker, stockForm.name, setMessage]);
+
   const selectedStock = useMemo(
     () => stocks.find((stock) => stock.id === selectedId) ?? null,
     [stocks, selectedId]
@@ -115,6 +264,20 @@ export default function PortfolioManager() {
 
   const handleStockFormChange = (field, value) => {
     setStockForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleSelectSuggestion = (item) => {
+    if (closeSuggestionsTimeoutRef.current) {
+      clearTimeout(closeSuggestionsTimeoutRef.current);
+      closeSuggestionsTimeoutRef.current = null;
+    }
+    autocompleteBypassRef.current = true;
+    setStockForm((prev) => ({
+      ...prev,
+      name: item.name,
+      ticker: item.ticker,
+    }));
+    setStockSuggestions({ open: false, loading: false, items: [], error: null });
   };
 
   const handleSaveStock = async () => {
@@ -307,14 +470,53 @@ export default function PortfolioManager() {
                     placeholder="예: 005930"
                   />
                 </label>
-                <label className="flex flex-col gap-2 text-sm text-gray-300">
+                <label className="relative flex flex-col gap-2 text-sm text-gray-300">
                   종목명
                   <input
                     value={stockForm.name}
                     onChange={(event) => handleStockFormChange("name", event.target.value)}
+                    onFocus={() => {
+                      if (closeSuggestionsTimeoutRef.current) {
+                        clearTimeout(closeSuggestionsTimeoutRef.current);
+                        closeSuggestionsTimeoutRef.current = null;
+                      }
+                      setStockSuggestions((prev) => ({ ...prev, open: true }));
+                    }}
+                    onBlur={() => {
+                      closeSuggestionsTimeoutRef.current = setTimeout(() => {
+                        setStockSuggestions((prev) => ({ ...prev, open: false }));
+                        closeSuggestionsTimeoutRef.current = null;
+                      }, 150);
+                    }}
                     className="rounded-lg bg-gray-950 border border-gray-700 px-3 py-2 text-white"
                     placeholder="삼성전자"
                   />
+                  {stockSuggestions.open && (
+                    <ul className="absolute z-10 top-full left-0 right-0 mt-1 max-h-60 overflow-y-auto rounded-lg border border-gray-700 bg-gray-900 shadow-lg">
+                      {stockSuggestions.loading && (
+                        <li className="px-3 py-2 text-xs text-gray-400">검색 중...</li>
+                      )}
+                      {!stockSuggestions.loading && stockSuggestions.error && (
+                        <li className="px-3 py-2 text-xs text-red-400">{stockSuggestions.error}</li>
+                      )}
+                      {!stockSuggestions.loading && !stockSuggestions.error &&
+                        !stockSuggestions.items.length && (
+                          <li className="px-3 py-2 text-xs text-gray-400">일치하는 종목이 없습니다.</li>
+                        )}
+                      {stockSuggestions.items.map((item) => (
+                        <li key={item.ticker} className="border-t border-gray-800 first:border-t-0">
+                          <button
+                            type="button"
+                            onMouseDown={() => handleSelectSuggestion(item)}
+                            className="w-full text-left px-3 py-2 text-sm text-gray-200 hover:bg-gray-800"
+                          >
+                            <span className="font-medium text-white">{item.name}</span>
+                            <span className="ml-2 text-xs text-gray-400">{item.ticker}</span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </label>
               </div>
               <div className="grid md:grid-cols-2 gap-4">
