@@ -37,7 +37,27 @@ export default function useStockPrices(ticker, options = {}) {
         ? snapshot.data().prices
         : [];
       const limited = days > 0 ? allPrices.slice(-days) : allPrices;
-      setPrices(limited);
+
+      const parseDateValue = (value) => {
+        if (!value) return Number.NEGATIVE_INFINITY;
+        const timeValue = new Date(value).getTime();
+        return Number.isFinite(timeValue) ? timeValue : Number.NEGATIVE_INFINITY;
+      };
+
+      const sortedByDate = [...limited].sort((a, b) => {
+        const timeDiff = parseDateValue(a?.date) - parseDateValue(b?.date);
+
+        if (timeDiff !== 0) {
+          return timeDiff;
+        }
+
+        const aDateText = a?.date ?? "";
+        const bDateText = b?.date ?? "";
+
+        return String(aDateText).localeCompare(String(bDateText));
+      });
+
+      setPrices(sortedByDate);
     };
 
     if (realtime) {
