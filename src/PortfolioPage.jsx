@@ -1,9 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, lazy, useEffect, useMemo, useState } from "react";
 import { Helmet } from "react-helmet";
 import { collection, doc, serverTimestamp, setDoc } from "firebase/firestore";
 import usePortfolioData from "./hooks/usePortfolioData";
 import { db } from "./firebaseConfig";
 import useAuth from "./useAuth";
+
+const PriceLineChart = lazy(() => import("./components/PriceLineChart"));
 
 function ProgressBar({ value }) {
   const percentage = Math.max(0, Math.min(100, Math.round((value ?? 0) * 100)));
@@ -174,6 +176,13 @@ function MemberNoteForm({ stock }) {
 export default function PortfolioPage() {
   const { loading, stocks } = usePortfolioData();
   const [selectedStock, setSelectedStock] = useState(null);
+  const [statusFilter, setStatusFilter] = useState("전체");
+  const filteredStocks = useMemo(() => {
+    if (statusFilter === "전체") {
+      return stocks;
+    }
+    return stocks.filter((stock) => (stock.status ?? "") === statusFilter);
+  }, [statusFilter, stocks]);
   const priceSeries = useMemo(() => {
     if (!selectedStock?.priceHistory) {
       return [];
@@ -512,6 +521,20 @@ export default function PortfolioPage() {
     });
   }, [stocks]);
 
+  useEffect(() => {
+    if (!filteredStocks.length) {
+      setSelectedStock(null);
+      return;
+    }
+    if (!selectedStock) {
+      return;
+    }
+    const exists = filteredStocks.some((stock) => stock.id === selectedStock.id);
+    if (!exists) {
+      setSelectedStock(filteredStocks[0]);
+    }
+  }, [filteredStocks, selectedStock]);
+
   const summary = useMemo(() => {
     if (!stocks.length) {
       return { totalWeight: 0, averageReturn: 0 };
@@ -550,6 +573,28 @@ export default function PortfolioPage() {
 
       <main className="px-6 py-8 space-y-8">
         <section className="bg-gray-800 rounded-xl shadow-lg">
+          <div className="flex flex-wrap items-center justify-between gap-3 px-4 pt-4">
+            <h2 className="text-sm font-semibold text-gray-200">전략 목록</h2>
+            <div className="flex flex-wrap gap-2">
+              {["전체", "진행중", "관망", "완료"].map((option) => {
+                const isActive = statusFilter === option;
+                return (
+                  <button
+                    key={option}
+                    type="button"
+                    onClick={() => setStatusFilter(option)}
+                    className={`rounded-full px-3 py-1 text-xs font-medium transition ${
+                      isActive
+                        ? "bg-teal-500 text-white shadow"
+                        : "bg-gray-900 text-gray-300 hover:bg-gray-700"
+                    }`}
+                  >
+                    {option}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
           <div className="overflow-x-auto">
             <table className="min-w-full text-left text-sm">
               <thead className="bg-gray-700 text-gray-300 uppercase">
@@ -576,8 +621,15 @@ export default function PortfolioPage() {
                     </td>
                   </tr>
                 )}
+                {!loading && stocks.length > 0 && !filteredStocks.length && (
+                  <tr>
+                    <td colSpan={5} className="px-4 py-6 text-center text-gray-400">
+                      선택한 상태에 해당하는 종목이 없습니다.
+                    </td>
+                  </tr>
+                )}
                 {!loading &&
-                  stocks.map((stock) => (
+                  filteredStocks.map((stock) => (
                     <StockRow
                       key={stock.id}
                       stock={stock}
@@ -608,6 +660,11 @@ export default function PortfolioPage() {
                 >
                   닫기
                 </button>
+              </div>
+
+              <div className="rounded-lg bg-gray-900 px-4 py-2 text-xs text-gray-400 flex flex-wrap gap-x-6 gap-y-1">
+                <span>최근 업데이트: {formatDate(selectedStock.updatedAt)}</span>
+                <span>전략 등록일: {formatDate(selectedStock.createdAt)}</span>
               </div>
 
               <div>
@@ -748,25 +805,38 @@ export default function PortfolioPage() {
 
               <div>
                 <h3 className="text-gray-300 font-semibold mb-2">최근 종가 추이</h3>
-                {recentPrices.length ? (
-                  <ul className="grid gap-2 sm:grid-cols-2 text-sm">
-                    {recentPrices.map((item) => {
-                      const numericClose = Number(item.close);
-                      const closeText = Number.isFinite(numericClose)
-                        ? `${numericClose.toLocaleString()}원`
-                        : item.close;
+                {priceSeries.length ? (
+                  <div className="space-y-3">
+                    <div className="h-64 w-full overflow-hidden rounded-lg border border-gray-700 bg-gray-900">
+                      <Suspense
+                        fallback={
+                          <div className="flex h-full items-center justify-center text-sm text-gray-400">
+                            차트 모듈을 불러오는 중입니다...
+                          </div>
+                        }
+                      >
+                        <PriceLineChart data={priceSeries} />
+                      </Suspense>
+                    </div>
+                    <ul className="grid gap-2 sm:grid-cols-2 text-sm">
+                      {recentPrices.map((item) => {
+                        const numericClose = Number(item.close);
+                        const closeText = Number.isFinite(numericClose)
+                          ? `${numericClose.toLocaleString()}원`
+                          : item.close;
 
-                      return (
-                        <li
-                          key={item.date}
-                          className="flex items-center justify-between bg-gray-900 px-3 py-2 rounded border border-gray-700"
-                        >
-                          <span className="text-gray-300">{item.date}</span>
-                          <span className="font-semibold text-white">{closeText}</span>
-                        </li>
-                      );
-                    })}
-                  </ul>
+                        return (
+                          <li
+                            key={item.date}
+                            className="flex items-center justify-between bg-gray-900 px-3 py-2 rounded border border-gray-700"
+                          >
+                            <span className="text-gray-300">{item.date}</span>
+                            <span className="font-semibold text-white">{closeText}</span>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
                 ) : (
                   <p className="text-sm text-gray-400">가격 데이터가 없습니다.</p>
                 )}
