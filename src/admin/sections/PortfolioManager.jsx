@@ -64,6 +64,8 @@ export default function PortfolioManager() {
   const [editingLegId, setEditingLegId] = useState(null);
   const autocompleteBypassRef = useRef(false);
   const closeSuggestionsTimeoutRef = useRef(null);
+  const lastEditedFieldRef = useRef(null);
+  const lastTickerLookupRef = useRef(null);
   const [stockSuggestions, setStockSuggestions] = useState({
     open: false,
     loading: false,
@@ -101,6 +103,8 @@ export default function PortfolioManager() {
     autocompleteBypassRef.current = true;
     setStockSuggestions({ open: false, loading: false, items: [], error: null });
     if (!selectedId) {
+      lastEditedFieldRef.current = null;
+      lastTickerLookupRef.current = null;
       setStockForm((prev) => ({ ...emptyStockForm, orderIndex: stocks.length + 1 }));
       setLegForm(emptyLegForm);
       setEditingLegId(null);
@@ -111,6 +115,8 @@ export default function PortfolioManager() {
       setSelectedId(null);
       return;
     }
+    lastEditedFieldRef.current = null;
+    lastTickerLookupRef.current = (current.ticker ?? "").trim().toUpperCase() || null;
     setStockForm({
       ticker: current.ticker ?? "",
       name: current.name ?? "",
@@ -180,6 +186,8 @@ export default function PortfolioManager() {
 
         if (exactMatchDoc) {
           autocompleteBypassRef.current = true;
+          lastEditedFieldRef.current = null;
+          lastTickerLookupRef.current = exactMatchDoc.id.trim().toUpperCase();
           setStockForm((prev) => ({
             ...prev,
             ticker: exactMatchDoc.id,
@@ -213,7 +221,17 @@ export default function PortfolioManager() {
 
   useEffect(() => {
     const trimmedTicker = stockForm.ticker.trim().toUpperCase();
-    if (!trimmedTicker || stockForm.name.trim()) {
+    const trimmedName = stockForm.name.trim();
+
+    if (
+      lastTickerLookupRef.current === trimmedTicker &&
+      lastEditedFieldRef.current === "name" &&
+      trimmedName === ""
+    ) {
+      return;
+    }
+
+    if (!trimmedTicker || trimmedName) {
       return;
     }
 
@@ -232,6 +250,8 @@ export default function PortfolioManager() {
         const fetchedName = docSnap.data()?.name ?? "";
         if (fetchedName) {
           autocompleteBypassRef.current = true;
+          lastTickerLookupRef.current = trimmedTicker;
+          lastEditedFieldRef.current = null;
           setStockForm((prev) => ({
             ...prev,
             ticker: trimmedTicker,
@@ -263,6 +283,7 @@ export default function PortfolioManager() {
   );
 
   const handleStockFormChange = (field, value) => {
+    lastEditedFieldRef.current = field;
     setStockForm((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -272,6 +293,8 @@ export default function PortfolioManager() {
       closeSuggestionsTimeoutRef.current = null;
     }
     autocompleteBypassRef.current = true;
+    lastEditedFieldRef.current = null;
+    lastTickerLookupRef.current = (item.ticker ?? "").trim().toUpperCase() || null;
     setStockForm((prev) => ({
       ...prev,
       name: item.name,
