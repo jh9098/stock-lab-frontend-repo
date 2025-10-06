@@ -8,6 +8,7 @@ import os
 import json # JSON 모듈 추가
 
 from crawler import fetch_naver_news_for_api
+from causal_analyzer import analyzer
 
 app = Flask(__name__)
 CORS(app)
@@ -136,6 +137,56 @@ def get_latest_news_api():
         else:
             app.logger.error(f"뉴스 API: 크롤링 실패 및 대체 캐시 없음 (key: {cache_key})")
             return jsonify({"error": "뉴스 데이터를 불러오는 데 실패했습니다. 잠시 후 다시 시도해주세요."}), 500
+
+
+@app.route('/api/infer-paths', methods=['POST'])
+def infer_causal_paths_api():
+    try:
+        payload = request.get_json()
+        if not payload:
+            return jsonify({"error": "요청 본문이 비어있습니다."}), 400
+
+        start_node = payload.get('start')
+        end_node = payload.get('end')
+        start_direction = payload.get('start_direction', 'up')
+        raw_min_strength = payload.get('min_strength', 0.05)
+        raw_max_hops = payload.get('max_hops', 6)
+
+        try:
+            min_strength = float(raw_min_strength)
+        except (TypeError, ValueError):
+            min_strength = 0.05
+
+        try:
+            max_hops = int(raw_max_hops)
+        except (TypeError, ValueError):
+            max_hops = 6
+
+        if start_direction not in {'up', 'down'}:
+            start_direction = 'up'
+
+        if not all([start_node, end_node]):
+            return jsonify({"error": "'start'와 'end'는 필수 항목입니다."}), 400
+
+        raw_paths = analyzer.find_all_paths(start_node, end_node, max_hops)
+        analysis_result = analyzer.process_and_analyze_paths(
+            raw_paths,
+            start_direction,
+            min_strength,
+        )
+
+        response_data = {
+            "start": start_node,
+            "end": end_node,
+            "start_direction": start_direction,
+            **analysis_result,
+        }
+
+        return jsonify(response_data), 200
+
+    except Exception as error:
+        app.logger.error(f"연쇄효과 추론 중 오류 발생: {error}", exc_info=True)
+        return jsonify({"error": f"서버 내부 오류 발생: {error}"}), 500
 
 
 @app.route('/api/admin/login', methods=['POST', 'OPTIONS'])
