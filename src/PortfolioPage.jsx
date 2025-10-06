@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Helmet } from "react-helmet";
 import { collection, doc, serverTimestamp, setDoc } from "firebase/firestore";
 import usePortfolioData from "./hooks/usePortfolioData";
+import useStockPrices from "./hooks/useStockPrices";
 import { db } from "./firebaseConfig";
 import useAuth from "./useAuth";
 
@@ -174,6 +175,15 @@ function MemberNoteForm({ stock }) {
 export default function PortfolioPage() {
   const { loading, stocks } = usePortfolioData();
   const [selectedStock, setSelectedStock] = useState(null);
+  const {
+    prices: priceHistory,
+    loading: priceLoading,
+    error: priceError,
+  } = useStockPrices(selectedStock?.ticker, { days: 120 });
+  const recentPrices = useMemo(
+    () => priceHistory.slice(-10).reverse(),
+    [priceHistory]
+  );
 
   useEffect(() => {
     if (!stocks.length) {
@@ -333,6 +343,38 @@ export default function PortfolioPage() {
                     <li className="text-gray-400">등록된 매도 전략이 없습니다.</li>
                   )}
                 </ul>
+              </div>
+
+              <div>
+                <h3 className="text-gray-300 font-semibold mb-2">최근 종가 추이</h3>
+                {priceLoading ? (
+                  <p className="text-sm text-gray-400">주가 데이터를 불러오는 중입니다...</p>
+                ) : priceError ? (
+                  <p className="text-sm text-red-400">
+                    주가 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.
+                  </p>
+                ) : recentPrices.length ? (
+                  <ul className="grid gap-2 sm:grid-cols-2 text-sm">
+                    {recentPrices.map((item) => {
+                      const numericClose = Number(item.close);
+                      const closeText = Number.isFinite(numericClose)
+                        ? `${numericClose.toLocaleString()}원`
+                        : item.close;
+
+                      return (
+                        <li
+                          key={item.date}
+                          className="flex items-center justify-between bg-gray-900 px-3 py-2 rounded border border-gray-700"
+                        >
+                          <span className="text-gray-300">{item.date}</span>
+                          <span className="font-semibold text-white">{closeText}</span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-gray-400">가격 데이터가 없습니다.</p>
+                )}
               </div>
 
               <div className="bg-gray-900 rounded-lg px-4 py-3 text-sm text-gray-300">
