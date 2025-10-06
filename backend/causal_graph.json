@@ -1,56 +1,179 @@
 {
   "nodes": [
-    {"id":"FR_credit_rating","label":"France Credit Rating"},
-    {"id":"FR_OAT_yield","label":"France OAT 10Y Yield"},
-    {"id":"FR_OAT_price","label":"France OAT Price"},
-    {"id":"EU_bank_CDS","label":"EU Bank CDS"},
-    {"id":"EURUSD","label":"EURUSD"},
+    // --- 1. 미국 매크로 (US Macro) ---
+    {"id":"US_CPI","label":"US CPI (Inflation)"},
+    {"id":"US_Core_CPI","label":"US Core CPI"},
+    {"id":"US_PPI","label":"US PPI (Producer Price)"},
+    {"id":"Fed_Funds_Rate","label":"US Fed Funds Rate"},
+    {"id":"US_10Y_Yield","label":"US 10Y Treasury Yield"},
+    {"id":"US_2Y_Yield","label":"US 2Y Treasury Yield"},
+    {"id":"Yield_Curve_10Y2Y","label":"US Yield Curve (10Y-2Y Spread)"},
+    {"id":"US_GDP_Growth","label":"US GDP Growth"},
+    {"id":"US_Retail_Sales","label":"US Retail Sales"},
+    {"id":"US_Unemployment","label":"US Unemployment Rate"},
+    {"id":"US_PMI_Mfg","label":"US ISM Manufacturing PMI"},
+    {"id":"US_Housing_Starts","label":"US Housing Starts"},
+    
+    // --- 2. 글로벌 통화 및 자금 흐름 (Global Currency & Flows) ---
     {"id":"DXY","label":"US Dollar Index"},
-    {"id":"Gold","label":"Gold"},
-    {"id":"VIX","label":"VIX"},
-    {"id":"KOSPI","label":"KOSPI"},
-    {"id":"KOSDAQ","label":"KOSDAQ"},
-    {"id":"USDKRW","label":"USD/KRW"},
-    {"id":"UST_10Y_yield","label":"US 10Y Yield"},
+    {"id":"EURUSD","label":"EUR/USD Exchange Rate"},
+    {"id":"USDJPY","label":"USD/JPY Exchange Rate"},
+    {"id":"USDCNY","label":"USD/CNY Exchange Rate"},
+    {"id":"USDKRW","label":"USD/KRW Exchange Rate"},
+    
+    // --- 3. 글로벌 리스크 지표 (Global Risk Indicators) ---
+    {"id":"VIX","label":"VIX (Volatility Index)"},
+    {"id":"US_HY_OAS","label":"US High Yield OAS (Credit Spread)"},
+    {"id":"MOVE_Index","label":"MOVE Index (Bond Volatility)"},
+    {"id":"Bitcoin","label":"Bitcoin"},
+    
+    // --- 4. 주요국 주식 시장 (Major Equity Markets) ---
     {"id":"SPX","label":"S&P 500"},
     {"id":"NASDAQ","label":"NASDAQ 100"},
-    {"id":"Oil","label":"Brent/WTI"},
-    {"id":"EU_HY_OAS","label":"EU High Yield OAS"},
-    {"id":"US_HY_OAS","label":"US High Yield OAS"},
-    {"id":"EM_FX","label":"EM FX Index"},
-    {"id":"EM_equities","label":"EM Equities"},
-    {"id":"EU_equities","label":"EU Equities"},
-    {"id":"FR_banks","label":"French Bank Stocks"},
-    {"id":"KR_banks","label":"Korean Bank Stocks"},
-    {"id":"KR_domestic","label":"Korea Domestic Demand"},
-    {"id":"Airlines","label":"Airlines"},
-    {"id":"Energy_stocks","label":"Energy Stocks"}
+    {"id":"KOSPI","label":"KOSPI"},
+    {"id":"KOSDAQ","label":"KOSDAQ"},
+    {"id":"STOXX600","label":"Europe STOXX 600"},
+    {"id":"Shanghai_Comp","label":"Shanghai Composite (China)"},
+    {"id":"Nikkei225","label":"Nikkei 225 (Japan)"},
+    
+    // --- 5. 한국 시장 내부 지표 (Korea Market Internals) ---
+    {"id":"BOK_Base_Rate","label":"BOK Base Rate (Korea)"},
+    {"id":"KR_10Y_Bond_Yield","label":"Korea 10Y Bond Yield"},
+    {"id":"Foreigner_Net_Buy_KOSPI","label":"Foreigner Net Buy (KOSPI)"},
+    {"id":"Institution_Net_Buy_KOSPI","label":"Institution Net Buy (KOSPI)"},
+    {"id":"KR_Credit_Balance","label":"KR Market Credit Balance"},
+    {"id":"KR_Customer_Deposits","label":"KR Customer Deposits"},
+
+    // --- 6. 원자재 (Commodities) ---
+    {"id":"Oil_WTI","label":"WTI Crude Oil"},
+    {"id":"Natural_Gas","label":"Natural Gas Price"},
+    {"id":"Gold","label":"Gold Price"},
+    {"id":"Copper","label":"Copper Price"},
+    {"id":"Lithium","label":"Lithium Price"},
+    {"id":"Iron_Ore","label":"Iron Ore Price"},
+    {"id":"Corn","label":"Corn Price"},
+
+    // --- 7. 중국/유럽/일본 매크로 (China/EU/Japan Macro) ---
+    {"id":"China_GDP_Growth","label":"China GDP Growth"},
+    {"id":"China_PMI_Mfg","label":"China Caixin Mfg PMI"},
+    {"id":"ECB_Rate","label":"ECB Policy Rate"},
+    {"id":"Eurozone_CPI","label":"Eurozone HICP (Inflation)"},
+    {"id":"BOJ_Rate","label":"BOJ Policy Rate"},
+
+    // --- 8. 지정학적 리스크 (Geopolitical Risks) ---
+    {"id":"Geopolitical_Risk_Index","label":"Geopolitical Risk Index"},
+
+    // --- 9. 한국 주요 섹터 및 기업 (KR Major Sectors & Companies) ---
+    // 반도체
+    {"id":"Semiconductor_Index_SOX","label":"PHLX Semiconductor Index (SOX)"},
+    {"id":"Samsung_Electronics","label":"Samsung Electronics"},
+    {"id":"SK_Hynix","label":"SK Hynix"},
+    {"id":"DRAM_Price","label":"DRAM Price Index"},
+    // 2차전지
+    {"id":"Global_EV_Sales","label":"Global EV Sales"},
+    {"id":"LG_Energy_Solution","label":"LG Energy Solution"},
+    {"id":"Samsung_SDI","label":"Samsung SDI"},
+    // 바이오
+    {"id":"NASDAQ_Biotech_Index","label":"NASDAQ Biotechnology Index (NBI)"},
+    {"id":"Samsung_Biologics","label":"Samsung Biologics"},
+    {"id":"Celltrion","label":"Celltrion"},
+    // 자동차
+    {"id":"Hyundai_Motor","label":"Hyundai Motor"},
+    {"id":"Kia","label":"Kia"},
+    // 금융/은행
+    {"id":"KR_Banks","label":"Korean Bank Stocks (Sector)"},
+    {"id": "KB_Financial", "label": "KB Financial Group"},
+    // 인터넷/플랫폼
+    {"id":"Naver","label":"Naver"},
+    {"id":"Kakao","label":"Kakao"},
+    // 기타 섹터
+    {"id":"Airlines","label":"Airlines (Sector)"},
+    {"id":"Energy_Stocks","label":"Energy (Sector)"},
+    {"id":"Steel_Stocks","label":"Steel (Sector)"},
+    {"id":"Shipbuilding_Stocks","label":"Shipbuilding (Sector)"}
   ],
   "edges": [
-    {"source":"FR_credit_rating","target":"FR_OAT_yield","sign":-1,"weight":0.9,"lag_days":1,"evidence":["AFT","ratings-spread"]},
-    {"source":"FR_OAT_yield","target":"FR_OAT_price","sign":-1,"weight":0.95,"lag_days":0},
-    {"source":"FR_OAT_yield","target":"EU_bank_CDS","sign":1,"weight":0.7,"lag_days":1},
-    {"source":"EU_bank_CDS","target":"EU_equities","sign":-1,"weight":0.8,"lag_days":0},
-    {"source":"EU_bank_CDS","target":"FR_banks","sign":-1,"weight":0.9,"lag_days":0},
-    {"source":"EU_bank_CDS","target":"US_HY_OAS","sign":1,"weight":0.6,"lag_days":0},
-    {"source":"EU_bank_CDS","target":"VIX","sign":1,"weight":0.6,"lag_days":0},
-    {"source":"FR_credit_rating","target":"EURUSD","sign":1,"weight":0.6,"lag_days":0},
-    {"source":"EURUSD","target":"DXY","sign":-1,"weight":0.8,"lag_days":0},
-    {"source":"DXY","target":"EM_FX","sign":-1,"weight":0.8,"lag_days":0},
-    {"source":"DXY","target":"Gold","sign":-1,"weight":0.4,"lag_days":0},
-    {"source":"DXY","target":"USDKRW","sign":1,"weight":0.9,"lag_days":0},
-    {"source":"USDKRW","target":"KOSPI","sign":-1,"weight":0.6,"lag_days":0},
-    {"source":"USDKRW","target":"KOSDAQ","sign":-1,"weight":0.65,"lag_days":0},
-    {"source":"VIX","target":"SPX","sign":-1,"weight":0.85,"lag_days":0},
-    {"source":"VIX","target":"KOSPI","sign":-1,"weight":0.7,"lag_days":0},
-    {"source":"FR_OAT_yield","target":"EURUSD","sign":-1,"weight":0.5,"lag_days":0},
-    {"source":"Oil","target":"Energy_stocks","sign":1,"weight":0.8,"lag_days":0},
-    {"source":"Oil","target":"Airlines","sign":-1,"weight":0.7,"lag_days":0},
-    {"source":"SPX","target":"NASDAQ","sign":1,"weight":0.8,"lag_days":0},
-    {"source":"EU_bank_CDS","target":"KR_banks","sign":-1,"weight":0.5,"lag_days":1},
-    {"source":"KOSPI","target":"KR_banks","sign":1,"weight":0.5,"lag_days":0},
-    {"source":"US_HY_OAS","target":"SPX","sign":-1,"weight":0.7,"lag_days":0},
-    {"source":"EU_HY_OAS","target":"EU_equities","sign":-1,"weight":0.7,"lag_days":0},
-    {"source":"EM_FX","target":"EM_equities","sign":1,"weight":0.6,"lag_days":0}
+    // === 1. 미국 매크로 -> 글로벌 자산 ===
+    {"source":"US_CPI","target":"Fed_Funds_Rate","sign":1,"weight":0.8,"lag_days":20,"evidence":["FOMC reacts to inflation data"]},
+    {"source":"US_Core_CPI","target":"Fed_Funds_Rate","sign":1,"weight":0.85,"lag_days":20,"evidence":["Fed focuses more on core inflation (less volatile)"]},
+    {"source":"US_Unemployment","target":"Fed_Funds_Rate","sign":-1,"weight":0.7,"lag_days":20,"evidence":["High unemployment prompts rate cuts (dual mandate)"]},
+    {"source":"Fed_Funds_Rate","target":"US_2Y_Yield","sign":1,"weight":0.95,"lag_days":0,"evidence":["Short-term yields track policy rate expectations"]},
+    {"source":"US_GDP_Growth","target":"US_10Y_Yield","sign":1,"weight":0.7,"lag_days":0,"evidence":["Strong growth -> higher inflation expectations -> higher long-term yields"]},
+    {"source":"US_10Y_Yield","target":"NASDAQ","sign":-1,"weight":0.8,"lag_days":0,"evidence":["Higher discount rate hurts valuation of long-duration growth stocks"]},
+    {"source":"US_10Y_Yield","target":"SPX","sign":-1,"weight":0.6,"lag_days":0,"evidence":["Higher borrowing costs and discount rates weigh on broad market"]},
+    {"source":"Yield_Curve_10Y2Y","target":"US_GDP_Growth","sign":1,"weight":0.6,"lag_days":365,"evidence":["Inverted yield curve is a strong predictor of future recession"]},
+    {"source":"US_Retail_Sales","target":"US_GDP_Growth","sign":1,"weight":0.7,"lag_days":0,"evidence":["Consumer spending is a large component of GDP"]},
+    {"source":"US_PMI_Mfg","target":"US_GDP_Growth","sign":1,"weight":0.6,"lag_days":30,"evidence":["PMI is a leading indicator of economic health"]},
+    
+    // === 2. 달러 인덱스(DXY) 및 통화 ===
+    {"source":"US_10Y_Yield","target":"DXY","sign":1,"weight":0.7,"lag_days":0,"evidence":["Higher US yields attract capital, strengthening the dollar"]},
+    {"source":"ECB_Rate","target":"EURUSD","sign":1,"weight":0.8,"lag_days":0,"evidence":["Higher ECB rates strengthen the Euro against the USD"]},
+    {"source":"DXY","target":"EURUSD","sign":-1,"weight":0.9,"lag_days":0,"evidence":["Euro is the largest component of the DXY basket"]},
+    {"source":"BOJ_Rate","target":"USDJPY","sign":-1,"weight":0.8,"lag_days":0,"evidence":["BOJ rate hikes strengthen the Yen (lower USDJPY)"]},
+    {"source":"DXY","target":"USDCNY","sign":1,"weight":0.7,"lag_days":0,"evidence":["Strong dollar generally leads to a weaker Yuan"]},
+    {"source":"DXY","target":"USDKRW","sign":1,"weight":0.9,"lag_days":0,"evidence":["KRW is highly sensitive to the broad dollar strength"]},
+    {"source":"China_GDP_Growth","target":"USDCNY","sign":-1,"weight":0.6,"lag_days":0,"evidence":["Strong Chinese economy supports the Yuan (lower USDCNY)"]},
+
+    // === 3. 글로벌 리스크 전이 경로 ===
+    {"source":"VIX","target":"SPX","sign":-1,"weight":0.9,"lag_days":0,"evidence":["VIX is the market's 'fear gauge'"]},
+    {"source":"US_HY_OAS","target":"SPX","sign":-1,"weight":0.75,"lag_days":0,"evidence":["Widening credit spreads signal rising default risk, negative for equities"]},
+    {"source":"MOVE_Index","target":"VIX","sign":1,"weight":0.6,"lag_days":1,"evidence":["Bond market volatility often spills over into equity volatility"]},
+    {"source":"Geopolitical_Risk_Index","target":"VIX","sign":1,"weight":0.7,"lag_days":0,"evidence":["Geopolitical uncertainty increases market fear"]},
+    {"source":"Geopolitical_Risk_Index","target":"Oil_WTI","sign":1,"weight":0.8,"lag_days":0,"evidence":["Conflicts, especially in the Middle East, can disrupt oil supply"]},
+    {"source":"Geopolitical_Risk_Index","target":"Gold","sign":1,"weight":0.6,"lag_days":0,"evidence":["Gold is a traditional safe-haven asset during turmoil"]},
+
+    // === 4. 글로벌 시장 -> 한국 시장 ===
+    {"source":"SPX","target":"KOSPI","sign":1,"weight":0.7,"lag_days":1,"evidence":["US market is the global benchmark, affecting next-day sentiment in Korea"]},
+    {"source":"NASDAQ","target":"KOSPI","sign":1,"weight":0.8,"lag_days":1,"evidence":["Korean market has high exposure to tech, strongly correlated with NASDAQ"]},
+    {"source":"USDKRW","target":"Foreigner_Net_Buy_KOSPI","sign":-1,"weight":0.7,"lag_days":0,"evidence":["A weaker Won (higher USDKRW) leads to foreign exchange losses, discouraging investment"]},
+    {"source":"Foreigner_Net_Buy_KOSPI","target":"KOSPI","sign":1,"weight":0.85,"lag_days":0,"evidence":["Foreign capital flow is a primary driver of the KOSPI"]},
+    {"source":"USDKRW","target":"KOSPI","sign":-1,"weight":0.65,"lag_days":0,"evidence":["Direct impact of currency on foreign investor returns and domestic company profits"]},
+    {"source":"Shanghai_Comp","target":"KOSPI","sign":1,"weight":0.6,"lag_days":0,"evidence":["Proximity and high trade dependency create strong correlation"]},
+    
+    // === 5. 한국 시장 내부 동력 ===
+    {"source":"BOK_Base_Rate","target":"KR_10Y_Bond_Yield","sign":1,"weight":0.9,"lag_days":0,"evidence":["Market yields follow the policy rate"]},
+    {"source":"BOK_Base_Rate","target":"KR_Banks","sign":1,"weight":0.7,"lag_days":30,"evidence":["Higher rates improve Net Interest Margin (NIM) for banks"]},
+    {"source":"KR_Customer_Deposits","target":"KOSPI","sign":1,"weight":0.5,"lag_days":5,"evidence":["Increased deposits represent potential buying power for the market"]},
+    {"source":"KR_Credit_Balance","target":"KOSDAQ","sign":1,"weight":0.7,"lag_days":0,"evidence":["Rising credit balance indicates increased retail investor participation, especially in the KOSDAQ"]},
+    {"source":"KOSPI","target":"KOSDAQ","sign":1,"weight":0.8,"lag_days":0,"evidence":["Broad market sentiment synchronization between KOSPI and KOSDAQ"]},
+    {"source":"Institution_Net_Buy_KOSPI","target":"KOSPI","sign":1,"weight":0.7,"lag_days":0,"evidence":["Domestic institutional buying also significantly impacts the index"]},
+
+    // === 6. 원자재 -> 인플레이션 및 산업 ===
+    {"source":"Oil_WTI","target":"US_CPI","sign":1,"weight":0.6,"lag_days":30,"evidence":["Energy is a key input for the headline CPI calculation"]},
+    {"source":"Corn","target":"US_CPI","sign":1,"weight":0.4,"lag_days":30,"evidence":["Food prices are a component of CPI"]},
+    {"source":"Copper","target":"US_PMI_Mfg","sign":1,"weight":0.7,"lag_days":0,"evidence":["'Dr. Copper' is a barometer for global manufacturing activity"]},
+    {"source":"Iron_Ore","target":"Steel_Stocks","sign":1,"weight":0.8,"lag_days":15,"evidence":["Iron ore is the primary raw material for steel production"]},
+    {"source":"Oil_WTI","target":"Energy_Stocks","sign":1,"weight":0.8,"lag_days":0,"evidence":["Revenue of energy companies directly tied to oil price"]},
+    {"source":"Oil_WTI","target":"Airlines","sign":-1,"weight":0.7,"lag_days":0,"evidence":["Jet fuel is a major operating expense for airlines"]},
+    {"source":"Natural_Gas","target":"European chemical companies","sign":-1,"weight":0.8,"lag_days":0,"evidence":["NatGas is a key feedstock and energy source"]},
+
+    // === 7. 반도체 섹터 (Semiconductors) ===
+    {"source":"NASDAQ","target":"Semiconductor_Index_SOX","sign":1,"weight":0.9,"lag_days":0,"evidence":["SOX index is heavily weighted with NASDAQ-listed companies"]},
+    {"source":"US_PMI_Mfg","target":"Semiconductor_Index_SOX","sign":1,"weight":0.6,"lag_days":15,"evidence":["Manufacturing health is a leading indicator for semiconductor demand"]},
+    {"source":"DRAM_Price","target":"SK_Hynix","sign":1,"weight":0.9,"lag_days":0,"evidence":["SK Hynix revenue is highly dependent on memory prices"]},
+    {"source":"DRAM_Price","target":"Samsung_Electronics","sign":1,"weight":0.7,"lag_days":0,"evidence":["Samsung's profit is also heavily influenced by memory prices"]},
+    {"source":"Semiconductor_Index_SOX","target":"Samsung_Electronics","sign":1,"weight":0.8,"lag_days":1,"evidence":["Global peer valuation and sentiment directly impact Samsung stock"]},
+    {"source":"Semiconductor_Index_SOX","target":"SK_Hynix","sign":1,"weight":0.85,"lag_days":1,"evidence":["Global peer valuation and sentiment directly impact Hynix stock"]},
+    {"source":"Samsung_Electronics","target":"KOSPI","sign":1,"weight":0.8,"lag_days":0,"evidence":["Largest market cap stock in KOSPI"]},
+    {"source":"SK_Hynix","target":"KOSPI","sign":1,"weight":0.6,"lag_days":0,"evidence":["Second largest market cap stock in KOSPI"]},
+
+    // === 8. 2차전지/전기차 섹터 (EV & Battery) ===
+    {"source":"Global_EV_Sales","target":"LG_Energy_Solution","sign":1,"weight":0.8,"lag_days":30,"evidence":["Directly tied to battery demand"]},
+    {"source":"Global_EV_Sales","target":"Samsung_SDI","sign":1,"weight":0.75,"lag_days":30,"evidence":["Directly tied to battery demand"]},
+    {"source":"Lithium","target":"LG_Energy_Solution","sign":-1,"weight":0.6,"lag_days":30,"evidence":["Lithium is a key raw material, higher prices squeeze margins"]},
+    {"source":"Oil_WTI","target":"Global_EV_Sales","sign":1,"weight":0.5,"lag_days":90,"evidence":["High oil prices accelerate the transition to EVs"]},
+    {"source":"NASDAQ","target":"LG_Energy_Solution","sign":1,"weight":0.7,"lag_days":1,"evidence":["Considered a key growth/tech stock, correlated with NASDAQ"]},
+
+    // === 9. 바이오 섹터 (Biotechnology) ===
+    {"source":"US_10Y_Yield","target":"NASDAQ_Biotech_Index","sign":-1,"weight":0.8,"lag_days":0,"evidence":["Biotech stocks are long-duration assets, highly sensitive to discount rates"]},
+    {"source":"NASDAQ_Biotech_Index","target":"Samsung_Biologics","sign":1,"weight":0.7,"lag_days":1,"evidence":["Global biotech sentiment affects Korean peers"]},
+    {"source":"NASDAQ_Biotech_Index","target":"Celltrion","sign":1,"weight":0.6,"lag_days":1,"evidence":["Global biotech sentiment affects Korean peers"]},
+
+    // === 10. 기타 주요 섹터 및 기업 ===
+    {"source":"USDKRW","target":"Hyundai_Motor","sign":1,"weight":0.6,"lag_days":15,"evidence":["A weaker Won (higher USDKRW) increases the price competitiveness of exports"]},
+    {"source":"USDJPY","target":"Hyundai_Motor","sign":-1,"weight":0.5,"lag_days":15,"evidence":["A weaker Yen (higher USDJPY) strengthens Japanese competitors like Toyota"]},
+    {"source":"BOK_Base_Rate","target":"Naver","sign":-1,"weight":0.7,"lag_days":0,"evidence":["Higher rates hurt valuations of platform/growth stocks"]},
+    {"source":"BOK_Base_Rate","target":"Kakao","sign":-1,"weight":0.75,"lag_days":0,"evidence":["Higher rates hurt valuations of platform/growth stocks"]},
+    {"source":"KR_10Y_Bond_Yield","target":"KB_Financial","sign":1,"weight":0.6,"lag_days":0,"evidence":["Higher market yields can improve bank margins and investment returns"]}
   ]
 }
