@@ -179,11 +179,123 @@ export default function PortfolioPage() {
     prices: priceHistory,
     loading: priceLoading,
     error: priceError,
-  } = useStockPrices(selectedStock?.ticker, { days: 120 });
+  } = useStockPrices(selectedStock?.ticker, { days: 400 });
   const recentPrices = useMemo(
     () => priceHistory.slice(-10).reverse(),
     [priceHistory]
   );
+
+  const targetAnalysis = useMemo(() => {
+    if (!selectedStock || !priceHistory.length) {
+      return {
+        buyLegs: [],
+        sellLegs: [],
+        reachedLegs: [],
+        unreachedLegs: [],
+      };
+    }
+
+    const parsedPrices = priceHistory
+      .map((item) => ({
+        ...item,
+        close: Number(item.close),
+        dateValue: new Date(item.date),
+      }))
+      .filter(
+        (item) =>
+          Number.isFinite(item.close) &&
+          item.dateValue instanceof Date &&
+          !Number.isNaN(item.dateValue.getTime())
+      );
+
+    if (!parsedPrices.length) {
+      return {
+        buyLegs: [],
+        sellLegs: [],
+        reachedLegs: [],
+        unreachedLegs: [],
+      };
+    }
+
+    const firstDate = parsedPrices[0].dateValue;
+    const millisecondsPerDay = 1000 * 60 * 60 * 24;
+
+    const closes = parsedPrices.map((price) => price.close);
+    const maxPrice = Math.max(...closes);
+    const minPrice = Math.min(...closes);
+
+    const analyseLegs = (legs, type) =>
+      (Array.isArray(legs) ? legs : []).map((leg) => {
+        const numericTarget = Number(leg.targetPrice);
+        const hasValidTarget = Number.isFinite(numericTarget);
+        const baseId = leg?.id ?? `${type}-${leg?.sequence ?? ""}-${leg?.targetPrice ?? ""}`;
+
+        if (!hasValidTarget) {
+          return {
+            id: baseId,
+            sequence: leg.sequence,
+            type,
+            targetPrice: null,
+            rawTargetPrice: leg.targetPrice,
+            reached: false,
+            reachedDate: null,
+            daysToHit: null,
+            maxAdversePercent: null,
+          };
+        }
+
+        const hitIndex = parsedPrices.findIndex((price) =>
+          type === "buy" ? price.close <= numericTarget : price.close >= numericTarget
+        );
+
+        const reached = hitIndex !== -1;
+        const reachedInfo = reached ? parsedPrices[hitIndex] : null;
+
+        const daysToHit = reachedInfo
+          ? Math.max(
+              0,
+              Math.round(
+                (reachedInfo.dateValue.getTime() - firstDate.getTime()) /
+                  millisecondsPerDay
+              )
+            )
+          : null;
+
+        const maxAdversePercent = reached
+          ? null
+          : type === "buy"
+          ? ((maxPrice - numericTarget) / numericTarget) * 100
+          : ((numericTarget - minPrice) / numericTarget) * 100;
+
+        return {
+          id: baseId,
+          sequence: leg.sequence,
+          type,
+          targetPrice: numericTarget,
+          rawTargetPrice: leg.targetPrice,
+          reached,
+          reachedDate: reachedInfo ? reachedInfo.date : null,
+          daysToHit,
+          maxAdversePercent:
+            maxAdversePercent != null && Number.isFinite(maxAdversePercent)
+              ? Math.max(0, maxAdversePercent)
+              : null,
+        };
+      });
+
+    const buyLegs = analyseLegs(selectedStock.buyLegs, "buy");
+    const sellLegs = analyseLegs(selectedStock.sellLegs, "sell");
+    const allLegs = [...buyLegs, ...sellLegs];
+
+    return {
+      buyLegs,
+      sellLegs,
+      reachedLegs: allLegs.filter((leg) => leg.reached && leg.daysToHit != null),
+      unreachedLegs: allLegs.filter(
+        (leg) => !leg.reached && leg.maxAdversePercent != null
+      ),
+    };
+  }, [priceHistory, selectedStock]);
 
   useEffect(() => {
     if (!stocks.length) {
@@ -343,6 +455,175 @@ export default function PortfolioPage() {
                     <li className="text-gray-400">등록된 매도 전략이 없습니다.</li>
                   )}
                 </ul>
+              </div>
+
+              <div>
+                <h3 className="text-gray-300 font-semibold mb-2">
+                  목표가 백테스트 결과
+                </h3>
+                {priceLoading ? (
+                  <p className="text-sm text-gray-400">
+                    목표가 백테스트를 위한 가격 데이터를 불러오는 중입니다...
+                  </p>
+                ) : priceError ? (
+                  <p className="text-sm text-red-400">
+                    목표가 백테스트를 수행하지 못했습니다. 잠시 후 다시 시도해주세요.
+                  </p>
+                ) : priceHistory.length ? (
+                  <div className="space-y-4">
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full text-sm">
+                        <thead className="bg-gray-900 text-gray-300">
+                          <tr>
+                            <th className="px-3 py-2 text-left">구분</th>
+                            <th className="px-3 py-2 text-left">차수</th>
+                            <th className="px-3 py-2 text-right">목표가</th>
+                            <th className="px-3 py-2 text-left">도달 여부</th>
+                            <th className="px-3 py-2 text-left">도달까지 기간</th>
+                            <th className="px-3 py-2 text-right">미도달 시 최대 손실</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {[...targetAnalysis.buyLegs, ...targetAnalysis.sellLegs].map(
+                            (leg) => {
+                              const targetPriceText = Number.isFinite(leg.targetPrice)
+                                ? `${leg.targetPrice.toLocaleString()}원`
+                                : leg.rawTargetPrice ?? "-";
+
+                              return (
+                                <tr key={leg.id} className="border-b border-gray-700">
+                                  <td className="px-3 py-2 text-gray-300">
+                                    {leg.type === "buy" ? "매수" : "매도"}
+                                  </td>
+                                  <td className="px-3 py-2">{leg.sequence}차</td>
+                                  <td className="px-3 py-2 text-right text-white">
+                                    {targetPriceText}
+                                  </td>
+                                  <td className="px-3 py-2 text-gray-200">
+                                    {leg.reached
+                                      ? `도달 (${leg.reachedDate})`
+                                      : "미도달"}
+                                </td>
+                                <td className="px-3 py-2 text-gray-200">
+                                  {leg.daysToHit != null
+                                    ? `${leg.daysToHit}일`
+                                    : "-"}
+                                </td>
+                                <td className="px-3 py-2 text-right text-gray-200">
+                                    {leg.maxAdversePercent != null
+                                      ? `${leg.maxAdversePercent.toFixed(1)}%`
+                                      : "-"}
+                                  </td>
+                                </tr>
+                              );
+                            }
+                          )}
+                          {!targetAnalysis.buyLegs.length &&
+                            !targetAnalysis.sellLegs.length && (
+                              <tr>
+                                <td
+                                  colSpan={6}
+                                  className="px-3 py-3 text-center text-gray-400"
+                                >
+                                  분석할 전략 목표가가 없습니다.
+                                </td>
+                              </tr>
+                            )}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="bg-gray-900 rounded-lg p-4">
+                        <h4 className="text-sm font-semibold text-gray-200 mb-3">
+                          목표 도달까지 걸린 기간 (일)
+                        </h4>
+                        {targetAnalysis.reachedLegs.length ? (
+                          <ul className="space-y-2">
+                            {(() => {
+                              const maxDays = Math.max(
+                                ...targetAnalysis.reachedLegs.map((leg) => leg.daysToHit || 0)
+                              );
+                              return targetAnalysis.reachedLegs.map((leg) => {
+                                const width = maxDays
+                                  ? Math.round((leg.daysToHit / maxDays) * 100)
+                                  : 0;
+                                return (
+                                  <li key={`${leg.type}-days-${leg.id}`}>
+                                    <div className="flex justify-between text-xs text-gray-400 mb-1">
+                                      <span>
+                                        {leg.type === "buy" ? "매수" : "매도"} {leg.sequence}차
+                                      </span>
+                                      <span>{leg.daysToHit}일</span>
+                                    </div>
+                                    <div className="w-full bg-gray-800 h-2 rounded">
+                                      <div
+                                        className="bg-teal-400 h-2 rounded"
+                                        style={{ width: `${width}%` }}
+                                      />
+                                    </div>
+                                  </li>
+                                );
+                              });
+                            })()}
+                          </ul>
+                        ) : (
+                          <p className="text-sm text-gray-400">
+                            목표가에 도달한 구간이 없습니다.
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="bg-gray-900 rounded-lg p-4">
+                        <h4 className="text-sm font-semibold text-gray-200 mb-3">
+                          미도달 시 최대 손실 폭 (%)
+                        </h4>
+                        {targetAnalysis.unreachedLegs.length ? (
+                          <ul className="space-y-2">
+                            {(() => {
+                              const maxLoss = Math.max(
+                                ...targetAnalysis.unreachedLegs.map(
+                                  (leg) => leg.maxAdversePercent || 0
+                                )
+                              );
+                              return targetAnalysis.unreachedLegs.map((leg) => {
+                                const width = maxLoss
+                                  ? Math.round(
+                                      (leg.maxAdversePercent / maxLoss) * 100
+                                    )
+                                  : 0;
+                                return (
+                                  <li key={`${leg.type}-loss-${leg.id}`}>
+                                    <div className="flex justify-between text-xs text-gray-400 mb-1">
+                                      <span>
+                                        {leg.type === "buy" ? "매수" : "매도"} {leg.sequence}차
+                                      </span>
+                                      <span>{leg.maxAdversePercent.toFixed(1)}%</span>
+                                    </div>
+                                    <div className="w-full bg-gray-800 h-2 rounded">
+                                      <div
+                                        className="bg-orange-400 h-2 rounded"
+                                        style={{ width: `${width}%` }}
+                                      />
+                                    </div>
+                                  </li>
+                                );
+                              });
+                            })()}
+                          </ul>
+                        ) : (
+                          <p className="text-sm text-gray-400">
+                            미도달한 목표가에 대한 손실 데이터가 없습니다.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-400">
+                    가격 데이터가 부족해 백테스트를 수행할 수 없습니다.
+                  </p>
+                )}
               </div>
 
               <div>
