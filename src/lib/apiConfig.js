@@ -1,5 +1,13 @@
 const FALLBACK_REMOTE_API = "https://stock-lab-backend-repo.onrender.com";
 
+const normalizeBase = (value) => {
+  if (typeof value !== "string") {
+    return null;
+  }
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed.replace(/\/$/, "") : null;
+};
+
 const inferSameOriginApiBase = () => {
   if (typeof window === "undefined") {
     return null;
@@ -9,15 +17,35 @@ const inferSameOriginApiBase = () => {
 
   if (hostname.endsWith("netlify.app") || hostname.endsWith("netlify.live")) {
     // Netlify에서는 netlify.toml 리다이렉트 설정을 통해 백엔드로 프록시합니다.
-    return "";
+    return "/api";
   }
 
   return null;
 };
 
-const inferredBase = inferSameOriginApiBase();
-const envBase = import.meta?.env?.VITE_API_BASE_URL?.trim();
+const resolveExplicitBase = () => {
+  const candidates = [
+    import.meta?.env?.VITE_API_BASE,
+    import.meta?.env?.VITE_API_BASE_URL,
+  ];
 
-export const API_BASE_URL = envBase || inferredBase || FALLBACK_REMOTE_API;
+  for (const candidate of candidates) {
+    const normalized = normalizeBase(candidate);
+    if (normalized) {
+      return normalized;
+    }
+  }
+
+  return null;
+};
+
+const explicitBase = resolveExplicitBase();
+const inferredBase = normalizeBase(inferSameOriginApiBase());
+
+const RESOLVED_API_BASE = explicitBase || inferredBase || FALLBACK_REMOTE_API;
+
+export const API_BASE_URL = RESOLVED_API_BASE;
+
+export const resolveApiBase = () => RESOLVED_API_BASE;
 
 export default API_BASE_URL;
