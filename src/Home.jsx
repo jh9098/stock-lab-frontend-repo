@@ -520,80 +520,138 @@ export default function Home() {
         </div>
         */}
 
-        <section id="market-status" className="mb-12 p-6 bg-gray-800 rounded-lg shadow-xl">
-          <h2 className="text-2xl font-semibold mb-6 text-white border-b-2 border-blue-500 pb-2">시장 현황 및 블로그</h2>
-          <div className="grid md:grid-cols-2 gap-6 mb-6">
-            {/* AI 기반 시장 이슈 요약 섹션 (기존과 동일) */}
-            <div className="bg-gray-700 p-4 rounded-md flex flex-col justify-between">
-              <h3 className="text-xl font-medium mb-3 text-blue-400">AI 기반 시장 이슈 요약</h3>
-              <p className="text-gray-300 mb-4 text-sm">AI가 분석한 최신 시장 트렌드와 주요 이슈를 확인하세요. <br/> 주요 경제 지표는 뉴스룸에서 더 자세히 확인 가능합니다.</p>
-              {aiSummaryLoading ? (
-                <p className="text-gray-300 text-sm">최신 AI 시장 이슈 요약을 불러오는 중입니다...</p>
-              ) : aiSummaryError ? (
-                <p className="text-red-400 text-sm">{aiSummaryError}</p>
-              ) : latestAiSummaries.length > 0 ? (
-                <>
-                  <ul className="list-disc list-inside space-y-2 text-gray-200 mb-4">
-                    {latestAiSummaries.map(summary => (
-                      <li key={summary.id}>
-                        <Link to={`/ai-summaries/${summary.id}`} className="hover:text-blue-300 font-semibold text-base">
-                          {summary.title}
-                        </Link>
-                        <span className="text-xs text-gray-500 ml-2">({summary.date})</span>
-                      </li>
-                    ))}
-                  </ul>
-                  <div className="mt-auto text-sm text-right">
-                    <Link to="/ai-summaries" className="text-blue-400 hover:text-white text-sm">모든 AI 요약 보기 →</Link>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <p className="text-gray-300 mb-4 text-sm">아직 작성된 AI 시장 이슈 요약이 없습니다.</p>
-                  <div className="mt-auto text-sm text-right">
-                    <Link to="/ai-summaries" className="text-blue-400 hover:text-white text-sm">모든 AI 요약 보기 →</Link>
-                  </div>
-                </>
-              )}
+        <section
+          id="market-status"
+          className="mb-12 overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-slate-900/80 via-slate-900 to-slate-950 p-8 shadow-2xl"
+        >
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.4em] text-slate-400">오늘의 인사이트 허브</p>
+              <h2 className="mt-2 text-3xl font-semibold text-white">시장 현황 & 전문가 블로그</h2>
+              <p className="mt-3 text-sm text-slate-300 md:text-base">
+                AI가 선별한 핵심 이슈와 전문 블로그의 심층 분석을 한 화면에서 확인하세요. 시장의 큰 그림과 세부 전략을 동시에 파악할 수 있도록 재구성했습니다.
+              </p>
             </div>
+            <div className="flex flex-wrap gap-3 text-sm">
+              <Link
+                to="/news"
+                className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-4 py-2 font-semibold text-white transition hover:bg-white/15"
+              >
+                시장 뉴스룸 바로가기
+                <span aria-hidden>→</span>
+              </Link>
+              <Link
+                to="/blog"
+                className="inline-flex items-center gap-2 rounded-full bg-blue-500/90 px-4 py-2 font-semibold text-white transition hover:bg-blue-400/90"
+              >
+                블로그 전체 보기
+                <span aria-hidden>→</span>
+              </Link>
+            </div>
+          </div>
 
-            {/* 최신 분석 글 (블로그) 섹션 (기존과 동일) */}
-            <div className="bg-gray-700 p-4 rounded-md flex flex-col justify-between">
-              <h3 className="text-xl font-medium mb-3 text-green-400">최신 분석 글</h3>
-              <p className="text-gray-300 mb-4 text-sm">실전 투자 전략이 담긴 블로그입니다.</p>
-              {blogPostLoading ? (
-                <p className="text-gray-400 text-sm">최신 블로그 글 불러오는 중...</p>
-              ) : blogPostError ? (
-                <p className="text-red-400 text-sm">{blogPostError}</p>
-              ) : latestBlogPosts.length > 0 ? (
-                <>
-                  <ul className="list-disc list-inside space-y-2 text-gray-200 mb-4">
-                    {latestBlogPosts.map(post => (
-                      <li key={post.id}>
-                        <Link to={`/blog/${post.id}`} className="hover:text-green-300 font-semibold text-base">
-                          {post.title}
-                        </Link>
-                        <span className="text-xs text-gray-500 ml-2">({post.date})</span>
-                      </li>
-                    ))}
-                  </ul>
-                  <div className="mt-auto text-sm">
-                    <p>최근 업데이트: <span className="font-semibold text-white">
-                      {latestBlogPosts[0].date || (latestBlogPosts[0].updatedAt ? new Date(latestBlogPosts[0].updatedAt.toDate()).toISOString().split('T')[0] : '날짜 미상')}
-                    </span></p>
-                    <Link to="/blog" className="text-green-400 hover:text-white text-sm">전체 블로그 보기 →</Link>
+          <div className="mt-8 grid gap-6 lg:grid-cols-2">
+            <article className="relative overflow-hidden rounded-2xl border border-blue-500/20 bg-blue-500/5 p-6 shadow-xl backdrop-blur">
+              <div className="absolute -right-16 -top-16 h-40 w-40 rounded-full bg-blue-500/10 blur-3xl" aria-hidden />
+              <div className="relative flex h-full flex-col">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <span className="inline-flex items-center gap-2 rounded-full bg-blue-500/20 px-3 py-1 text-xs font-semibold text-blue-200">
+                      <span className="h-1.5 w-1.5 rounded-full bg-blue-300" />
+                      AI 기반 시장 이슈 요약
+                    </span>
+                    <h3 className="mt-3 text-xl font-semibold text-white">실시간 핵심 이슈 브리핑</h3>
                   </div>
-                </>
-              ) : (
-                <>
-                  <p className="text-gray-400 mb-4 text-sm">작성된 블로그 글이 없습니다.</p>
-                  <div className="mt-auto text-sm">
-                    <p>최근 업데이트: <span className="font-semibold text-white">-</span></p>
-                    <Link to="/blog" className="text-green-400 hover:text-white text-sm">전체 블로그 보기 →</Link>
+                  <Link
+                    to="/ai-summaries"
+                    className="inline-flex items-center gap-2 rounded-full border border-blue-400/30 px-3 py-1 text-xs font-semibold text-blue-200 transition hover:bg-blue-400/10"
+                  >
+                    전체 보기
+                    <span aria-hidden>→</span>
+                  </Link>
+                </div>
+
+                <p className="mt-3 text-sm text-slate-200">
+                  변동성이 큰 구간일수록 AI가 선별한 문장으로 빠르게 정리하세요.
+                </p>
+
+                <div className="mt-5 flex-1">
+                  {aiSummaryLoading ? (
+                    <p className="text-sm text-slate-300">최신 AI 시장 이슈 요약을 불러오는 중입니다...</p>
+                  ) : aiSummaryError ? (
+                    <p className="text-sm text-red-300">{aiSummaryError}</p>
+                  ) : latestAiSummaries.length > 0 ? (
+                    <ul className="space-y-3">
+                      {latestAiSummaries.map((summary) => (
+                        <li key={summary.id} className="rounded-xl border border-white/5 bg-black/20 p-3 transition hover:border-blue-300/40">
+                          <Link to={`/ai-summaries/${summary.id}`} className="block">
+                            <p className="text-sm font-semibold text-white">{summary.title}</p>
+                            <span className="mt-1 block text-xs text-slate-400">{summary.date}</span>
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-sm text-slate-300">아직 작성된 AI 시장 이슈 요약이 없습니다.</p>
+                  )}
+                </div>
+              </div>
+            </article>
+
+            <article className="relative overflow-hidden rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-6 shadow-xl backdrop-blur">
+              <div className="absolute -left-20 top-10 h-44 w-44 rounded-full bg-emerald-500/10 blur-3xl" aria-hidden />
+              <div className="relative flex h-full flex-col">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <span className="inline-flex items-center gap-2 rounded-full bg-emerald-500/20 px-3 py-1 text-xs font-semibold text-emerald-200">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" />
+                      최신 분석 블로그
+                    </span>
+                    <h3 className="mt-3 text-xl font-semibold text-white">전문가의 전략 노트</h3>
                   </div>
-                </>
-              )}
-            </div>
+                  <Link
+                    to="/blog"
+                    className="inline-flex items-center gap-2 rounded-full border border-emerald-400/30 px-3 py-1 text-xs font-semibold text-emerald-200 transition hover:bg-emerald-400/10"
+                  >
+                    전체 보기
+                    <span aria-hidden>→</span>
+                  </Link>
+                </div>
+
+                <p className="mt-3 text-sm text-slate-200">
+                  실전 투자 전략이 담긴 블로그 콘텐츠를 큐레이션했습니다.
+                </p>
+
+                <div className="mt-5 flex-1">
+                  {blogPostLoading ? (
+                    <p className="text-sm text-slate-300">최신 블로그 글 불러오는 중...</p>
+                  ) : blogPostError ? (
+                    <p className="text-sm text-red-300">{blogPostError}</p>
+                  ) : latestBlogPosts.length > 0 ? (
+                    <div className="flex h-full flex-col">
+                      <ul className="space-y-3">
+                        {latestBlogPosts.map((post) => (
+                          <li key={post.id} className="rounded-xl border border-white/5 bg-black/20 p-3 transition hover:border-emerald-300/40">
+                            <Link to={`/blog/${post.id}`} className="block">
+                              <p className="text-sm font-semibold text-white">{post.title}</p>
+                              <span className="mt-1 block text-xs text-slate-400">{post.date}</span>
+                            </Link>
+                          </li>
+                        ))}
+                      </ul>
+                      <div className="mt-4 text-xs text-slate-300">
+                        최근 업데이트:
+                        <span className="ml-2 font-semibold text-white">
+                          {latestBlogPosts[0].date || (latestBlogPosts[0].updatedAt ? new Date(latestBlogPosts[0].updatedAt.toDate()).toISOString().split("T")[0] : "날짜 미상")}
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-slate-300">작성된 블로그 글이 없습니다.</p>
+                  )}
+                </div>
+              </div>
+            </article>
           </div>
         </section>
         {/**
@@ -868,144 +926,393 @@ export default function Home() {
         </section>
 
         {/* === 최근 등록된 종목들 및 전문가 분석 섹션 (수정) === */}
-        <section id="recommendations" className="mb-12 p-6 bg-gray-800 rounded-lg shadow-xl">
-          <h2 className="text-2xl font-semibold mb-6 text-white border-b-2 border-teal-500 pb-2">최근 등록된 종목들 및 전문가 분석</h2>
-          {stockAnalysesLoading ? (
-            <p className="text-gray-300 text-center">최신 종목 분석을 불러오는 중입니다...</p>
-          ) : stockAnalysesError ? (
-            <p className="text-red-400 text-center">{stockAnalysesError}</p>
-          ) : latestStockAnalyses.length > 0 ? (
-            <div className="grid md:grid-cols-2 gap-6 mb-8">
-              {latestStockAnalyses.map((stock) => (
-                // stock.id는 Firebase 문서 ID
-                <div key={stock.id} className="bg-gray-700 p-4 rounded-md shadow-lg">
-                  <div className="flex justify-between items-start">
-                    {/* ⚠️ 종목 코드 표시 제거 */}
-                    <h3 className="text-xl font-medium mb-1 text-teal-400">{stock.name}</h3>
-                    {/* 💡 즐겨찾기 토글 버튼: stock.id 사용 */}
-                    <button
-                      onClick={() => toggleFavorite(stock.id)}
-                      className="bg-transparent border-none cursor-pointer text-2xl"
-                    >
-                      {favorites.includes(stock.id) ? "❤️" : "🤍"}
-                    </button>
-                  </div>
-                  <p className="text-xs text-gray-400 mb-3">업데이트: {stock.createdAt ? new Date(stock.createdAt.toDate()).toLocaleDateString('ko-KR') : ''}</p>
-                  <p className="text-gray-300 text-sm mb-3 recommendation-item-content">
-                    <strong>전략:</strong> {stock.strategy || "등록된 전략 없음"}
-                  </p>
-                  <div className="text-sm space-y-1">
-                    <p><strong>설명:</strong> <span className="text-gray-300">{stock.detail || "등록된 설명 없음"}</span></p>
-                  </div>
-                  {/* 상세 분석 보기 링크: /recommendations 페이지로 이동 */}
-                  <Link to="/recommendations" className="mt-4 inline-block bg-teal-500 hover:bg-teal-600 text-white font-semibold py-2 px-4 rounded-md text-sm transition duration-300">
-                    상세 분석 보기 <i className="fas fa-chart-line ml-1"></i>
-                  </Link>
-                </div>
-              ))}
+        <section
+          id="recommendations"
+          className="mb-12 overflow-hidden rounded-3xl border border-teal-500/20 bg-gradient-to-br from-teal-950 via-slate-900 to-slate-950 p-8 shadow-2xl"
+        >
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.35em] text-teal-300/80">핵심 종목 큐레이션</p>
+              <h2 className="mt-2 text-3xl font-semibold text-white">최근 등록된 종목 & 전문가 분석</h2>
+              <p className="mt-3 text-sm text-teal-100/80 md:text-base">
+                새롭게 등록된 종목 분석과 전략 포인트를 한 번에 살펴보고, 나만의 관심 종목을 빠르게 저장하세요.
+              </p>
             </div>
-          ) : (
-            <p className="text-gray-300 text-center col-span-full mb-8">현재 등록된 종목 분석이 없습니다.</p>
-          )}
-
-          <div className="mt-6 text-center">
-            <Link to="/recommendations" className="bg-gray-600 hover:bg-gray-500 text-white font-semibold py-2 px-6 rounded-md text-sm transition duration-300">
-              전체 추천 히스토리 보기
+            <Link
+              to="/recommendations"
+              className="inline-flex items-center gap-2 rounded-full bg-teal-500/90 px-4 py-2 text-sm font-semibold text-white transition hover:bg-teal-400"
+            >
+              전체 추천 히스토리
+              <span aria-hidden>→</span>
             </Link>
           </div>
+
+          <div className="mt-8">
+            {stockAnalysesLoading ? (
+              <p className="text-center text-sm text-teal-100/80">최신 종목 분석을 불러오는 중입니다...</p>
+            ) : stockAnalysesError ? (
+              <p className="text-center text-sm text-red-300">{stockAnalysesError}</p>
+            ) : latestStockAnalyses.length > 0 ? (
+              <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+                {latestStockAnalyses.map((stock) => {
+                  const isFavorite = favorites.includes(stock.id);
+                  const updatedDate = stock.createdAt
+                    ? new Date(stock.createdAt.toDate()).toLocaleDateString('ko-KR')
+                    : '';
+
+                  return (
+                    <article
+                      key={stock.id}
+                      className="relative flex h-full flex-col justify-between overflow-hidden rounded-2xl border border-teal-500/20 bg-black/30 p-6 shadow-xl transition hover:border-teal-300/40 hover:bg-black/40"
+                    >
+                      <div className="absolute -right-12 top-0 h-32 w-32 rounded-full bg-teal-500/10 blur-3xl" aria-hidden />
+                      <div className="relative">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <span className="inline-flex items-center gap-2 rounded-full bg-teal-500/15 px-3 py-1 text-xs font-semibold text-teal-200">
+                              신규 분석
+                            </span>
+                            <h3 className="mt-3 text-lg font-semibold text-white">{stock.name}</h3>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => toggleFavorite(stock.id)}
+                            className={`inline-flex items-center justify-center rounded-full border border-white/10 bg-white/5 p-2 text-base transition hover:border-teal-300 hover:bg-white/10 ${isFavorite ? 'text-pink-300' : 'text-slate-200'}`}
+                            aria-label={isFavorite ? `${stock.name} 즐겨찾기 해제` : `${stock.name} 즐겨찾기 등록`}
+                          >
+                            {isFavorite ? '★' : '☆'}
+                          </button>
+                        </div>
+                        <p className="mt-2 text-xs text-slate-400">업데이트: {updatedDate || '날짜 미상'}</p>
+                        <p className="mt-4 text-sm text-slate-200">
+                          <span className="font-semibold text-teal-200">전략</span>
+                          <span className="ml-2 text-slate-100/90">{stock.strategy || '등록된 전략 없음'}</span>
+                        </p>
+                        <p className="mt-3 text-sm text-slate-300">
+                          {stock.detail || '등록된 설명이 없습니다. 분석 페이지에서 더 많은 정보를 확인하세요.'}
+                        </p>
+                      </div>
+                      <div className="relative mt-6 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-300">
+                        <span className="rounded-full bg-white/5 px-3 py-1">
+                          {isFavorite ? '관심 종목으로 저장됨' : '관심 종목에 추가 가능'}
+                        </span>
+                        <Link
+                          to="/recommendations"
+                          className="inline-flex items-center gap-2 rounded-full bg-teal-500/90 px-4 py-2 text-sm font-semibold text-white transition hover:bg-teal-400"
+                        >
+                          상세 분석 보기
+                          <span aria-hidden>→</span>
+                        </Link>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-white/10 bg-black/20 p-10 text-center text-sm text-slate-300">
+                현재 등록된 종목 분석이 없습니다. 새로운 분석이 등록되면 이곳에서 가장 먼저 안내해드릴게요.
+              </div>
+            )}
+          </div>
         </section>
 
-        <section id="forum" className="mb-12 p-6 bg-gray-800 rounded-lg shadow-xl">
-          <h2 className="text-2xl font-semibold mb-6 text-white border-b-2 border-pink-500 pb-2">종목 상담 게시판</h2>
-          <div className="flex justify-end mb-4">
-            <Link to="/forum/write" className="bg-pink-500 hover:bg-pink-600 text-white font-semibold py-2 px-4 rounded-md text-sm transition duration-300"><i className="fas fa-edit mr-1"></i> 새 글 작성하기</Link>
+        <section
+          id="forum"
+          className="mb-12 overflow-hidden rounded-3xl border border-pink-500/20 bg-gradient-to-br from-fuchsia-950 via-slate-900 to-slate-950 p-8 shadow-2xl"
+        >
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.35em] text-pink-200/80">실전 고민 해결소</p>
+              <h2 className="mt-2 text-3xl font-semibold text-white">종목 상담 게시판</h2>
+              <p className="mt-3 text-sm text-pink-100/80 md:text-base">
+                실시간으로 올라오는 투자 고민과 전문가 코멘트를 확인하세요. 질문을 남기면 운영자와 고수 투자자들이 빠르게 피드백을 드립니다.
+              </p>
+            </div>
+            <Link
+              to="/forum/write"
+              className="inline-flex items-center gap-2 rounded-full bg-pink-500/90 px-4 py-2 text-sm font-semibold text-white transition hover:bg-pink-400"
+            >
+              <i className="fas fa-pen-nib" aria-hidden />
+              새 글 작성하기
+            </Link>
           </div>
-          {forumLoading ? (
-            <p className="text-gray-300">불러오는 중...</p>
-          ) : forumError ? (
-            <p className="text-red-400">{forumError}</p>
-          ) : (
-            <div className="space-y-4">
-              {latestForumPosts.map(post => (
-                <div key={post.id} className="bg-gray-700 p-4 rounded-md shadow-lg">
-                  <h4 className="text-lg font-medium mb-1 text-pink-400">{post.title}</h4>
-                  <p className="text-xs text-gray-400 mb-2">작성자: {post.author} {post.expertComment && <span className="ml-2 text-green-400">전문가 코멘트 완료</span>}</p>
-                  <p className="text-gray-300 text-sm mb-3 forum-post-content whitespace-pre-wrap">{post.content.slice(0, 80)}{post.content.length > 80 ? '...' : ''}</p>
-                  <Link to={`/forum/${post.id}`} className="text-pink-400 hover:text-pink-300 font-semibold text-sm">게시글 보기 <i className="fas fa-angle-double-right ml-1"></i></Link>
+
+          <div className="mt-8">
+            {forumLoading ? (
+              <p className="text-sm text-pink-100/80">불러오는 중...</p>
+            ) : forumError ? (
+              <p className="text-sm text-red-300">{forumError}</p>
+            ) : latestForumPosts.length > 0 ? (
+              <div className="grid gap-5 lg:grid-cols-2">
+                {latestForumPosts.map((post) => (
+                  <article
+                    key={post.id}
+                    className="relative flex h-full flex-col justify-between overflow-hidden rounded-2xl border border-pink-500/20 bg-black/30 p-6 shadow-xl transition hover:border-pink-300/40 hover:bg-black/40"
+                  >
+                    <div className="absolute -left-10 top-0 h-32 w-32 rounded-full bg-pink-500/15 blur-3xl" aria-hidden />
+                    <div className="relative">
+                      <div className="flex items-start justify-between gap-3">
+                        <h3 className="text-lg font-semibold text-white">{post.title}</h3>
+                        {post.expertComment ? (
+                          <span className="inline-flex items-center gap-2 rounded-full bg-emerald-500/20 px-3 py-1 text-xs font-semibold text-emerald-200">
+                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" />
+                            전문가 코멘트 완료
+                          </span>
+                        ) : null}
+                      </div>
+                      <p className="mt-2 text-xs text-slate-400">작성자: {post.author}</p>
+                      <p className="mt-4 text-sm text-slate-200">
+                        {(post.content || '').slice(0, 100)}
+                        {(post.content || '').length > 100 ? '…' : ''}
+                      </p>
+                    </div>
+                    <div className="relative mt-6 flex items-center justify-between text-sm">
+                      <Link
+                        to={`/forum/${post.id}`}
+                        className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 font-semibold text-white transition hover:bg-white/20"
+                      >
+                        상세 보기
+                        <span aria-hidden>→</span>
+                      </Link>
+                      <Link
+                        to="/forum"
+                        className="text-xs font-semibold text-pink-200/80 underline-offset-2 hover:text-pink-200 hover:underline"
+                      >
+                        게시판 전체 이동
+                      </Link>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-white/10 bg-black/20 p-10 text-center text-sm text-slate-300">
+                아직 등록된 상담 글이 없습니다. 가장 먼저 질문을 남겨보세요!
+              </div>
+            )}
+          </div>
+        </section>
+
+        <section
+          id="social-media"
+          className="mb-12 overflow-hidden rounded-3xl border border-red-500/20 bg-gradient-to-br from-rose-950 via-slate-900 to-slate-950 p-8 shadow-2xl"
+        >
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.35em] text-rose-200/80">콘텐츠 & 커뮤니티</p>
+              <h2 className="mt-2 text-3xl font-semibold text-white">미디어 채널 & 문의 허브</h2>
+              <p className="mt-3 text-sm text-rose-100/80 md:text-base">
+                영상, 텍스트, 커뮤니티 채널을 통해 지지저항랩의 콘텐츠와 소식을 빠르게 받아보세요. 궁금한 점은 언제든지 문의로 연결됩니다.
+              </p>
+            </div>
+            <a
+              href="https://open.kakao.com/o/gzQUEIoh"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-full bg-rose-500/90 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-400"
+            >
+              카카오톡 문의하기
+              <span aria-hidden>→</span>
+            </a>
+          </div>
+
+          <div className="mt-8 grid gap-6 lg:grid-cols-3">
+            <article className="relative overflow-hidden rounded-2xl border border-red-500/20 bg-black/30 p-6 shadow-xl transition hover:border-red-300/40 hover:bg-black/40">
+              <div className="absolute -right-12 top-0 h-32 w-32 rounded-full bg-red-500/15 blur-3xl" aria-hidden />
+              <div className="relative flex h-full flex-col">
+                <span className="inline-flex items-center gap-2 rounded-full bg-red-500/20 px-3 py-1 text-xs font-semibold text-red-200">
+                  <i className="fab fa-youtube" aria-hidden />
+                  YouTube
+                </span>
+                <h3 className="mt-3 text-xl font-semibold text-white">운영자 유튜브 채널</h3>
+                <p className="mt-3 text-sm text-slate-200">
+                  심층 시장 분석과 라이브 방송 다시보기 등 핵심 영상 콘텐츠를 구독하세요.
+                </p>
+                <a
+                  href="https://www.youtube.com/@stocksrlab"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-6 inline-flex items-center gap-2 rounded-full bg-red-500/90 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-400"
+                >
+                  유튜브 채널 방문
+                  <span aria-hidden>→</span>
+                </a>
+              </div>
+            </article>
+
+            <article className="relative overflow-hidden rounded-2xl border border-blue-500/20 bg-black/30 p-6 shadow-xl transition hover:border-blue-300/40 hover:bg-black/40">
+              <div className="absolute -left-12 top-0 h-32 w-32 rounded-full bg-blue-500/15 blur-3xl" aria-hidden />
+              <div className="relative flex h-full flex-col">
+                <span className="inline-flex items-center gap-2 rounded-full bg-blue-500/20 px-3 py-1 text-xs font-semibold text-blue-200">
+                  <i className="fab fa-threads" aria-hidden />
+                  Threads
+                </span>
+                <h3 className="mt-3 text-xl font-semibold text-white">실시간 쓰레드 업데이트</h3>
+                <p className="mt-3 text-sm text-slate-200">
+                  장중 변동성과 이슈를 빠르게 공유하는 숏폼 텍스트 채널입니다.
+                </p>
+                <a
+                  href="https://www.threads.net/@stocksrlab"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-6 inline-flex items-center gap-2 rounded-full bg-blue-500/90 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-400"
+                >
+                  쓰레드 채널 방문
+                  <span aria-hidden>→</span>
+                </a>
+              </div>
+            </article>
+
+            <article className="relative overflow-hidden rounded-2xl border border-rose-500/20 bg-black/30 p-6 shadow-xl transition hover:border-rose-300/40 hover:bg-black/40">
+              <div className="absolute -right-12 bottom-0 h-32 w-32 rounded-full bg-rose-500/20 blur-3xl" aria-hidden />
+              <div className="relative flex h-full flex-col">
+                <span className="inline-flex items-center gap-2 rounded-full bg-rose-500/20 px-3 py-1 text-xs font-semibold text-rose-200">
+                  <i className="fas fa-headset" aria-hidden />
+                  Contact
+                </span>
+                <h3 className="mt-3 text-xl font-semibold text-white">지지저항랩 문의 센터</h3>
+                <p className="mt-3 text-sm text-slate-200">
+                  문의는 언제든 환영합니다. 이메일과 카카오톡 오픈채팅으로 빠르게 연결됩니다.
+                </p>
+                <ul className="mt-4 space-y-2 text-sm text-slate-200">
+                  <li>
+                    <span className="font-semibold text-rose-200">이메일</span>
+                    <span className="ml-2 text-slate-100">stocksrlab@naver.com</span>
+                  </li>
+                  <li>
+                    <span className="font-semibold text-rose-200">카카오 오픈채팅</span>
+                    <a
+                      href="https://open.kakao.com/o/gzQUEIoh"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="ml-2 text-rose-200 underline-offset-2 hover:text-rose-100 hover:underline"
+                    >
+                      바로 문의하기
+                    </a>
+                  </li>
+                </ul>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section
+          id="extra-features"
+          className="mb-12 overflow-hidden rounded-3xl border border-yellow-500/20 bg-gradient-to-br from-amber-900 via-slate-900 to-slate-950 p-8 shadow-2xl"
+        >
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.35em] text-amber-200/80">맞춤 기능</p>
+              <h2 className="mt-2 text-3xl font-semibold text-white">부가 기능 & 이용 가이드</h2>
+              <p className="mt-3 text-sm text-amber-100/80 md:text-base">
+                즐겨찾기, 이용 가이드, 고급 도구 모음까지 투자에 필요한 모든 리소스를 이 섹션에 모았습니다.
+              </p>
+            </div>
+            <Link
+              to="/portfolio"
+              className="inline-flex items-center gap-2 rounded-full bg-amber-500/90 px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-amber-400"
+            >
+              나의 포트폴리오 바로가기
+              <span aria-hidden>→</span>
+            </Link>
+          </div>
+
+          <div className="mt-8 grid gap-6 lg:grid-cols-3">
+            <article className="relative overflow-hidden rounded-2xl border border-amber-500/30 bg-black/30 p-6 shadow-xl transition hover:border-amber-300/40 hover:bg-black/40">
+              <div className="absolute -right-12 top-0 h-28 w-28 rounded-full bg-amber-500/15 blur-3xl" aria-hidden />
+              <div className="relative">
+                <span className="inline-flex items-center gap-2 rounded-full bg-amber-500/20 px-3 py-1 text-xs font-semibold text-amber-200">
+                  <i className="fas fa-star" aria-hidden />
+                  관심 종목
+                </span>
+                <h3 className="mt-3 text-xl font-semibold text-white">나의 관심 종목 관리</h3>
+                <p className="mt-3 text-sm text-slate-200">관심 종목을 즐겨찾기에 등록하고 업데이트 현황을 빠르게 확인하세요.</p>
+                <ul className="mt-4 space-y-2 text-sm text-slate-200">
+                  {favorites.length > 0 ? (
+                    favorites.map((favId) => {
+                      const stock = latestStockAnalyses.find((s) => s.id === favId);
+                      return stock ? (
+                        <li key={favId} className="flex items-center justify-between gap-3 rounded-lg border border-white/5 bg-white/5 px-3 py-2">
+                          <span className="font-semibold text-white">{stock.name}</span>
+                          <span className="text-xs text-amber-200">{stock.strategy || '전략 미입력'}</span>
+                        </li>
+                      ) : null;
+                    })
+                  ) : (
+                    <li className="rounded-lg border border-dashed border-amber-500/40 px-3 py-4 text-center text-slate-300">
+                      아직 관심 종목이 없습니다. 위 추천 섹션에서 마음에 드는 종목을 추가해보세요!
+                    </li>
+                  )}
+                </ul>
+                <button
+                  type="button"
+                  className="mt-6 inline-flex items-center gap-2 rounded-full bg-amber-500/90 px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-amber-400"
+                >
+                  관심 종목 관리하기
+                  <span aria-hidden>→</span>
+                </button>
+              </div>
+            </article>
+
+            <article className="relative overflow-hidden rounded-2xl border border-amber-500/30 bg-black/30 p-6 shadow-xl transition hover:border-amber-300/40 hover:bg-black/40">
+              <div className="absolute -left-12 top-0 h-28 w-28 rounded-full bg-amber-500/15 blur-3xl" aria-hidden />
+              <div className="relative">
+                <span className="inline-flex items-center gap-2 rounded-full bg-amber-500/20 px-3 py-1 text-xs font-semibold text-amber-200">
+                  <i className="fas fa-book-open" aria-hidden />
+                  이용 가이드
+                </span>
+                <h3 className="mt-3 text-xl font-semibold text-white">지지저항랩 활용법</h3>
+                <ul className="mt-4 space-y-3 text-sm text-slate-200">
+                  <li>
+                    <a href="#" className="flex items-center justify-between gap-3 rounded-lg border border-white/5 bg-white/5 px-3 py-2 transition hover:border-amber-300/40 hover:text-amber-200">
+                      핵심 기능 빠르게 이해하기
+                      <span aria-hidden>→</span>
+                    </a>
+                  </li>
+                  <li>
+                    <a href="#" className="flex items-center justify-between gap-3 rounded-lg border border-white/5 bg-white/5 px-3 py-2 transition hover:border-amber-300/40 hover:text-amber-200">
+                      지지선/저항선 매매 가이드
+                      <span aria-hidden>→</span>
+                    </a>
+                  </li>
+                  <li>
+                    <a href="#" className="flex items-center justify-between gap-3 rounded-lg border border-white/5 bg-white/5 px-3 py-2 transition hover:border-amber-300/40 hover:text-amber-200">
+                      AI 분석과 수급 데이터 결합법
+                      <span aria-hidden>→</span>
+                    </a>
+                  </li>
+                </ul>
+              </div>
+            </article>
+
+            <article className="relative overflow-hidden rounded-2xl border border-amber-500/30 bg-black/30 p-6 shadow-xl transition hover:border-amber-300/40 hover:bg-black/40">
+              <div className="absolute -right-10 bottom-0 h-28 w-28 rounded-full bg-amber-500/15 blur-3xl" aria-hidden />
+              <div className="relative">
+                <span className="inline-flex items-center gap-2 rounded-full bg-amber-500/20 px-3 py-1 text-xs font-semibold text-amber-200">
+                  <i className="fas fa-toolbox" aria-hidden />
+                  퀵 링크
+                </span>
+                <h3 className="mt-3 text-xl font-semibold text-white">프리미엄 도구 모음</h3>
+                <p className="mt-3 text-sm text-slate-200">테마 분석, 수급 히스토리, AI 요약 등 주요 기능을 빠르게 이동할 수 있습니다.</p>
+                <div className="mt-4 grid gap-2 text-sm text-slate-200">
+                  <Link to="/market-history" className="flex items-center justify-between gap-3 rounded-lg border border-white/5 bg-white/5 px-3 py-2 transition hover:border-amber-300/40 hover:text-amber-200">
+                    수급 & 인기 대시보드
+                    <span aria-hidden>→</span>
+                  </Link>
+                  <Link to="/themes" className="flex items-center justify-between gap-3 rounded-lg border border-white/5 bg-white/5 px-3 py-2 transition hover:border-amber-300/40 hover:text-amber-200">
+                    테마 주도주 페이지
+                    <span aria-hidden>→</span>
+                  </Link>
+                  <Link to="/ai-summaries" className="flex items-center justify-between gap-3 rounded-lg border border-white/5 bg-white/5 px-3 py-2 transition hover:border-amber-300/40 hover:text-amber-200">
+                    AI 시장 이슈 요약
+                    <span aria-hidden>→</span>
+                  </Link>
                 </div>
-              ))}
-            </div>
-          )}
-          <div className="mt-6 text-center">
-            <Link to="/forum" className="bg-gray-600 hover:bg-gray-500 text-white font-semibold py-2 px-6 rounded-md text-sm transition duration-300">게시판 전체 보기</Link>
+              </div>
+            </article>
           </div>
         </section>
 
-        <section id="social-media" className="mb-12 p-6 bg-gray-800 rounded-lg shadow-xl">
-          <h2 className="text-2xl font-semibold mb-6 text-white border-b-2 border-red-500 pb-2">미디어 채널</h2>
-          <div className="grid md:grid-cols-2 gap-6">
-            <div className="bg-gray-700 p-4 rounded-md shadow-lg">
-              <h3 className="text-xl font-medium mb-3 text-red-400"><i className="fab fa-youtube mr-2"></i>운영자 유튜브 채널</h3>
-              <a href="https://www.youtube.com/@stocksrlab" target="_blank" rel="noopener noreferrer" className="inline-block mb-3">
-                <img src="https://placehold.co/120x30/FF0000/FFFFFF?text=YouTube+채널" alt="지지저항랩 유튜브 채널 로고" className="rounded" onError={(e) => { e.target.src = 'https://placehold.co/120x30/FF0000/FFFFFF?text=로고+오류'; e.target.onerror = null; }} />
-              </a>
-              <p className="text-gray-300 text-sm mb-3">최신 시장 분석과 투자 전략을 영상으로 만나보세요. 다양한 주식 콘텐츠가 준비되어 있습니다.</p>
-              <a href="https://www.youtube.com/@stocksrlab" target="_blank" rel="noopener noreferrer" className="mt-4 inline-block bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-md text-sm transition duration-300">유튜브 채널 방문 <i className="fas fa-external-link-alt ml-1"></i></a>
-            </div>
-            <div className="bg-gray-700 p-4 rounded-md shadow-lg">
-              <h3 className="text-xl font-medium mb-3 text-blue-400"><i className="fab fa-threads mr-2"></i>운영자 쓰레드</h3>
-              <a href="https://www.threads.net/@stocksrlab" target="_blank" rel="noopener noreferrer" className="inline-block mb-3">
-                <img src="https://placehold.co/120x30/0077B5/FFFFFF?text=Threads+채널" alt="지지저항랩 쓰레드 채널 로고" className="rounded" onError={(e) => { e.target.src = 'https://placehold.co/120x30/0077B5/FFFFFF?text=로고+오류'; e.target.onerror = null; }} />
-              </a>
-              <p className="text-gray-300 text-sm">실시간 투자 아이디어와 짧은 코멘트를 확인하세요. 시장 속보를 빠르게 공유합니다.</p>
-              <a href="https://www.threads.net/@stocksrlab" target="_blank" rel="noopener noreferrer" className="mt-4 inline-block bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-md text-sm transition duration-300">쓰레드 방문하기 <i className="fas fa-external-link-alt ml-1"></i></a>
-            </div>
-          </div>
-        <div style={{ padding: "2rem", maxWidth: "960px", margin: "auto", lineHeight: "1.8" }}>
-          <h1 style={{ marginBottom: "1.5rem" }}>지지저항 Lab 문의하기</h1>
-    
-          <h2 style={{ marginTop: "2rem" }}>운영자 연락처</h2>
-          <ul>
-            <li>📧 이메일: <strong>stocksrlab@naver.com</strong></li>
-            <li>💬 오픈채팅방: <a href="https://open.kakao.com/o/gzQUEIoh" target="_blank" rel="noreferrer">카카오톡 오픈채팅 문의</a></li>
-          </ul>
-        </div>          
-        </section>
 
-        <section id="extra-features" className="mb-12 p-6 bg-gray-800 rounded-lg shadow-xl">
-          <h2 className="text-2xl font-semibold mb-6 text-white border-b-2 border-yellow-500 pb-2">부가 기능 및 정보</h2>
-          <div className="grid md:grid-cols-2 lg:grid-cols-2 gap-6">
-            <div className="bg-gray-700 p-4 rounded-md shadow-lg">
-              <h3 className="text-lg font-medium mb-3 text-yellow-400"><i className="fas fa-star mr-2"></i>나의 관심 종목</h3>
-              <p className="text-gray-300 text-sm mb-3">관심 종목을 등록하고 최신 분석을 확인하세요.</p>
-              <ul className="text-sm list-disc list-inside pl-2 space-y-1 text-gray-200">
-                {favorites.length > 0 ? (
-                  favorites.map(favId => { // 💡 favId는 Firebase 문서 ID
-                    // latestStockAnalyses에서 해당 ID를 찾아 표시
-                    const stock = latestStockAnalyses.find(s => s.id === favId);
-                    return stock ? (
-                      <li key={favId}>
-                        {/* ⚠️ 종목 코드 표시 제거 */}
-                        {stock.name}: {stock.strategy}
-                      </li>
-                    ) : null; // 찾지 못하면 표시하지 않음 (예: 삭제된 종목)
-                  })
-                ) : (
-                  <li>아직 관심 종목이 없습니다. 아래 종목들을 추가해보세요!</li>
-                )}
-              </ul>
-              <button className="mt-4 bg-yellow-500 hover:bg-yellow-600 text-gray-900 font-semibold py-2 px-3 rounded-md text-xs transition duration-300">관심종목 관리</button>
-            </div>
-            <div className="bg-gray-700 p-4 rounded-md shadow-lg">
-              <h3 className="text-lg font-medium mb-3 text-yellow-400"><i className="fas fa-book-open mr-2"></i>지지저항랩 이용 가이드</h3>
-              <ul className="text-sm space-y-1">
-                <li><a href="#" className="text-gray-300 hover:text-yellow-400 transition duration-300">아래 가이드를 꼭 숙지하세요</a></li>
-                <li><a href="#" className="text-gray-300 hover:text-yellow-400 transition duration-300">지지선과 저항선</a></li>
-                <li><a href="#" className="text-gray-300 hover:text-yellow-400 transition duration-300">매매 가이드</a></li>
-              </ul>
-            </div>
-          </div>
-        </section>
 
       </main>
 
