@@ -11,12 +11,59 @@ import {
   setDoc,
 } from "firebase/firestore";
 
+const SNAPSHOT_COOLDOWN_MS = 60 * 60 * 1000; // 60분
+
+const normalizeItemForComparison = (item) => {
+  if (!item || typeof item !== "object") {
+    return {};
+  }
+
+  return Object.keys(item)
+    .sort()
+    .reduce((acc, key) => {
+      acc[key] = item[key];
+      return acc;
+    }, {});
+};
+
+const normalizeItemsForComparison = (items) => {
+  if (!Array.isArray(items)) {
+    return [];
+  }
+
+  return [...items]
+    .sort((a, b) => {
+      const rankA = typeof a?.rank === "number" ? a.rank : parseFloat(a?.rank) || Number.MAX_SAFE_INTEGER;
+      const rankB = typeof b?.rank === "number" ? b.rank : parseFloat(b?.rank) || Number.MAX_SAFE_INTEGER;
+
+      if (rankA !== rankB) {
+        return rankA - rankB;
+      }
+
+      const nameA = String(a?.name ?? "");
+      const nameB = String(b?.name ?? "");
+      return nameA.localeCompare(nameB, "ko-KR");
+    })
+    .map(normalizeItemForComparison);
+};
+
+const buildSnapshotSignature = (asOfValue, items) => {
+  const normalizedAsOf = typeof asOfValue === "string" ? asOfValue : String(asOfValue ?? "");
+  const normalizedItems = normalizeItemsForComparison(items);
+  return JSON.stringify({
+    asOf: normalizedAsOf,
+    items: normalizedItems,
+  });
+};
+
 export default function PopularStocksCompact() {
   const [stocks, setStocks] = useState([]);
   const [updatedAt, setUpdatedAt] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [infoMessage, setInfoMessage] = useState("");
   const isMountedRef = useRef(true);
+  const lastFetchInfoRef = useRef({ timestamp: 0, signature: "", asOf: "" });
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -123,8 +170,48 @@ export default function PopularStocksCompact() {
   const fetchPopularStocks = async () => {
     setIsLoading(true);
     setErrorMessage("");
+    setInfoMessage("");
 
     try {
+      const latestDocRef = doc(db, "popularStocks", "latest");
+      let latestBeforeSnapshot = null;
+
+      try {
+        const docSnapshot = await getDoc(latestDocRef);
+        if (docSnapshot.exists()) {
+          latestBeforeSnapshot = docSnapshot.data();
+        }
+      } catch (latestReadError) {
+        console.error(
+          "[PopularStocksCompact] Firestore 최신 문서 확인 중 오류",
+          latestReadError
+        );
+      }
+
+      const now = Date.now();
+      const lastFetchInfo = lastFetchInfoRef.current;
+
+      if (
+        lastFetchInfo.timestamp &&
+        now - lastFetchInfo.timestamp < SNAPSHOT_COOLDOWN_MS
+      ) {
+        const latestBeforeSignature = latestBeforeSnapshot
+          ? buildSnapshotSignature(
+              latestBeforeSnapshot.asOf || latestBeforeSnapshot.asOfLabel || "",
+              latestBeforeSnapshot.items
+            )
+          : "";
+        const backendChanged =
+          latestBeforeSignature &&
+          latestBeforeSignature !== lastFetchInfo.signature;
+
+        if (!backendChanged) {
+          setInfoMessage("최근에 갱신된 데이터가 이미 반영되어 있습니다.");
+          setIsLoading(false);
+          return;
+        }
+      }
+
       const response = await fetch("/.netlify/functions/popular-stocks");
 
       if (!response.ok) {
@@ -143,30 +230,63 @@ export default function PopularStocksCompact() {
 
       applyPopularData({ items, asOf, asOfLabel });
 
+      const payloadSignature = buildSnapshotSignature(asOf, items);
+      let shouldPersist = true;
+
       try {
-        await Promise.all([
-          setDoc(doc(db, "popularStocks", "latest"), {
-            asOf,
-            asOfLabel,
-            items,
-            updatedAt: serverTimestamp(),
-          }),
-          addDoc(collection(db, "popularStocksSnapshots"), {
-            asOf,
-            asOfLabel,
-            items,
-            createdAt: serverTimestamp(),
-          }),
-        ]);
-      } catch (firestoreError) {
+        const latestSnapshot = await getDoc(latestDocRef);
+        if (latestSnapshot.exists()) {
+          const latestData = latestSnapshot.data();
+          const latestSignature = buildSnapshotSignature(
+            latestData.asOf || latestData.asOfLabel || "",
+            latestData.items
+          );
+
+          if (latestSignature === payloadSignature) {
+            shouldPersist = false;
+            setInfoMessage("이미 최신 데이터입니다.");
+          }
+        }
+      } catch (compareError) {
         console.error(
-          "[PopularStocksCompact] Firestore 저장 중 오류",
-          firestoreError
+          "[PopularStocksCompact] Firestore 최신 데이터 비교 실패",
+          compareError
         );
-        const message =
-          "인기 종목 데이터를 저장하는 중 문제가 발생했습니다. 데이터는 화면에만 반영되었습니다.";
-        setErrorMessage((prev) => (prev ? `${prev}\n${message}` : message));
       }
+
+      if (shouldPersist) {
+        try {
+          await Promise.all([
+            setDoc(latestDocRef, {
+              asOf,
+              asOfLabel,
+              items,
+              updatedAt: serverTimestamp(),
+            }),
+            addDoc(collection(db, "popularStocksSnapshots"), {
+              asOf,
+              asOfLabel,
+              items,
+              createdAt: serverTimestamp(),
+            }),
+          ]);
+          setInfoMessage("인기 종목 데이터가 새롭게 저장되었습니다.");
+        } catch (firestoreError) {
+          console.error(
+            "[PopularStocksCompact] Firestore 저장 중 오류",
+            firestoreError
+          );
+          const message =
+            "인기 종목 데이터를 저장하는 중 문제가 발생했습니다. 데이터는 화면에만 반영되었습니다.";
+          setErrorMessage((prev) => (prev ? `${prev}\n${message}` : message));
+        }
+      }
+
+      lastFetchInfoRef.current = {
+        timestamp: Date.now(),
+        signature: payloadSignature,
+        asOf,
+      };
     } catch (error) {
       console.error("[PopularStocksCompact] popular-stocks fetch failed", error);
       setErrorMessage(
@@ -198,6 +318,12 @@ export default function PopularStocksCompact() {
         </button>
       </div>
 
+      {infoMessage && (
+        <div className="mb-4 p-3 rounded-md bg-emerald-500/10 border border-emerald-500/40 text-emerald-200 text-sm">
+          {infoMessage}
+        </div>
+      )}
+
       {errorMessage && (
         <div className="mb-4 p-3 rounded-md bg-red-500/10 border border-red-500/40 text-red-300 text-sm">
           {errorMessage}
@@ -212,11 +338,20 @@ export default function PopularStocksCompact() {
         )}
         {stocks.map((stock) => {
           // stock.rate 값에 따라 텍스트 색상 결정
-          const trimmedRate = typeof stock.rate === "string" ? stock.rate.trim() : "";
+          const trimmedRate =
+            typeof stock.rate === "string" ? stock.rate.trim() : "";
           const isPositive = trimmedRate.startsWith("+");
           const isNegative = trimmedRate.startsWith("-");
-          const textColorClass = isPositive ? 'text-green-500' : isNegative ? 'text-red-500' : 'text-gray-300';
-          const changeColorClass = isPositive ? 'text-green-400' : isNegative ? 'text-red-400' : 'text-gray-300';
+          const textColorClass = isPositive
+            ? "text-green-500"
+            : isNegative
+            ? "text-red-500"
+            : "text-gray-300";
+          const changeColorClass = isPositive
+            ? "text-green-400"
+            : isNegative
+            ? "text-red-400"
+            : "text-gray-300";
           const cardKey = stock.code || `${stock.rank}-${stock.name}`;
 
           return (
