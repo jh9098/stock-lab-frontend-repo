@@ -1,0 +1,46 @@
+{
+  "asOf": "2025-10-02",
+  "asOfLabel": "2025년 10월 2일",
+  "items": [
+    {
+      "rank": 1,
+      "name": "삼성전자",
+      "code": "005930",
+      "quantity": "19,178",
+      "amount": "1,720,023",
+      "tradingVolume": "-"
+    },
+    {
+      "rank": 2,
+      "name": "SK하이닉스",
+      "code": "000660",
+      "quantity": "1,039",
+      "amount": "408,998",
+      "tradingVolume": "-"
+    },
+    {
+      "rank": 3,
+      "name": "삼성전자우",
+      "code": "005935",
+      "quantity": "1,866",
+      "amount": "130,657",
+      "tradingVolume": "-"
+    },
+    {
+      "rank": 4,
+      "name": "현대차",
+      "code": "005380",
+      "quantity": "393",
+      "amount": "86,574",
+      "tradingVolume": "-"
+    },
+    {
+      "rank": 5,
+      "name": "기아",
+      "code": "000270",
+      "quantity": "669",
+      "amount": "69,389",
+      "tradingVolume": "-"
+    }
+  ]
+}

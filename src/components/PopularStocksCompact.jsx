@@ -10,51 +10,11 @@ import {
   serverTimestamp,
   setDoc,
 } from "firebase/firestore";
+import {
+  buildSnapshotSignature,
+} from "../lib/snapshotUtils";
 
 const SNAPSHOT_COOLDOWN_MS = 60 * 60 * 1000; // 60분
-
-const normalizeItemForComparison = (item) => {
-  if (!item || typeof item !== "object") {
-    return {};
-  }
-
-  return Object.keys(item)
-    .sort()
-    .reduce((acc, key) => {
-      acc[key] = item[key];
-      return acc;
-    }, {});
-};
-
-const normalizeItemsForComparison = (items) => {
-  if (!Array.isArray(items)) {
-    return [];
-  }
-
-  return [...items]
-    .sort((a, b) => {
-      const rankA = typeof a?.rank === "number" ? a.rank : parseFloat(a?.rank) || Number.MAX_SAFE_INTEGER;
-      const rankB = typeof b?.rank === "number" ? b.rank : parseFloat(b?.rank) || Number.MAX_SAFE_INTEGER;
-
-      if (rankA !== rankB) {
-        return rankA - rankB;
-      }
-
-      const nameA = String(a?.name ?? "");
-      const nameB = String(b?.name ?? "");
-      return nameA.localeCompare(nameB, "ko-KR");
-    })
-    .map(normalizeItemForComparison);
-};
-
-const buildSnapshotSignature = (asOfValue, items) => {
-  const normalizedAsOf = typeof asOfValue === "string" ? asOfValue : String(asOfValue ?? "");
-  const normalizedItems = normalizeItemsForComparison(items);
-  return JSON.stringify({
-    asOf: normalizedAsOf,
-    items: normalizedItems,
-  });
-};
 
 export default function PopularStocksCompact() {
   const [stocks, setStocks] = useState([]);

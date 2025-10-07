@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useLocation, Link } from "react-router-dom";
 import PopularStocksCompact from "./components/PopularStocksCompact";
+import { ForeignNetBuySection, InstitutionNetBuySection } from "./components/InvestorNetBuySection";
 import { Helmet } from "react-helmet";
 import { API_BASE_URL } from "./lib/apiConfig";
 
@@ -302,6 +303,8 @@ export default function Home() {
               <li><Link to="/forum" className="text-gray-300 hover:text-white transition duration-300">종목상담</Link></li>
               <li><Link to="/causal" className="text-gray-300 hover:text-white transition duration-300">연쇄효과 추론</Link></li>
               <li><Link to="/popular-history" className="text-gray-300 hover:text-white transition duration-300">인기종목 히스토리</Link></li>
+              <li><a href="#foreign-net-buy" className="text-gray-300 hover:text-white transition duration-300">외국인 순매수</a></li>
+              <li><a href="#institution-net-buy" className="text-gray-300 hover:text-white transition duration-300">기관 순매수</a></li>
               <li><a href="#social-media" className="text-gray-300 hover:text-white transition duration-300">미디어</a></li>
               <li><a href="#extra-features" className="text-gray-300 hover:text-white transition duration-300">부가기능</a></li>
             </ul>
@@ -599,6 +602,8 @@ export default function Home() {
         </section>
 
         <PopularStocksCompact />
+        <ForeignNetBuySection />
+        <InstitutionNetBuySection />
 
       </main>
 
