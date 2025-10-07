@@ -1,6 +1,7 @@
 // START OF FILE src/components/CausalForm.jsx
 
 import { useState } from "react";
+import { causalKeywordOptions } from "../data/causalKeywordOptions";
 
 const PRESET = {
   start: "FR_credit_rating",
@@ -22,6 +23,13 @@ export default function CausalForm({ onSubmit, loading }) {
     minStrength: 0.05,
   });
   const [errors, setErrors] = useState({});
+
+  const keywordOptionElements = causalKeywordOptions.map((option) => {
+    const optionLabel = option.label === option.id ? option.id : `${option.label} (${option.id})`;
+    return <option key={option.id} value={option.id} label={optionLabel} />;
+  });
+
+  const hasKeywordOptions = keywordOptionElements.length > 0;
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -90,8 +98,15 @@ export default function CausalForm({ onSubmit, loading }) {
           value={formState.start}
           onChange={handleChange}
           disabled={loading}
+          list="causal-keyword-list"
+          autoComplete="off"
           className="w-full rounded-lg border border-gray-600 bg-gray-900 px-3 py-2 text-gray-100 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-400"
         />
+        {hasKeywordOptions && (
+          <p className="mt-1 text-xs text-gray-400">
+            드롭다운 목록에서 제공되는 키워드를 선택하면 오탈자를 걱정하지 않고 입력할 수 있어요.
+          </p>
+        )}
         {errors.start && <p className="mt-1 text-sm text-red-400" role="alert">{errors.start}</p>}
       </div>
 
@@ -128,6 +143,8 @@ export default function CausalForm({ onSubmit, loading }) {
           value={formState.end}
           onChange={handleChange}
           disabled={loading}
+          list="causal-keyword-list"
+          autoComplete="off"
           className="w-full rounded-lg border border-gray-600 bg-gray-900 px-3 py-2 text-gray-100 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-400"
         />
         {errors.end && <p className="mt-1 text-sm text-red-400" role="alert">{errors.end}</p>}
@@ -171,6 +188,10 @@ export default function CausalForm({ onSubmit, loading }) {
           {loading ? "분석 중..." : "연쇄효과 추론 실행"}
         </button>
       </div>
+
+      {hasKeywordOptions && (
+        <datalist id="causal-keyword-list">{keywordOptionElements}</datalist>
+      )}
     </form>
   );
 }
