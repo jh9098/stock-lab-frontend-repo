@@ -1,27 +1,124 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom"; // Link 컴포넌트 임포트 추가
+import { db } from "../firebaseConfig";
+import {
+  addDoc,
+  collection,
+  doc,
+  getDoc,
+  onSnapshot,
+  serverTimestamp,
+  setDoc,
+} from "firebase/firestore";
 
 export default function PopularStocksCompact() {
   const [stocks, setStocks] = useState([]);
   const [updatedAt, setUpdatedAt] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const isMountedRef = useRef(true);
 
   useEffect(() => {
-    // `popular.json` 파일이 `src/data` 폴더에 있다고 가정합니다.
-    // 만약 `public` 폴더에 있다면, `fetch('/data/popular.json')` 방식으로 변경해야 합니다.
-    import("../data/popular.json")
-      .then((mod) => {
-        setStocks(mod.default.stocks || []);
-        setUpdatedAt(mod.default.updatedAt || "");
-      })
-      .catch((error) => {
-        console.error("Error loading popular.json:", error);
-        // 오류 발생 시 사용자에게 알림 또는 기본값 설정
-        setStocks([]);
-        setUpdatedAt("데이터 로딩 실패");
-      });
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
   }, []);
+
+  const applyPopularData = useCallback((data) => {
+    if (!data || !isMountedRef.current) return;
+
+    const items = Array.isArray(data.items)
+      ? data.items
+      : Array.isArray(data.stocks)
+      ? data.stocks
+      : [];
+
+    setStocks(items);
+
+    const displayLabel =
+      data.asOfLabel || data.asOf || data.updatedAt || data.timestamp || "";
+    setUpdatedAt(displayLabel);
+  }, []);
+
+  const loadFallbackData = useCallback(
+    async (reason) => {
+      try {
+        const mod = await import("../data/popular.json");
+        const fallback = mod.default || mod;
+        if (!isMountedRef.current) {
+          return;
+        }
+        applyPopularData({
+          items: fallback?.stocks,
+          asOf: fallback?.updatedAt,
+        });
+
+        if (reason && isMountedRef.current) {
+          setErrorMessage((prev) =>
+            prev ? `${prev}\n${reason}` : reason
+          );
+        }
+      } catch (fallbackError) {
+        console.error("[PopularStocksCompact] 폴백 데이터 로딩 실패", fallbackError);
+        if (!isMountedRef.current) {
+          return;
+        }
+        const fallbackMessage =
+          "Firestore 데이터를 사용할 수 없어 기본 데이터를 불러오려 했지만 실패했습니다.";
+        setErrorMessage((prev) =>
+          prev ? `${prev}\n${fallbackMessage}` : fallbackMessage
+        );
+      }
+    },
+    [applyPopularData]
+  );
+
+  useEffect(() => {
+    const latestDocRef = doc(db, "popularStocks", "latest");
+
+    const hydrateFromSnapshot = (snapshot) => {
+      if (!isMountedRef.current) return;
+
+      if (snapshot.exists()) {
+        applyPopularData(snapshot.data());
+      } else {
+        loadFallbackData(
+          "최근 인기 종목 캐시를 찾을 수 없어 기본 데이터를 표시합니다."
+        );
+      }
+    };
+
+    const fetchInitial = async () => {
+      try {
+        const snapshot = await getDoc(latestDocRef);
+        hydrateFromSnapshot(snapshot);
+      } catch (error) {
+        console.error("[PopularStocksCompact] Firestore 초기 로딩 실패", error);
+        if (isMountedRef.current) {
+          setErrorMessage("Firestore에서 인기 종목 캐시를 불러오지 못했습니다.");
+        }
+        loadFallbackData("임시로 기본 데이터를 표시합니다.");
+      }
+    };
+
+    fetchInitial();
+
+    const unsubscribe = onSnapshot(
+      latestDocRef,
+      (snapshot) => hydrateFromSnapshot(snapshot),
+      (error) => {
+        console.error("[PopularStocksCompact] Firestore 구독 실패", error);
+        if (isMountedRef.current) {
+          setErrorMessage("Firestore 실시간 업데이트를 구독하지 못했습니다.");
+        }
+      }
+    );
+
+    return () => {
+      unsubscribe();
+    };
+  }, [applyPopularData, loadFallbackData]);
 
   const fetchPopularStocks = async () => {
     setIsLoading(true);
@@ -40,8 +137,36 @@ export default function PopularStocksCompact() {
         throw new Error("예상치 못한 응답 형식입니다.");
       }
 
-      setStocks(payload.items);
-      setUpdatedAt(payload.asOfLabel || payload.asOf || "");
+      const asOf = payload.asOf || payload.asOfLabel || "";
+      const asOfLabel = payload.asOfLabel || "";
+      const items = payload.items;
+
+      applyPopularData({ items, asOf, asOfLabel });
+
+      try {
+        await Promise.all([
+          setDoc(doc(db, "popularStocks", "latest"), {
+            asOf,
+            asOfLabel,
+            items,
+            updatedAt: serverTimestamp(),
+          }),
+          addDoc(collection(db, "popularStocksSnapshots"), {
+            asOf,
+            asOfLabel,
+            items,
+            createdAt: serverTimestamp(),
+          }),
+        ]);
+      } catch (firestoreError) {
+        console.error(
+          "[PopularStocksCompact] Firestore 저장 중 오류",
+          firestoreError
+        );
+        const message =
+          "인기 종목 데이터를 저장하는 중 문제가 발생했습니다. 데이터는 화면에만 반영되었습니다.";
+        setErrorMessage((prev) => (prev ? `${prev}\n${message}` : message));
+      }
     } catch (error) {
       console.error("[PopularStocksCompact] popular-stocks fetch failed", error);
       setErrorMessage(
@@ -53,7 +178,7 @@ export default function PopularStocksCompact() {
   };
 
   return (
-    <section className="mb-12 p-6 bg-gray-800 rounded-lg shadow-xl">
+    <section id="popular-stocks" className="mb-12 p-6 bg-gray-800 rounded-lg shadow-xl">
       <h2 className="text-2xl font-semibold mb-6 text-white border-b-2 border-orange-500 pb-2">
         🔥 인기 검색 종목
         {updatedAt && <span className="text-sm text-gray-400 ml-3">(기준: {updatedAt})</span>}
@@ -130,10 +255,10 @@ export default function PopularStocksCompact() {
 
       <div className="mt-6 text-center">
         <Link
-          to="/list" // 전체 종목 보기 페이지 경로 (필요에 따라 수정)
+          to="/popular-history"
           className="bg-gray-600 hover:bg-gray-500 text-white font-semibold py-2 px-6 rounded-md text-sm transition duration-300"
         >
-          더 많은 인기 종목 보기
+          인기 종목 히스토리 보기
         </Link>
       </div>
     </section>
