@@ -15,6 +15,8 @@ import AiSummaryDetailPage from "./AiSummaryDetailPage";
 import PortfolioPage from "./PortfolioPage";
 import CausalInference from "./pages/CausalInference";
 import PopularStocksHistory from "./pages/PopularStocksHistory";
+import ForeignNetBuyHistory from "./pages/ForeignNetBuyHistory";
+import InstitutionNetBuyHistory from "./pages/InstitutionNetBuyHistory";
 import AdminLayout from "./admin/AdminLayout";
 import AdminDashboard from "./admin/sections/AdminDashboard";
 import BlogManager from "./admin/sections/BlogManager";
@@ -47,6 +49,8 @@ function App() {
       <Route path="/causal" element={<CausalInference />} />
       <Route path="/portfolio" element={<PortfolioPage />} />
       <Route path="/popular-history" element={<PopularStocksHistory />} />
+      <Route path="/foreign-net-buy-history" element={<ForeignNetBuyHistory />} />
+      <Route path="/institution-net-buy-history" element={<InstitutionNetBuyHistory />} />
 
       {/* AI 시장 이슈 요약 관련 라우트 */}
       <Route path="/ai-summaries" element={<AiSummaryListPage />} />

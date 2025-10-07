@@ -1,0 +1,46 @@
+{
+  "asOf": "2025-10-02",
+  "asOfLabel": "2025년 10월 2일",
+  "items": [
+    {
+      "rank": 1,
+      "name": "KODEX 레버리지",
+      "code": "122630",
+      "quantity": "3,237",
+      "amount": "104,695",
+      "tradingVolume": "-"
+    },
+    {
+      "rank": 2,
+      "name": "삼성전자우",
+      "code": "005935",
+      "quantity": "1,125",
+      "amount": "78,794",
+      "tradingVolume": "-"
+    },
+    {
+      "rank": 3,
+      "name": "SK스퀘어",
+      "code": "402340",
+      "quantity": "309",
+      "amount": "74,785",
+      "tradingVolume": "-"
+    },
+    {
+      "rank": 4,
+      "name": "KODEX 200",
+      "code": "069500",
+      "quantity": "1,182",
+      "amount": "58,693",
+      "tradingVolume": "-"
+    },
+    {
+      "rank": 5,
+      "name": "LG에너지솔루션",
+      "code": "373220",
+      "quantity": "139",
+      "amount": "55,357",
+      "tradingVolume": "-"
+    }
+  ]
+}
