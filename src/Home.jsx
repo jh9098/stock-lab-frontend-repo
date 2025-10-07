@@ -1,16 +1,15 @@
 // START OF FILE frontend/src/Home.jsx (수정: 종목 데이터 Firebase 연동 및 종목 코드 제거)
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation, Link } from "react-router-dom";
-import PopularStocksCompact from "./components/PopularStocksCompact";
-import { ForeignNetBuySection, InstitutionNetBuySection } from "./components/InvestorNetBuySection";
-import ThemeLeadersSection from "./components/ThemeLeadersSection";
 import { Helmet } from "react-helmet";
 import useSnapshotsHistory from "./hooks/useSnapshotsHistory";
+import useThemeLeaders from "./hooks/useThemeLeaders";
 
 // Firebase imports
 import { db } from './firebaseConfig';
-import { collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
+import { addDoc, collection, doc, getDoc, limit, orderBy, query, serverTimestamp, setDoc, getDocs } from 'firebase/firestore';
+import { buildSnapshotSignature } from "./lib/snapshotUtils";
 
 export default function Home() {
   // const [stocks, setStocks] = useState([]); // ⚠️ 기존 로컬 주식 데이터 상태 제거
@@ -54,6 +53,35 @@ export default function Home() {
     limitCount: 1,
   });
 
+  const {
+    themes,
+    updatedAt: themeUpdatedAt,
+    isLoading: themeLoading,
+    errorMessage: themeError,
+    infoMessage: themeInfo,
+    fetchLatestThemes,
+  } = useThemeLeaders();
+
+  const SNAPSHOT_COOLDOWN_MS = 60 * 60 * 1000;
+
+  const createInitialFetchStatus = () => ({
+    isLoading: false,
+    infoMessage: "",
+    errorMessage: "",
+  });
+
+  const [sectionFetchStatus, setSectionFetchStatus] = useState({
+    institution: createInitialFetchStatus(),
+    foreign: createInitialFetchStatus(),
+    popular: createInitialFetchStatus(),
+  });
+
+  const fetchCooldownRef = useRef({
+    institution: { timestamp: 0, signature: "", asOf: "" },
+    foreign: { timestamp: 0, signature: "", asOf: "" },
+    popular: { timestamp: 0, signature: "", asOf: "" },
+  });
+
   const historySections = [
     {
       key: "institution",
@@ -63,6 +91,10 @@ export default function Home() {
       buttonColor: "bg-teal-500/90 hover:bg-teal-400",
       description: "기관 투자자의 최근 순매수 상위 종목",
       history: institutionHistory,
+      buttonLabel: "기관 순매수 불러오기",
+      fetchPath: "/.netlify/functions/institution-net-buy",
+      collectionBase: "institutionNetBuy",
+      successMessage: "새로운 순매수 데이터가 저장되었습니다.",
     },
     {
       key: "foreign",
@@ -72,6 +104,10 @@ export default function Home() {
       buttonColor: "bg-sky-500/90 hover:bg-sky-400",
       description: "외국인 자금이 집중된 종목",
       history: foreignHistory,
+      buttonLabel: "외국인 순매수 불러오기",
+      fetchPath: "/.netlify/functions/foreign-net-buy",
+      collectionBase: "foreignNetBuy",
+      successMessage: "새로운 순매수 데이터가 저장되었습니다.",
     },
     {
       key: "popular",
@@ -81,8 +117,170 @@ export default function Home() {
       buttonColor: "bg-orange-500/90 hover:bg-orange-400",
       description: "실시간 인기 검색 순위",
       history: popularHistory,
+      buttonLabel: "인기 종목 불러오기",
+      fetchPath: "/.netlify/functions/popular-stocks",
+      collectionBase: "popularStocks",
+      successMessage: "인기 종목 데이터가 새롭게 저장되었습니다.",
     },
   ];
+
+  const updateFetchStatus = useCallback((sectionKey, updates) => {
+    setSectionFetchStatus((prev) => ({
+      ...prev,
+      [sectionKey]: {
+        ...prev[sectionKey],
+        ...updates,
+      },
+    }));
+  }, []);
+
+  const handleManualFetch = useCallback(
+    async (sectionKey) => {
+      const sectionConfig = historySections.find((section) => section.key === sectionKey);
+      if (!sectionConfig) {
+        return;
+      }
+
+      updateFetchStatus(sectionKey, {
+        isLoading: true,
+        errorMessage: "",
+        infoMessage: "",
+      });
+
+      const { fetchPath, collectionBase, successMessage } = sectionConfig;
+      const latestDocRef = doc(db, collectionBase, "latest");
+      const snapshotsCollectionRef = collection(db, `${collectionBase}Snapshots`);
+
+      try {
+        let latestBeforeSnapshot = null;
+        try {
+          const latestSnapshotDoc = await getDoc(latestDocRef);
+          if (latestSnapshotDoc.exists()) {
+            latestBeforeSnapshot = latestSnapshotDoc.data();
+          }
+        } catch (readError) {
+          console.error(`[Home] Firestore 최신 데이터 확인 실패 (${sectionKey})`, readError);
+        }
+
+        const now = Date.now();
+        const lastFetchInfo = fetchCooldownRef.current[sectionKey] || {
+          timestamp: 0,
+          signature: "",
+          asOf: "",
+        };
+
+        if (lastFetchInfo.timestamp && now - lastFetchInfo.timestamp < SNAPSHOT_COOLDOWN_MS) {
+          const previousSignature = latestBeforeSnapshot
+            ? buildSnapshotSignature(
+                latestBeforeSnapshot.asOf || latestBeforeSnapshot.asOfLabel || "",
+                latestBeforeSnapshot.items
+              )
+            : "";
+          const backendChanged = previousSignature && previousSignature !== lastFetchInfo.signature;
+
+          if (!backendChanged) {
+            updateFetchStatus(sectionKey, {
+              isLoading: false,
+              infoMessage: "최근에 갱신된 데이터가 이미 반영되어 있습니다.",
+            });
+            return;
+          }
+        }
+
+        const response = await fetch(fetchPath);
+        const rawBody = await response.text();
+        let parsedBody = null;
+
+        if (rawBody) {
+          try {
+            parsedBody = JSON.parse(rawBody);
+          } catch (parseError) {
+            console.error(`[Home] 응답 JSON 파싱 실패 (${sectionKey})`, parseError);
+          }
+        }
+
+        if (!response.ok) {
+          const serverMessage =
+            (parsedBody && (parsedBody.error || parsedBody.message)) ||
+            `데이터를 불러오지 못했습니다. (HTTP ${response.status})`;
+          throw new Error(serverMessage);
+        }
+
+        if (!parsedBody || !Array.isArray(parsedBody.items) || parsedBody.items.length === 0) {
+          throw new Error("수집된 데이터가 없습니다. 잠시 후 다시 시도해 주세요.");
+        }
+
+        const payloadItems = parsedBody.items;
+        const asOf = parsedBody.asOf || parsedBody.asOfLabel || "";
+        const asOfLabel = parsedBody.asOfLabel || parsedBody.asOf || "";
+        const payloadSignature = buildSnapshotSignature(asOf, payloadItems);
+
+        let shouldPersist = true;
+        if (latestBeforeSnapshot) {
+          const latestSignature = buildSnapshotSignature(
+            latestBeforeSnapshot.asOf || latestBeforeSnapshot.asOfLabel || "",
+            latestBeforeSnapshot.items
+          );
+
+          if (latestSignature === payloadSignature) {
+            shouldPersist = false;
+          }
+        }
+
+        if (shouldPersist) {
+          try {
+            await Promise.all([
+              setDoc(latestDocRef, {
+                asOf,
+                asOfLabel,
+                items: payloadItems,
+                updatedAt: serverTimestamp(),
+              }),
+              addDoc(snapshotsCollectionRef, {
+                asOf,
+                asOfLabel,
+                items: payloadItems,
+                createdAt: serverTimestamp(),
+              }),
+            ]);
+            updateFetchStatus(sectionKey, {
+              infoMessage: successMessage,
+            });
+          } catch (firestoreError) {
+            console.error(`[Home] Firestore 저장 실패 (${sectionKey})`, firestoreError);
+            updateFetchStatus(sectionKey, {
+              errorMessage:
+                "데이터 저장 중 문제가 발생했습니다. 새로고침 후 다시 시도해 주세요.",
+            });
+          }
+        } else {
+          updateFetchStatus(sectionKey, {
+            infoMessage: "이미 최신 데이터입니다.",
+          });
+        }
+
+        fetchCooldownRef.current[sectionKey] = {
+          timestamp: Date.now(),
+          signature: payloadSignature,
+          asOf,
+        };
+
+        updateFetchStatus(sectionKey, {
+          isLoading: false,
+        });
+      } catch (error) {
+        console.error(`[Home] 데이터 수동 갱신 실패 (${sectionKey})`, error);
+        updateFetchStatus(sectionKey, {
+          isLoading: false,
+          errorMessage:
+            error instanceof Error
+              ? error.message
+              : "데이터를 불러오는 중 알 수 없는 오류가 발생했습니다.",
+        });
+      }
+    },
+    [historySections, updateFetchStatus]
+  );
 
   const formatHistoryValue = (value) => {
     if (value === null || value === undefined || value === "") {
@@ -408,13 +606,13 @@ export default function Home() {
               data-full-width-responsive="true"></ins>
         </div>
         */}
-        {/* 수급 & 인기 종목 하이라이트 섹션 */}
+        {/* 수급 & 인기 & 테마 종목 하이라이트 섹션 */}
         <section id="history-hub" className="mb-12 rounded-2xl bg-gradient-to-br from-gray-800/90 via-gray-900 to-gray-950 p-8 shadow-2xl">
           <div className="mb-8 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
             <div>
-              <h2 className="text-3xl font-semibold text-white">수급 & 인기 종목 한눈에 보기</h2>
+              <h2 className="text-3xl font-semibold text-white">수급 & 인기 & 테마 주도주 종목 한눈에 보기</h2>
               <p className="mt-2 text-sm text-gray-300 md:text-base">
-                기관·외국인 순매수와 인기 검색 종목을 한 곳에서 빠르게 살펴보고 전체 히스토리 대시보드로 이동하세요.
+                기관·외국인 순매수, 인기 검색 종목, 테마 주도주 흐름을 한 곳에서 살펴보고 전체 히스토리 대시보드로 이동하세요.
               </p>
             </div>
             <Link
@@ -431,6 +629,7 @@ export default function Home() {
               const { history } = section;
               const latestSnapshot = history.latestSnapshot;
               const items = latestSnapshot && Array.isArray(latestSnapshot.items) ? latestSnapshot.items.slice(0, 5) : [];
+              const fetchState = sectionFetchStatus[section.key] || createInitialFetchStatus();
 
               return (
                 <article
@@ -466,6 +665,18 @@ export default function Home() {
                       <p className="text-gray-400">아직 저장된 데이터가 없습니다.</p>
                     )}
                   </div>
+
+                  {fetchState.infoMessage && (
+                    <p className="mt-3 rounded-lg bg-emerald-500/10 px-3 py-2 text-xs text-emerald-200">
+                      {fetchState.infoMessage}
+                    </p>
+                  )}
+
+                  {fetchState.errorMessage && (
+                    <p className="mt-3 rounded-lg bg-red-500/10 px-3 py-2 text-xs text-red-300">
+                      {fetchState.errorMessage}
+                    </p>
+                  )}
 
                   <ul className="mt-4 space-y-3 text-sm text-gray-200">
                     {items.length > 0 ? (
@@ -508,23 +719,151 @@ export default function Home() {
                     )}
                   </ul>
 
-                  <div className="mt-5 flex items-center justify-between text-xs text-gray-300">
+                  <div className="mt-5 flex flex-col gap-3 text-xs text-gray-300 sm:flex-row sm:items-center sm:justify-between">
                     <span>
                       {items.length > 0
                         ? `상위 ${items.length}개 종목 요약`
                         : "데이터 수집 대기 중"}
                     </span>
-                    <Link
-                      to={`/market-history#${section.anchor}`}
-                      className={`inline-flex items-center gap-2 rounded-full px-3 py-1 font-semibold text-white transition ${section.buttonColor}`}
-                    >
-                      자세히 보기
-                      <span aria-hidden>→</span>
-                    </Link>
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                      <button
+                        type="button"
+                        onClick={() => handleManualFetch(section.key)}
+                        disabled={fetchState.isLoading}
+                        className={`inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-white transition ${section.buttonColor} disabled:cursor-not-allowed disabled:opacity-60`}
+                      >
+                        {fetchState.isLoading ? "불러오는 중..." : section.buttonLabel}
+                      </button>
+                      <Link
+                        to={`/market-history#${section.anchor}`}
+                        className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/20"
+                      >
+                        자세히 보기
+                        <span aria-hidden>→</span>
+                      </Link>
+                    </div>
                   </div>
                 </article>
               );
             })}
+          </div>
+
+          <div className="mt-10 rounded-2xl border border-white/10 bg-gradient-to-br from-purple-500/10 via-purple-500/5 to-transparent p-6 shadow-inner">
+            <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <h3 className="text-2xl font-semibold text-white">테마 주도주 흐름 한눈에 보기</h3>
+                <p className="mt-1 text-sm text-gray-300">
+                  네이버 테마별 상승·하락 비율과 대표 주도주를 크게 정리했습니다.
+                </p>
+              </div>
+              <div className="flex flex-col gap-2 text-sm text-gray-300 sm:flex-row sm:items-center">
+                <span>
+                  {themeUpdatedAt ? `기준 시각: ${themeUpdatedAt}` : "기본 데이터 표시 중"}
+                </span>
+                <button
+                  type="button"
+                  onClick={fetchLatestThemes}
+                  disabled={themeLoading}
+                  className="inline-flex items-center justify-center gap-2 rounded-full bg-purple-500/80 px-4 py-2 text-sm font-semibold text-white transition hover:bg-purple-500 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {themeLoading ? "불러오는 중..." : "테마 불러오기"}
+                </button>
+              </div>
+            </div>
+
+            {themeInfo && (
+              <p className="mb-4 rounded-lg bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">{themeInfo}</p>
+            )}
+
+            {themeError && (
+              <p className="mb-4 rounded-lg bg-red-500/10 px-4 py-3 text-sm text-red-300">{themeError}</p>
+            )}
+
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {themes.map((theme) => (
+                <article
+                  key={theme.id}
+                  className="flex h-full flex-col justify-between rounded-xl bg-black/30 p-5 shadow-lg transition hover:bg-black/40"
+                >
+                  <div className="mb-4 flex items-start justify-between gap-3">
+                    <a
+                      href={theme.themeLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-lg font-semibold text-white hover:text-purple-200"
+                    >
+                      {theme.name}
+                    </a>
+                    {theme.changeRate && (
+                      <span
+                        className={`text-sm font-semibold ${
+                          theme.changeRate.trim().startsWith("-") ? "text-red-300" : "text-emerald-300"
+                        }`}
+                      >
+                        {theme.changeRate}
+                      </span>
+                    )}
+                  </div>
+
+                  <p className="text-xs text-gray-400">
+                    최근 3일 등락률 평균: {theme.averageThreeDayChange || "-"}
+                  </p>
+
+                  <div className="mt-3 grid grid-cols-3 gap-2 text-center text-xs text-gray-300">
+                    <div className="rounded-md bg-white/5 py-2">
+                      상승
+                      <p className="text-sm font-semibold text-emerald-300">{theme.risingCount || "0"}</p>
+                    </div>
+                    <div className="rounded-md bg-white/5 py-2">
+                      보합
+                      <p className="text-sm font-semibold text-gray-200">{theme.flatCount || "0"}</p>
+                    </div>
+                    <div className="rounded-md bg-white/5 py-2">
+                      하락
+                      <p className="text-sm font-semibold text-red-300">{theme.fallingCount || "0"}</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4">
+                    <h4 className="text-sm font-semibold text-gray-200">주도주</h4>
+                    <div className="mt-2 space-y-2">
+                      {theme.leaders.length === 0 && (
+                        <p className="text-xs text-gray-400">표시할 주도주 정보가 없습니다.</p>
+                      )}
+                      {theme.leaders.map((leader, index) => (
+                        <a
+                          key={`${theme.id}-${leader.code || index}`}
+                          href={leader.link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center justify-between rounded-lg bg-white/5 px-3 py-2 text-sm text-gray-100 transition hover:bg-white/10"
+                        >
+                          <span className="font-medium">
+                            {leader.name}
+                            {leader.code && <span className="ml-1 text-xs text-gray-400">({leader.code})</span>}
+                          </span>
+                          {leader.direction && (
+                            <span className="rounded-full bg-purple-500/20 px-2 py-1 text-xs font-semibold text-purple-200">
+                              {leader.direction}
+                            </span>
+                          )}
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+
+            <div className="mt-6 text-right">
+              <Link
+                to="/themes"
+                className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/20"
+              >
+                테마 상세 페이지로 이동
+                <span aria-hidden>→</span>
+              </Link>
+            </div>
           </div>
         </section>
 
@@ -667,11 +1006,6 @@ export default function Home() {
             </div>
           </div>
         </section>
-
-        <PopularStocksCompact />
-        <ForeignNetBuySection />
-        <InstitutionNetBuySection />
-        <ThemeLeadersSection />
 
       </main>
 
