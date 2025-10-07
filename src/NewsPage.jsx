@@ -16,7 +16,16 @@ export default function NewsPage() {
       setLoading(true);
       setError(null);
       try {
-        const response = await fetch(`${API_BASE_URL}/api/news?keyword=주식 경제&count=20`);
+        const newsParams = new URLSearchParams({
+          keyword: '주식 경제',
+          count: '20',
+        });
+        const requestUrl = `${API_BASE_URL}/api/news?${newsParams.toString()}`;
+        const response = await fetch(requestUrl, {
+          headers: {
+            Accept: 'application/json, text/plain;q=0.9, */*;q=0.8',
+          },
+        });
         const contentType = response.headers.get('content-type') || '';
         const rawBody = await response.text();
 
