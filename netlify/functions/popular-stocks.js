@@ -1,4 +1,7 @@
+import { TextDecoder } from "node:util";
+
 const TARGET_URL = "https://finance.naver.com/sise/lastsearch2.naver";
+const eucKrDecoder = new TextDecoder("euc-kr");
 
 const stripTags = (html) => {
   if (typeof html !== "string") {
@@ -123,8 +126,17 @@ export const handler = async (event) => {
       });
     }
 
-    const rawHtml = await upstreamResponse.text();
-    const items = parseRows(rawHtml);
+    const rawBuffer = Buffer.from(await upstreamResponse.arrayBuffer());
+    let decodedHtml;
+
+    try {
+      decodedHtml = eucKrDecoder.decode(rawBuffer);
+    } catch (decodeError) {
+      console.warn("[popular-stocks] EUC-KR decoding failed, falling back to UTF-8", decodeError);
+      decodedHtml = rawBuffer.toString("utf-8");
+    }
+
+    const items = parseRows(decodedHtml);
 
     if (!Array.isArray(items) || items.length === 0) {
       return createResponse(502, {
