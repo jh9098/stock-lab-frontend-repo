@@ -17,11 +17,35 @@ export default function NewsPage() {
       setError(null);
       try {
         const response = await fetch(`${API_BASE_URL}/api/news?keyword=주식 경제&count=20`);
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+        const contentType = response.headers.get('content-type') || '';
+        const rawBody = await response.text();
+
+        let parsedBody = null;
+        if (rawBody && (contentType.includes('application/json') || /^(\s*[\[{])/.test(rawBody))) {
+          try {
+            parsedBody = JSON.parse(rawBody);
+          } catch (parseError) {
+            console.error('뉴스 페이지 응답 JSON 파싱 실패:', parseError, rawBody);
+            if (response.ok) {
+              throw new Error('뉴스 데이터가 올바른 JSON 형식이 아닙니다. (파싱 오류)');
+            }
+          }
         }
-        const data = await response.json();
-        setNewsItems(data);
+
+        if (!response.ok) {
+          const errorMessage =
+            (parsedBody && typeof parsedBody === 'object' && parsedBody !== null && 'error' in parsedBody && parsedBody.error)
+              || rawBody
+              || `HTTP error! status: ${response.status}`;
+
+          throw new Error(typeof errorMessage === 'string' ? errorMessage : JSON.stringify(errorMessage));
+        }
+
+        if (!Array.isArray(parsedBody)) {
+          throw new Error('뉴스 데이터가 배열 형태의 JSON이 아닙니다.');
+        }
+
+        setNewsItems(parsedBody);
       } catch (err) {
         console.error("뉴스 데이터를 불러오는 데 실패했습니다:", err);
         setError("뉴스 데이터를 불러올 수 없습니다.");
