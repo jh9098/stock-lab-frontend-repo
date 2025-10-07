@@ -1,5 +1,9 @@
 import js from '@eslint/js'
 import globals from 'globals'
+
+const browserGlobals = Object.fromEntries(
+  Object.entries(globals.browser).map(([name, value]) => [name.trim(), value]),
+)
 import reactHooks from 'eslint-plugin-react-hooks'
 import reactRefresh from 'eslint-plugin-react-refresh'
 
@@ -9,7 +13,7 @@ export default [
     files: ['**/*.{js,jsx}'],
     languageOptions: {
       ecmaVersion: 2020,
-      globals: globals.browser,
+      globals: browserGlobals,
       parserOptions: {
         ecmaVersion: 'latest',
         ecmaFeatures: { jsx: true },

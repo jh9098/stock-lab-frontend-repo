@@ -166,12 +166,29 @@ function InvestorNetBuySection({
       }
 
       const response = await fetch(fetchPath);
+      const rawBody = await response.text();
+      let parsedBody = null;
 
-      if (!response.ok) {
-        throw new Error("순매수 정보를 불러오지 못했습니다.");
+      if (rawBody) {
+        try {
+          parsedBody = JSON.parse(rawBody);
+        } catch (parseError) {
+          console.error("[InvestorNetBuySection] 응답 JSON 파싱 실패", parseError);
+        }
       }
 
-      const payload = await response.json();
+      if (!response.ok) {
+        const serverMessage =
+          (parsedBody && (parsedBody.error || parsedBody.message)) ||
+          `순매수 정보를 불러오지 못했습니다. (HTTP ${response.status})`;
+        throw new Error(serverMessage);
+      }
+
+      if (!parsedBody || typeof parsedBody !== "object") {
+        throw new Error("순매수 응답을 해석하는 중 문제가 발생했습니다.");
+      }
+
+      const payload = parsedBody;
 
       const payloadItems = Array.isArray(payload.items) ? payload.items : [];
       const asOf = payload.asOf || payload.asOfLabel || "";
@@ -233,10 +250,11 @@ function InvestorNetBuySection({
     } catch (error) {
       console.error("[InvestorNetBuySection] fetchLatest 실패", error);
       setErrorMessage(error instanceof Error ? error.message : "알 수 없는 오류가 발생했습니다.");
+      await loadFallbackData("최신 데이터를 불러오지 못해 기본 데이터를 표시합니다.");
     } finally {
       setIsLoading(false);
     }
-  }, [applyData, collectionBase, fetchPath]);
+  }, [applyData, collectionBase, fetchPath, loadFallbackData]);
 
   const hasItems = useMemo(() => items.length > 0, [items]);
 
