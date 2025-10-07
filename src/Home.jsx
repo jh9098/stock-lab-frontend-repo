@@ -5,7 +5,7 @@ import { useLocation, Link } from "react-router-dom";
 import PopularStocksCompact from "./components/PopularStocksCompact";
 import { ForeignNetBuySection, InstitutionNetBuySection } from "./components/InvestorNetBuySection";
 import { Helmet } from "react-helmet";
-import { API_BASE_URL } from "./lib/apiConfig";
+import useSnapshotsHistory from "./hooks/useSnapshotsHistory";
 
 // Firebase imports
 import { db } from './firebaseConfig';
@@ -30,11 +30,6 @@ export default function Home() {
   const [blogPostLoading, setBlogPostLoading] = useState(true);
   const [blogPostError, setBlogPostError] = useState(null);
 
-  // 최신 뉴스 관련 상태
-  const [latestNews, setLatestNews] = useState([]);
-  const [newsLoading, setNewsLoading] = useState(true);
-  const [newsError, setNewsError] = useState(null);
-
   // === 종목 분석 관련 상태 (추가) ===
   const [latestStockAnalyses, setLatestStockAnalyses] = useState([]);
   const [stockAnalysesLoading, setStockAnalysesLoading] = useState(true);
@@ -44,6 +39,72 @@ export default function Home() {
   const [latestForumPosts, setLatestForumPosts] = useState([]);
   const [forumLoading, setForumLoading] = useState(true);
   const [forumError, setForumError] = useState(null);
+
+  const institutionHistory = useSnapshotsHistory({
+    collectionName: "institutionNetBuySnapshots",
+    limitCount: 1,
+  });
+  const foreignHistory = useSnapshotsHistory({
+    collectionName: "foreignNetBuySnapshots",
+    limitCount: 1,
+  });
+  const popularHistory = useSnapshotsHistory({
+    collectionName: "popularStocksSnapshots",
+    limitCount: 1,
+  });
+
+  const historySections = [
+    {
+      key: "institution",
+      anchor: "institution-net-buy",
+      title: "기관 순매수 상위",
+      highlightColor: "from-teal-500/20 to-teal-500/10",
+      buttonColor: "bg-teal-500/90 hover:bg-teal-400",
+      description: "기관 투자자의 최근 순매수 상위 종목",
+      history: institutionHistory,
+    },
+    {
+      key: "foreign",
+      anchor: "foreign-net-buy",
+      title: "외국인 순매수 상위",
+      highlightColor: "from-sky-500/20 to-sky-500/10",
+      buttonColor: "bg-sky-500/90 hover:bg-sky-400",
+      description: "외국인 자금이 집중된 종목",
+      history: foreignHistory,
+    },
+    {
+      key: "popular",
+      anchor: "popular-stocks",
+      title: "인기 검색 종목",
+      highlightColor: "from-orange-500/20 to-amber-500/10",
+      buttonColor: "bg-orange-500/90 hover:bg-orange-400",
+      description: "실시간 인기 검색 순위",
+      history: popularHistory,
+    },
+  ];
+
+  const formatHistoryValue = (value) => {
+    if (value === null || value === undefined || value === "") {
+      return "-";
+    }
+
+    if (typeof value === "number") {
+      return value.toLocaleString("ko-KR");
+    }
+
+    if (typeof value === "string") {
+      const numericPattern = /^[\d,.-]+$/;
+      if (numericPattern.test(value)) {
+        const numeric = Number(value.replace(/,/g, ""));
+        if (!Number.isNaN(numeric)) {
+          return numeric.toLocaleString("ko-KR");
+        }
+      }
+      return value;
+    }
+
+    return String(value);
+  };
 
 
   /* 광고 코드 주석 처리
@@ -212,66 +273,6 @@ export default function Home() {
     fetchLatestBlogPosts();
   }, []);
 
-  // 최신 주식/경제 뉴스 5개 불러오기 (기존과 동일)
-  useEffect(() => {
-    const fetchLatestNews = async () => {
-      setNewsLoading(true);
-      setNewsError(null);
-      try {
-        const newsParams = new URLSearchParams({
-          keyword: "주식 경제",
-          count: "5",
-        });
-        const requestUrl = `${API_BASE_URL}/api/news?${newsParams.toString()}`;
-        const response = await fetch(requestUrl, {
-          headers: {
-            Accept: "application/json, text/plain;q=0.9, */*;q=0.8",
-          },
-        });
-        const contentType = response.headers.get("content-type") || "";
-        const rawBody = await response.text();
-
-        let parsedBody = null;
-        if (rawBody && (contentType.includes("application/json") || /^(\s*[\[{])/.test(rawBody))) {
-          try {
-            parsedBody = JSON.parse(rawBody);
-          } catch (parseError) {
-            console.error("뉴스 응답 JSON 파싱 실패:", parseError, rawBody);
-            if (response.ok) {
-              throw new Error("뉴스 데이터가 올바른 JSON 형식이 아닙니다. (파싱 오류)");
-            }
-          }
-        }
-
-        if (!response.ok) {
-          const errorMessage =
-            (parsedBody && typeof parsedBody === "object" && parsedBody !== null && "error" in parsedBody && parsedBody.error)
-              || rawBody
-              || `HTTP error! status: ${response.status}`;
-
-          throw new Error(typeof errorMessage === "string" ? errorMessage : JSON.stringify(errorMessage));
-        }
-
-        if (!Array.isArray(parsedBody)) {
-          throw new Error("뉴스 데이터가 배열 형태의 JSON이 아닙니다.");
-        }
-
-        if (parsedBody.length === 0) {
-          setNewsError("현재 불러올 뉴스가 없습니다. (백엔드에서 데이터를 찾지 못했습니다.)");
-          setLatestNews([]);
-        } else {
-          setLatestNews(parsedBody);
-        }
-      } catch (err) {
-        console.error("최신 뉴스 불러오기 실패:", err);
-        setNewsError(`최신 뉴스를 불러올 수 없습니다: ${err.message || err.toString()}`);
-      } finally {
-        setNewsLoading(false);
-      }
-    };
-    fetchLatestNews();
-  }, [API_BASE_URL]);
-
   // 💡 즐겨찾기 토글 로직 변경: stock.code 대신 stock.id 사용
   const toggleFavorite = (stockId) => {
     const updated = favorites.includes(stockId)
@@ -302,7 +303,7 @@ export default function Home() {
               <li><Link to="/recommendations" className="text-gray-300 hover:text-white transition duration-300">종목추천</Link></li>
               <li><Link to="/forum" className="text-gray-300 hover:text-white transition duration-300">종목상담</Link></li>
               <li><Link to="/causal" className="text-gray-300 hover:text-white transition duration-300">연쇄효과 추론</Link></li>
-              <li><Link to="/popular-history" className="text-gray-300 hover:text-white transition duration-300">인기종목 히스토리</Link></li>
+              <li><Link to="/market-history" className="text-gray-300 hover:text-white transition duration-300">수급 히스토리</Link></li>
               <li><a href="#foreign-net-buy" className="text-gray-300 hover:text-white transition duration-300">외국인 순매수</a></li>
               <li><a href="#institution-net-buy" className="text-gray-300 hover:text-white transition duration-300">기관 순매수</a></li>
               <li><a href="#social-media" className="text-gray-300 hover:text-white transition duration-300">미디어</a></li>
@@ -406,37 +407,123 @@ export default function Home() {
               data-full-width-responsive="true"></ins>
         </div>
         */}
-        {/* 최신 주식/경제 뉴스 섹션 (기존과 동일) */}
-        <section id="news" className="mb-12 p-6 bg-gray-800 rounded-lg shadow-xl">
-          <h2 className="text-2xl font-semibold mb-6 text-white border-b-2 border-purple-500 pb-2">최신 주식/경제 뉴스</h2>
-          {newsLoading ? (
-            <p className="text-gray-300 text-center">최신 뉴스를 불러오는 중입니다...</p>
-          ) : newsError ? (
-            <p className="text-red-400 text-center">{newsError}</p>
-          ) : latestNews.length > 0 ? (
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {latestNews.map((newsItem, index) => (
-                <article key={index} className="bg-gray-700 p-4 rounded-md shadow-lg hover:shadow-2xl transition-shadow duration-300">
-                  <h3 className="text-lg font-medium mb-2 text-purple-400">
-                    {newsItem.title}
-                  </h3>
-                  <p className="text-gray-300 text-sm mb-3 news-item-content">
-                    {newsItem.content}
-                  </p>
-                  <div className="flex justify-between items-center text-xs text-gray-400">
-                    <span><i className="fas fa-calendar-alt mr-1"></i>{newsItem.post_date}</span>
-                    <a href={newsItem.link} target="_blank" rel="noopener noreferrer" className="text-purple-400 hover:text-purple-300 font-semibold">더 보기 <i className="fas fa-arrow-right ml-1"></i></a>
+        {/* 수급 & 인기 종목 하이라이트 섹션 */}
+        <section id="history-hub" className="mb-12 rounded-2xl bg-gradient-to-br from-gray-800/90 via-gray-900 to-gray-950 p-8 shadow-2xl">
+          <div className="mb-8 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+            <div>
+              <h2 className="text-3xl font-semibold text-white">수급 & 인기 종목 한눈에 보기</h2>
+              <p className="mt-2 text-sm text-gray-300 md:text-base">
+                기관·외국인 순매수와 인기 검색 종목을 한 곳에서 빠르게 살펴보고 전체 히스토리 대시보드로 이동하세요.
+              </p>
+            </div>
+            <Link
+              to="/market-history"
+              className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/20"
+            >
+              대시보드 전체 보기
+              <span aria-hidden>→</span>
+            </Link>
+          </div>
+
+          <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+            {historySections.map((section) => {
+              const { history } = section;
+              const latestSnapshot = history.latestSnapshot;
+              const items = latestSnapshot && Array.isArray(latestSnapshot.items) ? latestSnapshot.items.slice(0, 5) : [];
+
+              return (
+                <article
+                  key={section.key}
+                  id={section.anchor}
+                  className={`rounded-2xl border border-white/10 bg-gradient-to-br ${section.highlightColor} p-6 shadow-xl transition hover:border-white/40`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-xl font-semibold text-white">{section.title}</h3>
+                      <p className="text-sm text-gray-300">{section.description}</p>
+                    </div>
+                    <span className="rounded-full bg-black/40 px-3 py-1 text-xs text-gray-300">
+                      스냅샷 {history.totalSnapshots.toLocaleString()}개
+                    </span>
+                  </div>
+
+                  <div className="mt-4 text-xs text-gray-300">
+                    {history.isLoading ? (
+                      <p className="text-gray-300">데이터 불러오는 중...</p>
+                    ) : history.errorMessage ? (
+                      <p className="text-red-400">{history.errorMessage}</p>
+                    ) : latestSnapshot ? (
+                      <>
+                        <p>
+                          기준 시각 <span className="font-semibold text-white">{latestSnapshot._meta.asOfText}</span>
+                        </p>
+                        <p>
+                          저장 시각 <span className="font-semibold text-white">{latestSnapshot._meta.createdAtText}</span>
+                        </p>
+                      </>
+                    ) : (
+                      <p className="text-gray-400">아직 저장된 데이터가 없습니다.</p>
+                    )}
+                  </div>
+
+                  <ul className="mt-4 space-y-3 text-sm text-gray-200">
+                    {items.length > 0 ? (
+                      items.map((item) => {
+                        const key = item.code || `${item.rank}-${item.name}`;
+                        const primaryValue = item.quantity ?? item.price ?? null;
+                        const secondaryValues = [item.amount, item.change, item.rate]
+                          .filter((value) => value !== null && value !== undefined && value !== "");
+
+                        return (
+                          <li key={key} className="rounded-xl bg-black/20 px-3 py-2">
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <p className="text-sm font-semibold text-white">
+                                  <span className="mr-2 text-xs text-gray-400">#{item.rank ?? "-"}</span>
+                                  {item.name ?? "-"}
+                                </p>
+                                {item.code && <p className="text-xs text-gray-500">{item.code}</p>}
+                              </div>
+                              <div className="text-right text-xs text-gray-300">
+                                {primaryValue ? (
+                                  <p className="font-semibold text-teal-200">
+                                    {formatHistoryValue(primaryValue)}
+                                  </p>
+                                ) : null}
+                                {secondaryValues.length > 0 ? (
+                                  <p className="text-gray-400">
+                                    {secondaryValues.map((value) => formatHistoryValue(value)).join(" · ")}
+                                  </p>
+                                ) : null}
+                              </div>
+                            </div>
+                          </li>
+                        );
+                      })
+                    ) : (
+                      <li className="rounded-xl bg-black/20 px-3 py-6 text-center text-gray-400">
+                        표시할 종목이 없습니다.
+                      </li>
+                    )}
+                  </ul>
+
+                  <div className="mt-5 flex items-center justify-between text-xs text-gray-300">
+                    <span>
+                      {items.length > 0
+                        ? `상위 ${items.length}개 종목 요약`
+                        : "데이터 수집 대기 중"}
+                    </span>
+                    <Link
+                      to={`/market-history#${section.anchor}`}
+                      className={`inline-flex items-center gap-2 rounded-full px-3 py-1 font-semibold text-white transition ${section.buttonColor}`}
+                    >
+                      자세히 보기
+                      <span aria-hidden>→</span>
+                    </Link>
                   </div>
                 </article>
-              ))}
-            </div>
-          ) : (
-            <p className="text-gray-300 text-center">현재 불러올 뉴스가 없습니다.</p>
-          )}
-          <div className="mt-6 text-center">
-            <Link to="/news" className="bg-gray-600 hover:bg-gray-500 text-white font-semibold py-2 px-6 rounded-md text-sm transition duration-300">
-              전체 뉴스 보기
-            </Link>
+              );
+            })}
           </div>
         </section>
 
