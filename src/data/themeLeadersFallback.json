@@ -1,0 +1,245 @@
+{
+  "asOfLabel": "기본 제공 데이터",
+  "items": [
+    {
+      "name": "뉴로모픽 반도체",
+      "themeCode": "556",
+      "themeLink": "https://finance.naver.com/sise/sise_group_detail.naver?type=theme&no=556",
+      "changeRate": "+7.62%",
+      "averageThreeDayChange": "+1.54%",
+      "risingCount": "7",
+      "flatCount": "0",
+      "fallingCount": "0",
+      "leaders": [
+        {
+          "name": "앤씨앤",
+          "code": "092600",
+          "direction": "상한",
+          "link": "https://finance.naver.com/item/main.naver?code=092600"
+        },
+        {
+          "name": "오픈엣지테..",
+          "code": "394280",
+          "direction": "상승",
+          "link": "https://finance.naver.com/item/main.naver?code=394280"
+        }
+      ]
+    },
+    {
+      "name": "2차전지(생산)",
+      "themeCode": "449",
+      "themeLink": "https://finance.naver.com/sise/sise_group_detail.naver?type=theme&no=449",
+      "changeRate": "+7.02%",
+      "averageThreeDayChange": "-0.09%",
+      "risingCount": "3",
+      "flatCount": "0",
+      "fallingCount": "0",
+      "leaders": [
+        {
+          "name": "LG에너지..",
+          "code": "373220",
+          "direction": "상승",
+          "link": "https://finance.naver.com/item/main.naver?code=373220"
+        },
+        {
+          "name": "SK이노베..",
+          "code": "096770",
+          "direction": "상승",
+          "link": "https://finance.naver.com/item/main.naver?code=096770"
+        }
+      ]
+    },
+    {
+      "name": "CXL(컴퓨트익스프레스링크)",
+      "themeCode": "547",
+      "themeLink": "https://finance.naver.com/sise/sise_group_detail.naver?type=theme&no=547",
+      "changeRate": "+6.51%",
+      "averageThreeDayChange": "+2.48%",
+      "risingCount": "12",
+      "flatCount": "0",
+      "fallingCount": "1",
+      "leaders": [
+        {
+          "name": "티엘비",
+          "code": "356860",
+          "direction": "상승",
+          "link": "https://finance.naver.com/item/main.naver?code=356860"
+        },
+        {
+          "name": "네오셈",
+          "code": "253590",
+          "direction": "상승",
+          "link": "https://finance.naver.com/item/main.naver?code=253590"
+        }
+      ]
+    },
+    {
+      "name": "3D 낸드(NAND)",
+      "themeCode": "370",
+      "themeLink": "https://finance.naver.com/sise/sise_group_detail.naver?type=theme&no=370",
+      "changeRate": "+4.68%",
+      "averageThreeDayChange": "+1.42%",
+      "risingCount": "17",
+      "flatCount": "0",
+      "fallingCount": "1",
+      "leaders": [
+        {
+          "name": "원익IPS",
+          "code": "240810",
+          "direction": "상승",
+          "link": "https://finance.naver.com/item/main.naver?code=240810"
+        },
+        {
+          "name": "SK하이닉..",
+          "code": "000660",
+          "direction": "상승",
+          "link": "https://finance.naver.com/item/main.naver?code=000660"
+        }
+      ]
+    },
+    {
+      "name": "HBM(고대역폭메모리)",
+      "themeCode": "536",
+      "themeLink": "https://finance.naver.com/sise/sise_group_detail.naver?type=theme&no=536",
+      "changeRate": "+4.31%",
+      "averageThreeDayChange": "+1.34%",
+      "risingCount": "27",
+      "flatCount": "0",
+      "fallingCount": "1",
+      "leaders": [
+        {
+          "name": "윈팩",
+          "code": "097800",
+          "direction": "상승",
+          "link": "https://finance.naver.com/item/main.naver?code=097800"
+        },
+        {
+          "name": "SK하이닉..",
+          "code": "000660",
+          "direction": "상승",
+          "link": "https://finance.naver.com/item/main.naver?code=000660"
+        }
+      ]
+    },
+    {
+      "name": "온디바이스 AI",
+      "themeCode": "545",
+      "themeLink": "https://finance.naver.com/sise/sise_group_detail.naver?type=theme&no=545",
+      "changeRate": "+4.29%",
+      "averageThreeDayChange": "+1.41%",
+      "risingCount": "21",
+      "flatCount": "0",
+      "fallingCount": "2",
+      "leaders": [
+        {
+          "name": "제주반도체",
+          "code": "080220",
+          "direction": "상승",
+          "link": "https://finance.naver.com/item/main.naver?code=080220"
+        },
+        {
+          "name": "SK하이닉..",
+          "code": "000660",
+          "direction": "상승",
+          "link": "https://finance.naver.com/item/main.naver?code=000660"
+        }
+      ]
+    },
+    {
+      "name": "시스템반도체",
+      "themeCode": "307",
+      "themeLink": "https://finance.naver.com/sise/sise_group_detail.naver?type=theme&no=307",
+      "changeRate": "+4.10%",
+      "averageThreeDayChange": "+1.23%",
+      "risingCount": "47",
+      "flatCount": "0",
+      "fallingCount": "7",
+      "leaders": [
+        {
+          "name": "시그네틱스",
+          "code": "033170",
+          "direction": "상한",
+          "link": "https://finance.naver.com/item/main.naver?code=033170"
+        },
+        {
+          "name": "앤씨앤",
+          "code": "092600",
+          "direction": "상한",
+          "link": "https://finance.naver.com/item/main.naver?code=092600"
+        }
+      ]
+    },
+    {
+      "name": "반도체 재료/부품",
+      "themeCode": "14",
+      "themeLink": "https://finance.naver.com/sise/sise_group_detail.naver?type=theme&no=14",
+      "changeRate": "+4.05%",
+      "averageThreeDayChange": "+1.58%",
+      "risingCount": "56",
+      "flatCount": "1",
+      "fallingCount": "3",
+      "leaders": [
+        {
+          "name": "덕산하이메..",
+          "code": "077360",
+          "direction": "상승",
+          "link": "https://finance.naver.com/item/main.naver?code=077360"
+        },
+        {
+          "name": "마이크로컨..",
+          "code": "098120",
+          "direction": "상승",
+          "link": "https://finance.naver.com/item/main.naver?code=098120"
+        }
+      ]
+    },
+    {
+      "name": "CCTV＆DVR",
+      "themeCode": "28",
+      "themeLink": "https://finance.naver.com/sise/sise_group_detail.naver?type=theme&no=28",
+      "changeRate": "+3.89%",
+      "averageThreeDayChange": "-0.23%",
+      "risingCount": "4",
+      "flatCount": "0",
+      "fallingCount": "4",
+      "leaders": [
+        {
+          "name": "앤씨앤",
+          "code": "092600",
+          "direction": "상한",
+          "link": "https://finance.naver.com/item/main.naver?code=092600"
+        },
+        {
+          "name": "비츠로시스",
+          "code": "054220",
+          "direction": "상승",
+          "link": "https://finance.naver.com/item/main.naver?code=054220"
+        }
+      ]
+    },
+    {
+      "name": "반도체 대표주(생산)",
+      "themeCode": "155",
+      "themeLink": "https://finance.naver.com/sise/sise_group_detail.naver?type=theme&no=155",
+      "changeRate": "+3.36%",
+      "averageThreeDayChange": "+1.46%",
+      "risingCount": "2",
+      "flatCount": "0",
+      "fallingCount": "1",
+      "leaders": [
+        {
+          "name": "SK하이닉..",
+          "code": "000660",
+          "direction": "상승",
+          "link": "https://finance.naver.com/item/main.naver?code=000660"
+        },
+        {
+          "name": "삼성전자",
+          "code": "005930",
+          "direction": "상승",
+          "link": "https://finance.naver.com/item/main.naver?code=005930"
+        }
+      ]
+    }
+  ]
+}
