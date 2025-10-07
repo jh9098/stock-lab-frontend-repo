@@ -1,6 +1,9 @@
+import { Buffer } from "node:buffer";
 import { TextDecoder } from "node:util";
 
-const TARGET_URL = "https://finance.naver.com/sise/sise_deal_rank.naver?investor_gubun=9000&type=buy";
+const INVESTOR_GUBUN = "9000";
+const TARGET_URL = `https://finance.naver.com/sise/sise_deal_rank_iframe.naver?investor_gubun=${INVESTOR_GUBUN}&type=buy`;
+const REFERER_URL = `https://finance.naver.com/sise/sise_deal_rank.naver?investor_gubun=${INVESTOR_GUBUN}&type=buy`;
 const eucKrDecoder = new TextDecoder("euc-kr");
 
 const stripTags = (html) => {
@@ -107,7 +110,8 @@ const parseSections = (html) => {
     if (!sectionHtml) continue;
 
     const dateMatch = sectionHtml.match(/<div class="sise_guide_date">([^<]*)<\/div>/i);
-    const { asOf, asOfLabel, sortValue } = normalizeDateLabel(dateMatch ? dateMatch[1] : "");
+    const normalizedDate = normalizeDateLabel(dateMatch ? dateMatch[1] : "");
+    const { asOf, asOfLabel } = normalizedDate;
 
     const tableMatch = sectionHtml.match(/<table[^>]*summary="[^"]*순매수[^"]*"[\s\S]*?<\/table>/i);
     const tableHtml = tableMatch ? tableMatch[0] : "";
@@ -117,12 +121,12 @@ const parseSections = (html) => {
       continue;
     }
 
-    sections.push({ asOf, asOfLabel, items, sortValue });
+    sections.push({ asOf, asOfLabel, items, sortValue: normalizedDate.sortValue });
   }
 
   return sections
     .sort((a, b) => (b.sortValue || 0) - (a.sortValue || 0))
-    .map(({ sortValue, ...rest }) => rest);
+    .map(({ sortValue: _sortValue, ...rest }) => rest);
 };
 
 const createResponse = (statusCode, payload, extraHeaders = {}) => ({
@@ -160,6 +164,10 @@ export const handler = async (event) => {
           "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
         Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
         "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7",
+        Referer: REFERER_URL,
+        "Sec-Fetch-Dest": "document",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-Site": "same-origin",
       },
     });
 
