@@ -350,7 +350,7 @@ export default function PopularStocksCompact() {
 
       <div className="mt-6 text-center">
         <Link
-          to="/popular-history"
+          to="/market-history#popular-stocks"
           className="bg-gray-600 hover:bg-gray-500 text-white font-semibold py-2 px-6 rounded-md text-sm transition duration-300"
         >
           인기 종목 히스토리 보기

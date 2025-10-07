@@ -17,6 +17,7 @@ import CausalInference from "./pages/CausalInference";
 import PopularStocksHistory from "./pages/PopularStocksHistory";
 import ForeignNetBuyHistory from "./pages/ForeignNetBuyHistory";
 import InstitutionNetBuyHistory from "./pages/InstitutionNetBuyHistory";
+import MarketHistoryDashboard from "./pages/MarketHistoryDashboard";
 import AdminLayout from "./admin/AdminLayout";
 import AdminDashboard from "./admin/sections/AdminDashboard";
 import BlogManager from "./admin/sections/BlogManager";
@@ -48,6 +49,7 @@ function App() {
       </Route>
       <Route path="/causal" element={<CausalInference />} />
       <Route path="/portfolio" element={<PortfolioPage />} />
+      <Route path="/market-history" element={<MarketHistoryDashboard />} />
       <Route path="/popular-history" element={<PopularStocksHistory />} />
       <Route path="/foreign-net-buy-history" element={<ForeignNetBuyHistory />} />
       <Route path="/institution-net-buy-history" element={<InstitutionNetBuyHistory />} />
