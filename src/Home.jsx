@@ -217,17 +217,40 @@ export default function Home() {
       setNewsLoading(true);
       setNewsError(null);
       try {
-        const response = await fetch(`${API_BASE_URL}/api/news?keyword=주식 경제&count=5`); 
-        if (!response.ok) {
-          const errorData = await response.json(); 
-          throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+        const response = await fetch(`${API_BASE_URL}/api/news?keyword=주식 경제&count=5`);
+        const contentType = response.headers.get("content-type") || "";
+        const rawBody = await response.text();
+
+        let parsedBody = null;
+        if (rawBody && (contentType.includes("application/json") || /^(\s*[\[{])/.test(rawBody))) {
+          try {
+            parsedBody = JSON.parse(rawBody);
+          } catch (parseError) {
+            console.error("뉴스 응답 JSON 파싱 실패:", parseError, rawBody);
+            if (response.ok) {
+              throw new Error("뉴스 데이터가 올바른 JSON 형식이 아닙니다. (파싱 오류)");
+            }
+          }
         }
-        const data = await response.json();
-        if (data.length === 0) {
-            setNewsError("현재 불러올 뉴스가 없습니다. (백엔드에서 데이터를 찾지 못했습니다.)");
-            setLatestNews([]);
+
+        if (!response.ok) {
+          const errorMessage =
+            (parsedBody && typeof parsedBody === "object" && parsedBody !== null && "error" in parsedBody && parsedBody.error)
+              || rawBody
+              || `HTTP error! status: ${response.status}`;
+
+          throw new Error(typeof errorMessage === "string" ? errorMessage : JSON.stringify(errorMessage));
+        }
+
+        if (!Array.isArray(parsedBody)) {
+          throw new Error("뉴스 데이터가 배열 형태의 JSON이 아닙니다.");
+        }
+
+        if (parsedBody.length === 0) {
+          setNewsError("현재 불러올 뉴스가 없습니다. (백엔드에서 데이터를 찾지 못했습니다.)");
+          setLatestNews([]);
         } else {
-            setLatestNews(data);
+          setLatestNews(parsedBody);
         }
       } catch (err) {
         console.error("최신 뉴스 불러오기 실패:", err);
