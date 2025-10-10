@@ -5,16 +5,15 @@ const NAV_SECTIONS = [
   {
     label: "시장 인사이트",
     items: [
-      { label: "시장 인사이트 허브", to: "/market-insights" },
+      { label: "인사이트 블로그", to: "/market-insights" },
       { label: "수급·인기·테마 대시보드", to: "/market-history" },
-      { label: "인기 종목 히스토리", to: "/popular-history" },
     ],
   },
   {
     label: "투자 전략",
     items: [
       { label: "종목 추천", to: "/recommendations" },
-      { label: "포트폴리오", to: "/portfolio" },
+      { label: "(유료)포트폴리오", to: "/portfolio" },
     ],
   },
   {

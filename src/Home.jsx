@@ -490,7 +490,7 @@ export default function Home() {
                 to="/market-insights"
                 className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-4 py-2 font-semibold text-white transition hover:bg-white/15"
               >
-                시장 인사이트 허브 바로가기
+                인사이트 블로그 바로가기
                 <span aria-hidden>→</span>
               </Link>
               <Link

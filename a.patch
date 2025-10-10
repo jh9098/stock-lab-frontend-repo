@@ -1,0 +1,550 @@
+ (cd "$(git rev-parse --show-toplevel)" && git apply --3way <<'EOF' 
+diff --git a/netlify/functions/theme-leaders.js b/netlify/functions/theme-leaders.js
+index 2257d0ffe8ba1b969c49ea0faaccc2ea5d2a5e56..b9ecfe032a822f2fd31fe507b7dd4b00d200b9c9 100644
+--- a/netlify/functions/theme-leaders.js
++++ b/netlify/functions/theme-leaders.js
+@@ -10,159 +10,169 @@ const stripTags = (html) => {
+   }
+ 
+   return html
+     .replace(/<br\s*\/?\s*>/gi, " ")
+     .replace(/<[^>]*>/g, " ")
+     .replace(/&nbsp;/gi, " ")
+     .replace(/&amp;/gi, "&")
+     .replace(/&#039;/gi, "'")
+     .replace(/&quot;/gi, '"')
+     .replace(/\s+/g, " ")
+     .trim();
+ };
+ 
+ const extractAttribute = (html, attribute) => {
+   if (typeof html !== "string") {
+     return "";
+   }
+ 
+   const regex = new RegExp(`${attribute}="([^"]*)"`, "i");
+   const match = html.match(regex);
+   return match ? match[1] : "";
+ };
+ 
+ const extractAnchorInfo = (html) => {
+   if (typeof html !== "string") {
+-    return { href: "", text: "" };
++    return { href: "", text: "", title: "" };
+   }
+ 
+   const anchorMatch = html.match(/<a[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/i);
+   if (!anchorMatch) {
+-    return { href: "", text: stripTags(html) };
++    return { href: "", text: stripTags(html), title: "" };
+   }
+ 
+-  return { href: anchorMatch[1], text: stripTags(anchorMatch[2]) };
++  const anchorTag = anchorMatch[0];
++  const titleMatch = anchorTag.match(/title="([^"]*)"/i);
++  const rawTitle = titleMatch ? titleMatch[1] : "";
++
++  return {
++    href: anchorMatch[1],
++    text: stripTags(anchorMatch[2]),
++    title: stripTags(rawTitle),
++  };
+ };
+ 
+ const ensureAbsoluteUrl = (url) => {
+   if (!url) {
+     return "";
+   }
+ 
+   if (url.startsWith("http://") || url.startsWith("https://")) {
+     return url;
+   }
+ 
+   return `https://finance.naver.com${url}`;
+ };
+ 
+ const extractCodeFromHref = (href) => {
+   if (!href) {
+     return "";
+   }
+ 
+   const match = href.match(/code=([0-9A-Z]+)/i);
+   return match ? match[1] : "";
+ };
+ 
+ const extractThemeIdFromHref = (href) => {
+   if (!href) {
+     return "";
+   }
+ 
+   const match = href.match(/no=([0-9]+)/i);
+   return match ? match[1] : "";
+ };
+ 
+ const parseLeaderCell = (cellHtml) => {
+   if (!cellHtml || typeof cellHtml !== "string") {
+     return null;
+   }
+ 
+   const anchor = extractAnchorInfo(cellHtml);
+-  if (!anchor.href || !anchor.text) {
++  if (!anchor.href || (!anchor.text && !anchor.title)) {
+     return null;
+   }
+ 
+   const direction = extractAttribute(cellHtml, "alt") || "";
+   const href = ensureAbsoluteUrl(anchor.href);
++  const name = anchor.title || anchor.text;
+ 
+   return {
+-    name: anchor.text,
++    name,
+     code: extractCodeFromHref(anchor.href),
+     direction,
+     link: href,
+   };
+ };
+ 
+ const parseThemeRows = (html) => {
+   if (typeof html !== "string" || !html) {
+     return [];
+   }
+ 
+   const rows = [];
+   const rowRegex = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
+   let match;
+ 
+   while ((match = rowRegex.exec(html))) {
+     const rowHtml = match[1];
+ 
+     if (/class\s*=\s*"[^"]*(blank|division)/i.test(rowHtml)) {
+       continue;
+     }
+ 
+     if (!/col_type1/i.test(rowHtml)) {
+       continue;
+     }
+ 
+     const cells = [...rowHtml.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi)];
+     if (cells.length < 7) {
+       continue;
+     }
+ 
+     const nameCellHtml = cells[0][1];
+     const themeAnchor = extractAnchorInfo(nameCellHtml);
+     const themeLink = ensureAbsoluteUrl(themeAnchor.href);
+     const themeId = extractThemeIdFromHref(themeAnchor.href);
+ 
+     const changeRate = stripTags(cells[1][1]);
+     const averageThreeDayChange = stripTags(cells[2][1]);
+     const risingCount = stripTags(cells[3][1]);
+     const flatCount = stripTags(cells[4][1]);
+     const fallingCount = stripTags(cells[5][1]);
+ 
+     const leaderCells = cells.slice(6, 8);
+     const leaders = leaderCells
+       .map((cell) => parseLeaderCell(cell[1]))
+       .filter(Boolean);
+ 
+-    if (!themeAnchor.text) {
++    const themeName = themeAnchor.title || themeAnchor.text;
++    if (!themeName) {
+       continue;
+     }
+ 
+     rows.push({
+-      name: themeAnchor.text,
++      name: themeName,
+       themeCode: themeId,
+       themeLink,
+       changeRate,
+       averageThreeDayChange,
+       risingCount,
+       flatCount,
+       fallingCount,
+       leaders,
+     });
+   }
+ 
+   return rows.slice(0, 50);
+ };
+ 
+ const createResponse = (statusCode, payload, extraHeaders = {}) => ({
+   statusCode,
+   headers: {
+     "Content-Type": "application/json; charset=utf-8",
+     "Access-Control-Allow-Origin": "*",
+     "Cache-Control": statusCode === 200 ? "public, max-age=180" : "no-store",
+     ...extraHeaders,
+   },
+   body: JSON.stringify(payload),
+ });
+ 
+diff --git a/src/Home.jsx b/src/Home.jsx
+index fc6ac2c5fe4a57731f52958f144bc9efc3642e0a..ec19babd3921b6bed4918c52249a3f127ab31f8f 100644
+--- a/src/Home.jsx
++++ b/src/Home.jsx
+@@ -468,51 +468,51 @@ export default function Home() {
+       <main className="container mx-auto px-4 py-8">
+ 
+         {/**
+         <div className="text-center mb-8">
+           <div id="coupang-ad-banner" className="flex justify-center"></div>
+         </div>
+         */}
+ 
+         <section
+           id="market-status"
+           className="mb-12 overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-slate-900/80 via-slate-900 to-slate-950 p-8 shadow-2xl"
+         >
+           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+             <div>
+               <p className="text-xs font-semibold uppercase tracking-[0.4em] text-slate-400">오늘의 인사이트 허브</p>
+               <h2 className="mt-2 text-3xl font-semibold text-white">시장 현황 & 전문가 블로그</h2>
+               <p className="mt-3 text-sm text-slate-300 md:text-base">
+                 핵심 시장 데이터와 전문가 블로그의 심층 분석을 한 화면에서 확인하세요. 시장의 큰 그림과 세부 전략을 동시에 파악할 수 있도록 재구성했습니다.
+               </p>
+             </div>
+             <div className="flex flex-wrap gap-3 text-sm">
+               <Link
+                 to="/market-insights"
+                 className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-4 py-2 font-semibold text-white transition hover:bg-white/15"
+               >
+-                시장 인사이트 허브 바로가기
++                인사이트 블로그 바로가기
+                 <span aria-hidden>→</span>
+               </Link>
+               <Link
+                 to="/market-insights"
+                 className="inline-flex items-center gap-2 rounded-full bg-blue-500/90 px-4 py-2 font-semibold text-white transition hover:bg-blue-400/90"
+               >
+                 블로그 전체 보기
+                 <span aria-hidden>→</span>
+               </Link>
+             </div>
+           </div>
+ 
+           <div className="mt-8 grid gap-6 lg:grid-cols-2">
+             <article className="relative overflow-hidden rounded-2xl border border-blue-500/20 bg-blue-500/5 p-6 shadow-xl backdrop-blur">
+               <div className="absolute -right-16 -top-16 h-40 w-40 rounded-full bg-blue-500/10 blur-3xl" aria-hidden />
+               <div className="relative flex h-full flex-col">
+                 <div className="flex items-start justify-between gap-3">
+                   <div>
+                     <span className="inline-flex items-center gap-2 rounded-full bg-blue-500/20 px-3 py-1 text-xs font-semibold text-blue-200">
+                       <span className="h-1.5 w-1.5 rounded-full bg-blue-300" />
+                       테마 리더보드 스냅샷
+                     </span>
+                     <h3 className="mt-3 text-xl font-semibold text-white">오늘의 강세 테마 살펴보기</h3>
+                   </div>
+                   <Link
+diff --git a/src/components/MainNavigation.jsx b/src/components/MainNavigation.jsx
+index 553c262b2df54b0de932079b8068faa3b89aaf7f..9fcc6f0828acdbe5128da64f0beb7c702eccc0aa 100644
+--- a/src/components/MainNavigation.jsx
++++ b/src/components/MainNavigation.jsx
+@@ -1,42 +1,41 @@
+ import { useState } from "react";
+ import { Link, NavLink } from "react-router-dom";
+ 
+ const NAV_SECTIONS = [
+   {
+     label: "시장 인사이트",
+     items: [
+-      { label: "시장 인사이트 허브", to: "/market-insights" },
++      { label: "인사이트 블로그", to: "/market-insights" },
+       { label: "수급·인기·테마 대시보드", to: "/market-history" },
+-      { label: "인기 종목 히스토리", to: "/popular-history" },
+     ],
+   },
+   {
+     label: "투자 전략",
+     items: [
+       { label: "종목 추천", to: "/recommendations" },
+-      { label: "포트폴리오", to: "/portfolio" },
++      { label: "(유료)포트폴리오", to: "/portfolio" },
+     ],
+   },
+   {
+     label: "커뮤니티 & 미디어",
+     items: [
+       { label: "종목 상담 포럼", to: "/forum" },
+       { label: "콘텐츠 & 커뮤니티 허브", to: "/content-community" },
+     ],
+   },
+   {
+     label: "데이터 실험실",
+     items: [
+       { label: "연쇄효과 추론", to: "/causal" },
+     ],
+   },
+   {
+     label: "부가 기능",
+     items: [
+       { label: "맞춤 기능 가이드", to: "/custom-features" },
+     ],
+   },
+ ];
+ 
+ export default function MainNavigation() {
+   const [mobileOpen, setMobileOpen] = useState(false);
+diff --git a/src/data/themeLeadersFallback.json b/src/data/themeLeadersFallback.json
+index a91f491321d3f1039cba45c39594098adfb55b42..b9918d77f0f0c0b58b6ba488f10739d9f3058b3b 100644
+--- a/src/data/themeLeadersFallback.json
++++ b/src/data/themeLeadersFallback.json
+@@ -1,245 +1,245 @@
+ {
+   "asOfLabel": "기본 제공 데이터",
+   "items": [
+     {
+       "name": "뉴로모픽 반도체",
+       "themeCode": "556",
+       "themeLink": "https://finance.naver.com/sise/sise_group_detail.naver?type=theme&no=556",
+       "changeRate": "+7.62%",
+       "averageThreeDayChange": "+1.54%",
+       "risingCount": "7",
+       "flatCount": "0",
+       "fallingCount": "0",
+       "leaders": [
+         {
+           "name": "앤씨앤",
+           "code": "092600",
+           "direction": "상한",
+           "link": "https://finance.naver.com/item/main.naver?code=092600"
+         },
+         {
+-          "name": "오픈엣지테..",
++          "name": "오픈엣지테크놀로지",
+           "code": "394280",
+           "direction": "상승",
+           "link": "https://finance.naver.com/item/main.naver?code=394280"
+         }
+       ]
+     },
+     {
+       "name": "2차전지(생산)",
+       "themeCode": "449",
+       "themeLink": "https://finance.naver.com/sise/sise_group_detail.naver?type=theme&no=449",
+       "changeRate": "+7.02%",
+       "averageThreeDayChange": "-0.09%",
+       "risingCount": "3",
+       "flatCount": "0",
+       "fallingCount": "0",
+       "leaders": [
+         {
+-          "name": "LG에너지..",
++          "name": "LG에너지솔루션",
+           "code": "373220",
+           "direction": "상승",
+           "link": "https://finance.naver.com/item/main.naver?code=373220"
+         },
+         {
+-          "name": "SK이노베..",
++          "name": "SK이노베이션",
+           "code": "096770",
+           "direction": "상승",
+           "link": "https://finance.naver.com/item/main.naver?code=096770"
+         }
+       ]
+     },
+     {
+       "name": "CXL(컴퓨트익스프레스링크)",
+       "themeCode": "547",
+       "themeLink": "https://finance.naver.com/sise/sise_group_detail.naver?type=theme&no=547",
+       "changeRate": "+6.51%",
+       "averageThreeDayChange": "+2.48%",
+       "risingCount": "12",
+       "flatCount": "0",
+       "fallingCount": "1",
+       "leaders": [
+         {
+           "name": "티엘비",
+           "code": "356860",
+           "direction": "상승",
+           "link": "https://finance.naver.com/item/main.naver?code=356860"
+         },
+         {
+           "name": "네오셈",
+           "code": "253590",
+           "direction": "상승",
+           "link": "https://finance.naver.com/item/main.naver?code=253590"
+         }
+       ]
+     },
+     {
+       "name": "3D 낸드(NAND)",
+       "themeCode": "370",
+       "themeLink": "https://finance.naver.com/sise/sise_group_detail.naver?type=theme&no=370",
+       "changeRate": "+4.68%",
+       "averageThreeDayChange": "+1.42%",
+       "risingCount": "17",
+       "flatCount": "0",
+       "fallingCount": "1",
+       "leaders": [
+         {
+           "name": "원익IPS",
+           "code": "240810",
+           "direction": "상승",
+           "link": "https://finance.naver.com/item/main.naver?code=240810"
+         },
+         {
+-          "name": "SK하이닉..",
++          "name": "SK하이닉스",
+           "code": "000660",
+           "direction": "상승",
+           "link": "https://finance.naver.com/item/main.naver?code=000660"
+         }
+       ]
+     },
+     {
+       "name": "HBM(고대역폭메모리)",
+       "themeCode": "536",
+       "themeLink": "https://finance.naver.com/sise/sise_group_detail.naver?type=theme&no=536",
+       "changeRate": "+4.31%",
+       "averageThreeDayChange": "+1.34%",
+       "risingCount": "27",
+       "flatCount": "0",
+       "fallingCount": "1",
+       "leaders": [
+         {
+           "name": "윈팩",
+           "code": "097800",
+           "direction": "상승",
+           "link": "https://finance.naver.com/item/main.naver?code=097800"
+         },
+         {
+-          "name": "SK하이닉..",
++          "name": "SK하이닉스",
+           "code": "000660",
+           "direction": "상승",
+           "link": "https://finance.naver.com/item/main.naver?code=000660"
+         }
+       ]
+     },
+     {
+       "name": "온디바이스 AI",
+       "themeCode": "545",
+       "themeLink": "https://finance.naver.com/sise/sise_group_detail.naver?type=theme&no=545",
+       "changeRate": "+4.29%",
+       "averageThreeDayChange": "+1.41%",
+       "risingCount": "21",
+       "flatCount": "0",
+       "fallingCount": "2",
+       "leaders": [
+         {
+           "name": "제주반도체",
+           "code": "080220",
+           "direction": "상승",
+           "link": "https://finance.naver.com/item/main.naver?code=080220"
+         },
+         {
+-          "name": "SK하이닉..",
++          "name": "SK하이닉스",
+           "code": "000660",
+           "direction": "상승",
+           "link": "https://finance.naver.com/item/main.naver?code=000660"
+         }
+       ]
+     },
+     {
+       "name": "시스템반도체",
+       "themeCode": "307",
+       "themeLink": "https://finance.naver.com/sise/sise_group_detail.naver?type=theme&no=307",
+       "changeRate": "+4.10%",
+       "averageThreeDayChange": "+1.23%",
+       "risingCount": "47",
+       "flatCount": "0",
+       "fallingCount": "7",
+       "leaders": [
+         {
+           "name": "시그네틱스",
+           "code": "033170",
+           "direction": "상한",
+           "link": "https://finance.naver.com/item/main.naver?code=033170"
+         },
+         {
+           "name": "앤씨앤",
+           "code": "092600",
+           "direction": "상한",
+           "link": "https://finance.naver.com/item/main.naver?code=092600"
+         }
+       ]
+     },
+     {
+       "name": "반도체 재료/부품",
+       "themeCode": "14",
+       "themeLink": "https://finance.naver.com/sise/sise_group_detail.naver?type=theme&no=14",
+       "changeRate": "+4.05%",
+       "averageThreeDayChange": "+1.58%",
+       "risingCount": "56",
+       "flatCount": "1",
+       "fallingCount": "3",
+       "leaders": [
+         {
+-          "name": "덕산하이메..",
++          "name": "덕산하이메탈",
+           "code": "077360",
+           "direction": "상승",
+           "link": "https://finance.naver.com/item/main.naver?code=077360"
+         },
+         {
+-          "name": "마이크로컨..",
++          "name": "마이크로컨텍솔",
+           "code": "098120",
+           "direction": "상승",
+           "link": "https://finance.naver.com/item/main.naver?code=098120"
+         }
+       ]
+     },
+     {
+       "name": "CCTV＆DVR",
+       "themeCode": "28",
+       "themeLink": "https://finance.naver.com/sise/sise_group_detail.naver?type=theme&no=28",
+       "changeRate": "+3.89%",
+       "averageThreeDayChange": "-0.23%",
+       "risingCount": "4",
+       "flatCount": "0",
+       "fallingCount": "4",
+       "leaders": [
+         {
+           "name": "앤씨앤",
+           "code": "092600",
+           "direction": "상한",
+           "link": "https://finance.naver.com/item/main.naver?code=092600"
+         },
+         {
+           "name": "비츠로시스",
+           "code": "054220",
+           "direction": "상승",
+           "link": "https://finance.naver.com/item/main.naver?code=054220"
+         }
+       ]
+     },
+     {
+       "name": "반도체 대표주(생산)",
+       "themeCode": "155",
+       "themeLink": "https://finance.naver.com/sise/sise_group_detail.naver?type=theme&no=155",
+       "changeRate": "+3.36%",
+       "averageThreeDayChange": "+1.46%",
+       "risingCount": "2",
+       "flatCount": "0",
+       "fallingCount": "1",
+       "leaders": [
+         {
+-          "name": "SK하이닉..",
++          "name": "SK하이닉스",
+           "code": "000660",
+           "direction": "상승",
+           "link": "https://finance.naver.com/item/main.naver?code=000660"
+         },
+         {
+           "name": "삼성전자",
+           "code": "005930",
+           "direction": "상승",
+           "link": "https://finance.naver.com/item/main.naver?code=005930"
+         }
+       ]
+     }
+   ]
+ }
+ 
+EOF
+)

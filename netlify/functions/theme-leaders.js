@@ -32,15 +32,23 @@ const extractAttribute = (html, attribute) => {
 
 const extractAnchorInfo = (html) => {
   if (typeof html !== "string") {
-    return { href: "", text: "" };
+    return { href: "", text: "", title: "" };
   }
 
   const anchorMatch = html.match(/<a[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/i);
   if (!anchorMatch) {
-    return { href: "", text: stripTags(html) };
+    return { href: "", text: stripTags(html), title: "" };
   }
 
-  return { href: anchorMatch[1], text: stripTags(anchorMatch[2]) };
+  const anchorTag = anchorMatch[0];
+  const titleMatch = anchorTag.match(/title="([^"]*)"/i);
+  const rawTitle = titleMatch ? titleMatch[1] : "";
+
+  return {
+    href: anchorMatch[1],
+    text: stripTags(anchorMatch[2]),
+    title: stripTags(rawTitle),
+  };
 };
 
 const ensureAbsoluteUrl = (url) => {
@@ -79,15 +87,16 @@ const parseLeaderCell = (cellHtml) => {
   }
 
   const anchor = extractAnchorInfo(cellHtml);
-  if (!anchor.href || !anchor.text) {
+  if (!anchor.href || (!anchor.text && !anchor.title)) {
     return null;
   }
 
   const direction = extractAttribute(cellHtml, "alt") || "";
   const href = ensureAbsoluteUrl(anchor.href);
+  const name = anchor.title || anchor.text;
 
   return {
-    name: anchor.text,
+    name,
     code: extractCodeFromHref(anchor.href),
     direction,
     link: href,
@@ -135,12 +144,13 @@ const parseThemeRows = (html) => {
       .map((cell) => parseLeaderCell(cell[1]))
       .filter(Boolean);
 
-    if (!themeAnchor.text) {
+    const themeName = themeAnchor.title || themeAnchor.text;
+    if (!themeName) {
       continue;
     }
 
     rows.push({
-      name: themeAnchor.text,
+      name: themeName,
       themeCode: themeId,
       themeLink,
       changeRate,
