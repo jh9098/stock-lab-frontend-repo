@@ -63,7 +63,6 @@ async function generateSitemap() {
     sitemap.write({ url: '/', changefreq: 'daily', priority: 1.0 });
     sitemap.write({ url: '/blog', changefreq: 'daily', priority: 0.9 });
     sitemap.write({ url: '/news', changefreq: 'daily', priority: 0.8 });
-    sitemap.write({ url: '/ai-summaries', changefreq: 'daily', priority: 0.7 });
     sitemap.write({ url: '/list', changefreq: 'weekly', priority: 0.6 });
     sitemap.write({ url: '/recommendations', changefreq: 'weekly', priority: 0.6 });
     sitemap.write({ url: '/theme/energy', changefreq: 'weekly', priority: 0.5 });

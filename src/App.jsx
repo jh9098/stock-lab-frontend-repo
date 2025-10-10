@@ -4,11 +4,9 @@ import { Routes, Route } from "react-router-dom";
 import Home from "./Home";
 import BlogPostDetail from "./BlogPostDetail";
 import RecommendationsPage from "./RecommendationsPage";
-import ThemesPage from "./ThemesPage";
 import ForumPage from "./ForumPage";
 import ForumWritePage from "./ForumWritePage";
 import ForumDetailPage from "./ForumDetailPage";
-import AiSummaryDetailPage from "./AiSummaryDetailPage";
 import PortfolioPage from "./PortfolioPage";
 import CausalInference from "./pages/CausalInference";
 import PopularStocksHistory from "./pages/PopularStocksHistory";
@@ -18,7 +16,6 @@ import MarketHistoryDashboard from "./pages/MarketHistoryDashboard";
 import AdminLayout from "./admin/AdminLayout";
 import AdminDashboard from "./admin/sections/AdminDashboard";
 import BlogManager from "./admin/sections/BlogManager";
-import AiSummaryManager from "./admin/sections/AiSummaryManager";
 import StockAnalysisManager from "./admin/sections/StockAnalysisManager";
 import ConsultManager from "./admin/sections/ConsultManager";
 import PortfolioManager from "./admin/sections/PortfolioManager";
@@ -34,12 +31,9 @@ function App() {
       <Route element={<SiteLayout />}>
         <Route path="/" element={<Home />} />
         <Route path="/blog" element={<MarketInsightsPage />} />
-        <Route path="/ai-summaries" element={<MarketInsightsPage />} />
         <Route path="/market-insights" element={<MarketInsightsPage />} />
         <Route path="/blog/:postId" element={<BlogPostDetail />} />
-        <Route path="/ai-summaries/:summaryId" element={<AiSummaryDetailPage />} />
         <Route path="/recommendations" element={<RecommendationsPage />} />
-        <Route path="/themes" element={<ThemesPage />} />
         <Route path="/forum" element={<ForumPage />} />
         <Route path="/forum/write" element={<ForumWritePage />} />
         <Route path="/forum/:postId" element={<ForumDetailPage />} />
@@ -56,7 +50,6 @@ function App() {
       <Route path="/admin" element={<AdminLayout />}>
         <Route index element={<AdminDashboard />} />
         <Route path="blog" element={<BlogManager />} />
-        <Route path="ai-summaries" element={<AiSummaryManager />} />
         <Route path="stocks" element={<StockAnalysisManager />} />
         <Route path="forum" element={<ConsultManager />} />
         <Route path="portfolio" element={<PortfolioManager />} />

@@ -107,10 +107,10 @@ export default function CustomFeaturesPage() {
                   <span aria-hidden>→</span>
                 </Link>
                 <Link
-                  to="/themes"
+                  to="/market-history#theme-leaderboard"
                   className="flex items-center justify-between gap-3 rounded-lg border border-white/5 bg-black/40 px-3 py-2 transition hover:border-amber-300/40 hover:text-amber-200"
                 >
-                  테마 주도주 페이지
+                  테마 리더보드 대시보드
                   <span aria-hidden>→</span>
                 </Link>
                 <Link

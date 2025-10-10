@@ -20,11 +20,6 @@ export default function Home() {
   });
   const location = useLocation();
 
-  // AI 시장 이슈 요약 관련 상태
-  const [latestAiSummaries, setLatestAiSummaries] = useState([]);
-  const [aiSummaryLoading, setAiSummaryLoading] = useState(true);
-  const [aiSummaryError, setAiSummaryError] = useState(null);
-
   // 최신 블로그 글 관련 상태
   const [latestBlogPosts, setLatestBlogPosts] = useState([]);
   const [blogPostLoading, setBlogPostLoading] = useState(true);
@@ -123,6 +118,8 @@ export default function Home() {
       successMessage: "인기 종목 데이터가 새롭게 저장되었습니다.",
     },
   ];
+
+  const themeHighlights = themes.slice(0, 3);
 
   const updateFetchStatus = useCallback((sectionKey, updates) => {
     setSectionFetchStatus((prev) => ({
@@ -425,30 +422,6 @@ export default function Home() {
   }, []);
 
 
-  // 최신 AI 시장 이슈 요약 3개 불러오기 (기존과 동일)
-  useEffect(() => {
-    const fetchLatestAiSummaries = async () => {
-      setAiSummaryLoading(true);
-      setAiSummaryError(null);
-      try {
-        const q = query(collection(db, "aiSummaries"), orderBy("createdAt", "desc"), limit(3));
-        const querySnapshot = await getDocs(q);
-        const summaries = querySnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
-        setLatestAiSummaries(summaries);
-      } catch (err) {
-        console.error("최신 AI 요약 불러오기 실패:", err);
-        setAiSummaryError("최신 AI 요약을 불러올 수 없습니다.");
-      } finally {
-        setAiSummaryLoading(false);
-      }
-    };
-    fetchLatestAiSummaries();
-  }, []);
-
-
   // 최신 블로그 글 3개 불러오기 (기존과 동일)
   useEffect(() => {
     const fetchLatestBlogPosts = async () => {
@@ -509,7 +482,7 @@ export default function Home() {
               <p className="text-xs font-semibold uppercase tracking-[0.4em] text-slate-400">오늘의 인사이트 허브</p>
               <h2 className="mt-2 text-3xl font-semibold text-white">시장 현황 & 전문가 블로그</h2>
               <p className="mt-3 text-sm text-slate-300 md:text-base">
-                AI가 선별한 핵심 이슈와 전문 블로그의 심층 분석을 한 화면에서 확인하세요. 시장의 큰 그림과 세부 전략을 동시에 파악할 수 있도록 재구성했습니다.
+                핵심 시장 데이터와 전문가 블로그의 심층 분석을 한 화면에서 확인하세요. 시장의 큰 그림과 세부 전략을 동시에 파악할 수 있도록 재구성했습니다.
               </p>
             </div>
             <div className="flex flex-wrap gap-3 text-sm">
@@ -538,41 +511,62 @@ export default function Home() {
                   <div>
                     <span className="inline-flex items-center gap-2 rounded-full bg-blue-500/20 px-3 py-1 text-xs font-semibold text-blue-200">
                       <span className="h-1.5 w-1.5 rounded-full bg-blue-300" />
-                      AI 기반 시장 이슈 요약
+                      테마 리더보드 스냅샷
                     </span>
-                    <h3 className="mt-3 text-xl font-semibold text-white">실시간 핵심 이슈 브리핑</h3>
+                    <h3 className="mt-3 text-xl font-semibold text-white">오늘의 강세 테마 살펴보기</h3>
                   </div>
                   <Link
-                    to="/market-insights"
+                    to="/market-history#theme-leaderboard"
                     className="inline-flex items-center gap-2 rounded-full border border-blue-400/30 px-3 py-1 text-xs font-semibold text-blue-200 transition hover:bg-blue-400/10"
                   >
-                    전체 보기
+                    대시보드 이동
                     <span aria-hidden>→</span>
                   </Link>
                 </div>
 
                 <p className="mt-3 text-sm text-slate-200">
-                  변동성이 큰 구간일수록 AI가 선별한 문장으로 빠르게 정리하세요.
+                  테마별 상승·하락 비율과 주도주를 빠르게 훑어보고 종목 아이디어를 얻어보세요.
                 </p>
 
                 <div className="mt-5 flex-1">
-                  {aiSummaryLoading ? (
-                    <p className="text-sm text-slate-300">최신 AI 시장 이슈 요약을 불러오는 중입니다...</p>
-                  ) : aiSummaryError ? (
-                    <p className="text-sm text-red-300">{aiSummaryError}</p>
-                  ) : latestAiSummaries.length > 0 ? (
+                  {themeLoading ? (
+                    <p className="text-sm text-slate-300">테마 데이터를 불러오는 중입니다...</p>
+                  ) : themeError ? (
+                    <p className="text-sm text-red-300">{themeError}</p>
+                  ) : themeHighlights.length > 0 ? (
                     <ul className="space-y-3">
-                      {latestAiSummaries.map((summary) => (
-                        <li key={summary.id} className="rounded-xl border border-white/5 bg-black/20 p-3 transition hover:border-blue-300/40">
-                          <Link to={`/ai-summaries/${summary.id}`} className="block">
-                            <p className="text-sm font-semibold text-white">{summary.title}</p>
-                            <span className="mt-1 block text-xs text-slate-400">{summary.date}</span>
-                          </Link>
+                      {themeHighlights.map((theme) => (
+                        <li
+                          key={theme.id}
+                          className="rounded-xl border border-white/5 bg-black/20 p-3 transition hover:border-blue-300/40"
+                        >
+                          <a
+                            href={theme.themeLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center justify-between gap-3 text-sm text-white"
+                          >
+                            <div>
+                              <p className="font-semibold">{theme.name}</p>
+                              <p className="mt-1 text-xs text-slate-400">
+                                주도주: {theme.leaders[0]?.name || "정보 없음"}
+                              </p>
+                            </div>
+                            {theme.changeRate && (
+                              <span
+                                className={`text-xs font-semibold ${
+                                  theme.changeRate.trim().startsWith("-") ? "text-red-300" : "text-emerald-300"
+                                }`}
+                              >
+                                {theme.changeRate}
+                              </span>
+                            )}
+                          </a>
                         </li>
                       ))}
                     </ul>
                   ) : (
-                    <p className="text-sm text-slate-300">아직 작성된 AI 시장 이슈 요약이 없습니다.</p>
+                    <p className="text-sm text-slate-300">표시할 테마 정보가 없습니다.</p>
                   )}
                 </div>
               </div>
@@ -895,10 +889,10 @@ export default function Home() {
 
             <div className="mt-6 text-right">
               <Link
-                to="/themes"
+                to="/market-history#theme-leaderboard"
                 className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/20"
               >
-                테마 상세 페이지로 이동
+                시장 히스토리 대시보드로 이동
                 <span aria-hidden>→</span>
               </Link>
             </div>
@@ -1255,8 +1249,8 @@ export default function Home() {
                     </a>
                   </li>
                   <li>
-                    <a href="#" className="flex items-center justify-between gap-3 rounded-lg border border-white/5 bg-white/5 px-3 py-2 transition hover:border-amber-300/40 hover:text-amber-200">
-                      AI 분석과 수급 데이터 결합법
+                  <a href="#" className="flex items-center justify-between gap-3 rounded-lg border border-white/5 bg-white/5 px-3 py-2 transition hover:border-amber-300/40 hover:text-amber-200">
+                      수급 데이터와 테마 활용법
                       <span aria-hidden>→</span>
                     </a>
                   </li>
@@ -1272,14 +1266,17 @@ export default function Home() {
                   퀵 링크
                 </span>
                 <h3 className="mt-3 text-xl font-semibold text-white">프리미엄 도구 모음</h3>
-                <p className="mt-3 text-sm text-slate-200">테마 분석, 수급 히스토리, AI 요약 등 주요 기능을 빠르게 이동할 수 있습니다.</p>
+                <p className="mt-3 text-sm text-slate-200">테마 분석과 수급 히스토리 등 주요 기능을 빠르게 이동할 수 있습니다.</p>
                 <div className="mt-4 grid gap-2 text-sm text-slate-200">
                   <Link to="/market-history" className="flex items-center justify-between gap-3 rounded-lg border border-white/5 bg-white/5 px-3 py-2 transition hover:border-amber-300/40 hover:text-amber-200">
                     수급 & 인기 대시보드
                     <span aria-hidden>→</span>
                   </Link>
-                  <Link to="/themes" className="flex items-center justify-between gap-3 rounded-lg border border-white/5 bg-white/5 px-3 py-2 transition hover:border-amber-300/40 hover:text-amber-200">
-                    테마 주도주 페이지
+                  <Link
+                    to="/market-history#theme-leaderboard"
+                    className="flex items-center justify-between gap-3 rounded-lg border border-white/5 bg-white/5 px-3 py-2 transition hover:border-amber-300/40 hover:text-amber-200"
+                  >
+                    테마 리더보드 대시보드
                     <span aria-hidden>→</span>
                   </Link>
                   <Link to="/market-insights" className="flex items-center justify-between gap-3 rounded-lg border border-white/5 bg-white/5 px-3 py-2 transition hover:border-amber-300/40 hover:text-amber-200">

@@ -23,13 +23,12 @@ function formatDate(value) {
 
 export default function MarketInsightsPage() {
   const [blogPosts, setBlogPosts] = useState([]);
-  const [aiSummaries, setAiSummaries] = useState([]);
   const [blogSearch, setBlogSearch] = useState('');
-  const [summarySearch, setSummarySearch] = useState('');
   const [blogError, setBlogError] = useState(null);
-  const [summaryError, setSummaryError] = useState(null);
   const [blogLoading, setBlogLoading] = useState(true);
-  const [summaryLoading, setSummaryLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const POSTS_PER_PAGE = 9;
 
   useEffect(() => {
     const fetchBlogPosts = async () => {
@@ -50,26 +49,7 @@ export default function MarketInsightsPage() {
       }
     };
 
-    const fetchSummaries = async () => {
-      try {
-        const summariesCollection = collection(db, 'aiSummaries');
-        const summariesQuery = query(summariesCollection, orderBy('createdAt', 'desc'));
-        const summariesSnapshot = await getDocs(summariesQuery);
-        const summaries = summariesSnapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
-        setAiSummaries(summaries);
-      } catch (error) {
-        console.error('AI 요약 데이터 로드 실패:', error);
-        setSummaryError('AI 요약 데이터를 불러오는 중 문제가 발생했습니다.');
-      } finally {
-        setSummaryLoading(false);
-      }
-    };
-
     fetchBlogPosts();
-    fetchSummaries();
   }, []);
 
   const filteredBlogPosts = useMemo(() => {
@@ -86,48 +66,50 @@ export default function MarketInsightsPage() {
     });
   }, [blogPosts, blogSearch]);
 
-  const filteredSummaries = useMemo(() => {
-    const keyword = summarySearch.trim().toLowerCase();
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [blogSearch]);
 
-    if (!keyword) {
-      return aiSummaries;
+  const totalPages = useMemo(() => Math.ceil(filteredBlogPosts.length / POSTS_PER_PAGE), [filteredBlogPosts.length]);
+
+  useEffect(() => {
+    if (totalPages > 0 && currentPage > totalPages) {
+      setCurrentPage(totalPages);
     }
+  }, [currentPage, totalPages]);
 
-    return aiSummaries.filter((summary) => {
-      const title = summary.title?.toLowerCase() ?? '';
-      const text = summary.summary?.toLowerCase() ?? '';
-      return title.includes(keyword) || text.includes(keyword);
-    });
-  }, [aiSummaries, summarySearch]);
+  const paginatedPosts = useMemo(() => {
+    const startIndex = (currentPage - 1) * POSTS_PER_PAGE;
+    return filteredBlogPosts.slice(startIndex, startIndex + POSTS_PER_PAGE);
+  }, [filteredBlogPosts, currentPage]);
 
-  const isLoading = blogLoading || summaryLoading;
+  const currentGroupStart = useMemo(() => {
+    if (currentPage <= 0) {
+      return 1;
+    }
+    return Math.floor((currentPage - 1) / 10) * 10 + 1;
+  }, [currentPage]);
+
+  const currentGroupEnd = useMemo(() => {
+    if (!totalPages) {
+      return 0;
+    }
+    return Math.min(currentGroupStart + 9, totalPages);
+  }, [currentGroupStart, totalPages]);
+
+  const pageNumbers = useMemo(() => {
+    if (!totalPages) {
+      return [];
+    }
+    return Array.from({ length: currentGroupEnd - currentGroupStart + 1 }, (_, index) => currentGroupStart + index);
+  }, [currentGroupEnd, currentGroupStart, totalPages]);
+
+  const isLoading = blogLoading;
 
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-900 text-gray-100 flex items-center justify-center px-4">
         <p className="text-xl">시장 인사이트 데이터를 불러오는 중입니다...</p>
-      </div>
-    );
-  }
-
-  if (blogError && summaryError) {
-    return (
-      <div className="min-h-screen bg-gray-900 text-gray-100 px-4 py-12 max-w-5xl mx-auto">
-        <Helmet>
-          <title>시장 인사이트 - 지지저항 Lab</title>
-        </Helmet>
-        <h1 className="text-3xl font-bold text-white mb-6">시장 인사이트</h1>
-        <p className="text-red-400 mb-8 text-center">
-          블로그와 AI 요약 데이터를 모두 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.
-        </p>
-        <div className="text-center">
-          <Link
-            to="/"
-            className="inline-flex items-center gap-2 rounded-md bg-gray-800 px-4 py-2 text-sm font-semibold text-white transition hover:bg-gray-700"
-          >
-            홈으로 돌아가기
-          </Link>
-        </div>
       </div>
     );
   }
@@ -138,18 +120,16 @@ export default function MarketInsightsPage() {
         <title>시장 인사이트 - 지지저항 Lab</title>
         <meta
           name="description"
-          content="지지저항랩의 블로그와 AI 시장 요약을 한 번에 확인할 수 있는 시장 인사이트 허브입니다."
+          content="지지저항랩 블로그의 시장 인사이트 글을 검색하고 최신 순으로 살펴보세요."
         />
       </Helmet>
 
       <div className="mx-auto flex max-w-6xl flex-col gap-16">
         <section className="text-center">
           <p className="text-sm font-semibold uppercase tracking-[0.35em] text-emerald-200/80">Market Insight Hub</p>
-          <h1 className="mt-4 text-4xl font-extrabold text-white md:text-5xl">
-            블로그 &amp; AI 요약을 한 페이지에서
-          </h1>
+          <h1 className="mt-4 text-4xl font-extrabold text-white md:text-5xl">시장 인사이트 블로그</h1>
           <p className="mt-4 text-base text-gray-300 md:text-lg">
-            시장 전문가의 시각과 AI 기반 분석을 동시에 확인하면서 더 빠르게 투자 아이디어를 만들 수 있습니다.
+            전문가 블로그 글을 검색하고 최신 순으로 살펴보며 투자 아이디어를 빠르게 정리하세요.
           </p>
         </section>
 
@@ -186,7 +166,7 @@ export default function MarketInsightsPage() {
           ) : (
             <div className="mt-8 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               {filteredBlogPosts.length > 0 ? (
-                filteredBlogPosts.map((post) => (
+                paginatedPosts.map((post) => (
                   <article
                     key={post.id}
                     className="flex h-full flex-col justify-between rounded-2xl border border-emerald-500/20 bg-black/30 p-6 shadow-xl transition hover:border-emerald-300/40 hover:bg-black/40"
@@ -219,73 +199,84 @@ export default function MarketInsightsPage() {
             </div>
           )}
         </section>
+        {totalPages > 1 && (
+          <nav
+            aria-label="블로그 페이지 이동"
+            className="mx-auto flex max-w-6xl flex-wrap items-center justify-center gap-2 rounded-3xl border border-emerald-500/20 bg-black/20 px-6 py-4 text-sm text-emerald-100"
+          >
+            <span className="mr-2 rounded-md border border-emerald-500/20 bg-black/30 px-3 py-2 text-xs font-semibold text-emerald-200">
+              페이지 {currentPage} / {totalPages}
+            </span>
+            <button
+              type="button"
+              onClick={() => setCurrentPage(Math.max(1, currentGroupStart - 10))}
+              disabled={currentGroupStart === 1}
+              className={`rounded-md px-3 py-2 font-semibold transition ${
+                currentGroupStart === 1
+                  ? 'cursor-not-allowed border border-emerald-500/10 bg-emerald-500/5 text-emerald-300/40'
+                  : 'border border-emerald-500/30 bg-black/40 hover:border-emerald-300/60 hover:text-emerald-100'
+              }`}
+              aria-label="이전 10페이지"
+            >
+              «
+            </button>
+            <button
+              type="button"
+              onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+              disabled={currentPage === 1}
+              className={`rounded-md px-3 py-2 font-semibold transition ${
+                currentPage === 1
+                  ? 'cursor-not-allowed border border-emerald-500/10 bg-emerald-500/5 text-emerald-300/40'
+                  : 'border border-emerald-500/30 bg-black/40 hover:border-emerald-300/60 hover:text-emerald-100'
+              }`}
+              aria-label="이전 페이지"
+            >
+              ‹
+            </button>
+            {pageNumbers.map((page) => (
+              <button
+                key={`blog-page-${page}`}
+                type="button"
+                onClick={() => setCurrentPage(page)}
+                className={`rounded-md px-3 py-2 font-semibold transition ${
+                  currentPage === page
+                    ? 'border border-emerald-300 bg-emerald-500/20 text-white shadow-lg'
+                    : 'border border-emerald-500/20 bg-black/40 text-emerald-100 hover:border-emerald-300/60 hover:text-white'
+                }`}
+                aria-current={currentPage === page ? 'page' : undefined}
+              >
+                {page}
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+              disabled={currentPage === totalPages}
+              className={`rounded-md px-3 py-2 font-semibold transition ${
+                currentPage === totalPages
+                  ? 'cursor-not-allowed border border-emerald-500/10 bg-emerald-500/5 text-emerald-300/40'
+                  : 'border border-emerald-500/30 bg-black/40 hover:border-emerald-300/60 hover:text-emerald-100'
+              }`}
+              aria-label="다음 페이지"
+            >
+              ›
+            </button>
+            <button
+              type="button"
+              onClick={() => setCurrentPage(Math.min(totalPages, currentGroupStart + 10))}
+              disabled={!totalPages || currentGroupEnd === totalPages}
+              className={`rounded-md px-3 py-2 font-semibold transition ${
+                !totalPages || currentGroupEnd === totalPages
+                  ? 'cursor-not-allowed border border-emerald-500/10 bg-emerald-500/5 text-emerald-300/40'
+                  : 'border border-emerald-500/30 bg-black/40 hover:border-emerald-300/60 hover:text-emerald-100'
+              }`}
+              aria-label="다음 10페이지"
+            >
+              »
+            </button>
+          </nav>
+        )}
 
-        <section className="mx-auto w-full max-w-6xl rounded-3xl border border-sky-500/20 bg-gradient-to-br from-sky-900 via-slate-900 to-slate-950 p-8 shadow-2xl">
-          <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-            <div>
-              <span className="inline-flex items-center gap-2 rounded-full bg-sky-500/20 px-3 py-1 text-xs font-semibold text-sky-200">
-                AI Summary
-              </span>
-              <h2 className="mt-3 text-3xl font-semibold text-white">AI 시장 이슈 요약</h2>
-              <p className="mt-3 text-sm text-sky-100/80 md:text-base">
-                AI가 분석한 핵심 시장 이슈를 빠르게 훑어보세요.
-              </p>
-            </div>
-            <div className="w-full md:w-72">
-              <label htmlFor="summary-search" className="mb-2 block text-sm font-medium text-sky-100/70">
-                AI 요약 검색
-              </label>
-              <input
-                id="summary-search"
-                type="text"
-                value={summarySearch}
-                onChange={(event) => setSummarySearch(event.target.value)}
-                placeholder="키워드로 AI 요약 검색"
-                className="w-full rounded-lg border border-sky-500/40 bg-black/40 px-3 py-2 text-sm text-white placeholder:text-sky-200/60 focus:border-sky-300 focus:outline-none"
-              />
-            </div>
-          </div>
-
-          {summaryError ? (
-            <p className="mt-8 rounded-lg border border-red-500/40 bg-red-900/40 px-4 py-6 text-center text-sm text-red-100">
-              {summaryError}
-            </p>
-          ) : (
-            <div className="mt-8 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {filteredSummaries.length > 0 ? (
-                filteredSummaries.map((summary) => (
-                  <article
-                    key={summary.id}
-                    className="flex h-full flex-col justify-between rounded-2xl border border-sky-500/20 bg-black/30 p-6 shadow-xl transition hover:border-sky-300/40 hover:bg-black/40"
-                  >
-                    <div>
-                      <span className="inline-flex items-center rounded-full bg-sky-500/20 px-3 py-1 text-xs font-semibold text-sky-100">
-                        {formatDate(summary.createdAt)}
-                      </span>
-                      <h3 className="mt-3 text-xl font-semibold text-white">{summary.title}</h3>
-                      {summary.summary && (
-                        <p className="mt-3 text-sm text-sky-100/80">
-                          {summary.summary.length > 120 ? `${summary.summary.slice(0, 120)}...` : summary.summary}
-                        </p>
-                      )}
-                    </div>
-                    <Link
-                      to={`/ai-summaries/${summary.id}`}
-                      className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-sky-300 transition hover:text-sky-100"
-                    >
-                      상세 보기
-                      <span aria-hidden>→</span>
-                    </Link>
-                  </article>
-                ))
-              ) : (
-                <p className="col-span-full rounded-lg border border-dashed border-sky-500/40 px-4 py-10 text-center text-sm text-sky-100/70">
-                  검색 조건에 맞는 AI 요약이 없습니다.
-                </p>
-              )}
-            </div>
-          )}
-        </section>
 
         <section className="mx-auto w-full max-w-6xl rounded-3xl border border-gray-700/50 bg-gray-800/40 p-8 text-center shadow-2xl">
           <h2 className="text-2xl font-semibold text-white">다른 투자 도구도 살펴보세요</h2>

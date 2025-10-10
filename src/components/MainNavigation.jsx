@@ -6,7 +6,7 @@ const NAV_SECTIONS = [
     label: "시장 인사이트",
     items: [
       { label: "시장 인사이트 허브", to: "/market-insights" },
-      { label: "수급 히스토리", to: "/market-history" },
+      { label: "수급·인기·테마 대시보드", to: "/market-history" },
       { label: "인기 종목 히스토리", to: "/popular-history" },
     ],
   },
@@ -14,7 +14,6 @@ const NAV_SECTIONS = [
     label: "투자 전략",
     items: [
       { label: "종목 추천", to: "/recommendations" },
-      { label: "테마 리더보드", to: "/themes" },
       { label: "포트폴리오", to: "/portfolio" },
     ],
   },
@@ -29,7 +28,6 @@ const NAV_SECTIONS = [
     label: "데이터 실험실",
     items: [
       { label: "연쇄효과 추론", to: "/causal" },
-      { label: "AI 시장 요약", to: "/ai-summaries" },
     ],
   },
   {
@@ -47,6 +45,18 @@ export default function MainNavigation() {
   const toggleMobile = () => {
     setMobileOpen((prev) => !prev);
     setOpenMenuIndex(null);
+  };
+
+  const handleMouseEnter = (index) => {
+    if (!mobileOpen) {
+      setOpenMenuIndex(index);
+    }
+  };
+
+  const handleMouseLeave = () => {
+    if (!mobileOpen) {
+      setOpenMenuIndex(null);
+    }
   };
 
   const toggleMenu = (index) => {
@@ -99,8 +109,8 @@ export default function MainNavigation() {
                 <li
                   key={section.label}
                   className="relative"
-                  onMouseEnter={() => setOpenMenuIndex(index)}
-                  onMouseLeave={() => setOpenMenuIndex(null)}
+                  onMouseEnter={() => handleMouseEnter(index)}
+                  onMouseLeave={handleMouseLeave}
                 >
                   <button
                     type="button"
@@ -124,7 +134,7 @@ export default function MainNavigation() {
                       isOpen
                         ? "block md:visible md:opacity-100"
                         : "hidden md:invisible md:opacity-0"
-                    } mt-2 rounded-lg border border-gray-700 bg-gray-800/95 p-3 shadow-lg transition md:absolute md:left-0 md:z-20 md:mt-3 md:w-56`}
+                    } mt-2 rounded-lg border border-gray-700 bg-gray-800/95 p-3 shadow-lg transition md:absolute md:left-0 md:top-full md:z-20 md:mt-0 md:w-56 md:pt-3`}
                   >
                     <ul className="space-y-1 text-sm">
                       {section.items.map((item) => (
