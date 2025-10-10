@@ -6,7 +6,7 @@ const NAV_SECTIONS = [
     label: "시장 인사이트",
     items: [
       { label: "시장 인사이트 허브", to: "/market-insights" },
-      { label: "수급 히스토리", to: "/market-history" },
+      { label: "수급·인기·테마 대시보드", to: "/market-history" },
       { label: "인기 종목 히스토리", to: "/popular-history" },
     ],
   },
@@ -29,7 +29,6 @@ const NAV_SECTIONS = [
     label: "데이터 실험실",
     items: [
       { label: "연쇄효과 추론", to: "/causal" },
-      { label: "AI 시장 요약", to: "/ai-summaries" },
     ],
   },
   {
@@ -47,6 +46,18 @@ export default function MainNavigation() {
   const toggleMobile = () => {
     setMobileOpen((prev) => !prev);
     setOpenMenuIndex(null);
+  };
+
+  const handleMouseEnter = (index) => {
+    if (!mobileOpen) {
+      setOpenMenuIndex(index);
+    }
+  };
+
+  const handleMouseLeave = () => {
+    if (!mobileOpen) {
+      setOpenMenuIndex(null);
+    }
   };
 
   const toggleMenu = (index) => {
@@ -99,8 +110,8 @@ export default function MainNavigation() {
                 <li
                   key={section.label}
                   className="relative"
-                  onMouseEnter={() => setOpenMenuIndex(index)}
-                  onMouseLeave={() => setOpenMenuIndex(null)}
+                  onMouseEnter={() => handleMouseEnter(index)}
+                  onMouseLeave={handleMouseLeave}
                 >
                   <button
                     type="button"

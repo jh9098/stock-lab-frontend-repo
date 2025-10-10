@@ -23,13 +23,9 @@ function formatDate(value) {
 
 export default function MarketInsightsPage() {
   const [blogPosts, setBlogPosts] = useState([]);
-  const [aiSummaries, setAiSummaries] = useState([]);
   const [blogSearch, setBlogSearch] = useState('');
-  const [summarySearch, setSummarySearch] = useState('');
   const [blogError, setBlogError] = useState(null);
-  const [summaryError, setSummaryError] = useState(null);
   const [blogLoading, setBlogLoading] = useState(true);
-  const [summaryLoading, setSummaryLoading] = useState(true);
 
   useEffect(() => {
     const fetchBlogPosts = async () => {
@@ -50,26 +46,7 @@ export default function MarketInsightsPage() {
       }
     };
 
-    const fetchSummaries = async () => {
-      try {
-        const summariesCollection = collection(db, 'aiSummaries');
-        const summariesQuery = query(summariesCollection, orderBy('createdAt', 'desc'));
-        const summariesSnapshot = await getDocs(summariesQuery);
-        const summaries = summariesSnapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
-        setAiSummaries(summaries);
-      } catch (error) {
-        console.error('AI 요약 데이터 로드 실패:', error);
-        setSummaryError('AI 요약 데이터를 불러오는 중 문제가 발생했습니다.');
-      } finally {
-        setSummaryLoading(false);
-      }
-    };
-
     fetchBlogPosts();
-    fetchSummaries();
   }, []);
 
   const filteredBlogPosts = useMemo(() => {
@@ -86,48 +63,12 @@ export default function MarketInsightsPage() {
     });
   }, [blogPosts, blogSearch]);
 
-  const filteredSummaries = useMemo(() => {
-    const keyword = summarySearch.trim().toLowerCase();
-
-    if (!keyword) {
-      return aiSummaries;
-    }
-
-    return aiSummaries.filter((summary) => {
-      const title = summary.title?.toLowerCase() ?? '';
-      const text = summary.summary?.toLowerCase() ?? '';
-      return title.includes(keyword) || text.includes(keyword);
-    });
-  }, [aiSummaries, summarySearch]);
-
-  const isLoading = blogLoading || summaryLoading;
+  const isLoading = blogLoading;
 
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-900 text-gray-100 flex items-center justify-center px-4">
         <p className="text-xl">시장 인사이트 데이터를 불러오는 중입니다...</p>
-      </div>
-    );
-  }
-
-  if (blogError && summaryError) {
-    return (
-      <div className="min-h-screen bg-gray-900 text-gray-100 px-4 py-12 max-w-5xl mx-auto">
-        <Helmet>
-          <title>시장 인사이트 - 지지저항 Lab</title>
-        </Helmet>
-        <h1 className="text-3xl font-bold text-white mb-6">시장 인사이트</h1>
-        <p className="text-red-400 mb-8 text-center">
-          블로그와 AI 요약 데이터를 모두 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.
-        </p>
-        <div className="text-center">
-          <Link
-            to="/"
-            className="inline-flex items-center gap-2 rounded-md bg-gray-800 px-4 py-2 text-sm font-semibold text-white transition hover:bg-gray-700"
-          >
-            홈으로 돌아가기
-          </Link>
-        </div>
       </div>
     );
   }
@@ -138,7 +79,7 @@ export default function MarketInsightsPage() {
         <title>시장 인사이트 - 지지저항 Lab</title>
         <meta
           name="description"
-          content="지지저항랩의 블로그와 AI 시장 요약을 한 번에 확인할 수 있는 시장 인사이트 허브입니다."
+          content="지지저항랩의 블로그와 수급·테마 데이터 허브를 한 번에 살펴볼 수 있는 시장 인사이트 페이지입니다."
         />
       </Helmet>
 
@@ -146,10 +87,10 @@ export default function MarketInsightsPage() {
         <section className="text-center">
           <p className="text-sm font-semibold uppercase tracking-[0.35em] text-emerald-200/80">Market Insight Hub</p>
           <h1 className="mt-4 text-4xl font-extrabold text-white md:text-5xl">
-            블로그 &amp; AI 요약을 한 페이지에서
+            블로그 &amp; 시장 데이터 허브
           </h1>
           <p className="mt-4 text-base text-gray-300 md:text-lg">
-            시장 전문가의 시각과 AI 기반 분석을 동시에 확인하면서 더 빠르게 투자 아이디어를 만들 수 있습니다.
+            전문가 블로그와 수급·테마 대시보드를 함께 살펴보며 더 빠르게 투자 아이디어를 구성하세요.
           </p>
         </section>
 
@@ -224,67 +165,89 @@ export default function MarketInsightsPage() {
           <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
             <div>
               <span className="inline-flex items-center gap-2 rounded-full bg-sky-500/20 px-3 py-1 text-xs font-semibold text-sky-200">
-                AI Summary
+                Market Data Hub
               </span>
-              <h2 className="mt-3 text-3xl font-semibold text-white">AI 시장 이슈 요약</h2>
+              <h2 className="mt-3 text-3xl font-semibold text-white">수급·인기·테마 데이터 허브</h2>
               <p className="mt-3 text-sm text-sky-100/80 md:text-base">
-                AI가 분석한 핵심 시장 이슈를 빠르게 훑어보세요.
+                기관/외국인 수급, 인기 검색 종목, 테마 리더보드를 한 번에 살펴보고 히스토리 대시보드로 이동하세요.
               </p>
             </div>
-            <div className="w-full md:w-72">
-              <label htmlFor="summary-search" className="mb-2 block text-sm font-medium text-sky-100/70">
-                AI 요약 검색
-              </label>
-              <input
-                id="summary-search"
-                type="text"
-                value={summarySearch}
-                onChange={(event) => setSummarySearch(event.target.value)}
-                placeholder="키워드로 AI 요약 검색"
-                className="w-full rounded-lg border border-sky-500/40 bg-black/40 px-3 py-2 text-sm text-white placeholder:text-sky-200/60 focus:border-sky-300 focus:outline-none"
-              />
+            <div className="flex w-full flex-col gap-3 md:w-72">
+              <Link
+                to="/market-history"
+                className="inline-flex items-center justify-center gap-2 rounded-lg border border-sky-400/40 bg-white/5 px-4 py-2 text-sm font-semibold text-sky-100 transition hover:bg-white/10"
+              >
+                대시보드 바로가기
+                <span aria-hidden>→</span>
+              </Link>
+              <Link
+                to="/market-history#theme-leaderboard"
+                className="inline-flex items-center justify-center gap-2 rounded-lg border border-sky-400/20 bg-sky-500/20 px-4 py-2 text-sm font-semibold text-sky-100 transition hover:bg-sky-500/30"
+              >
+                테마 리더보드 미리보기
+                <span aria-hidden>→</span>
+              </Link>
             </div>
           </div>
 
-          {summaryError ? (
-            <p className="mt-8 rounded-lg border border-red-500/40 bg-red-900/40 px-4 py-6 text-center text-sm text-red-100">
-              {summaryError}
-            </p>
-          ) : (
-            <div className="mt-8 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {filteredSummaries.length > 0 ? (
-                filteredSummaries.map((summary) => (
-                  <article
-                    key={summary.id}
-                    className="flex h-full flex-col justify-between rounded-2xl border border-sky-500/20 bg-black/30 p-6 shadow-xl transition hover:border-sky-300/40 hover:bg-black/40"
-                  >
-                    <div>
-                      <span className="inline-flex items-center rounded-full bg-sky-500/20 px-3 py-1 text-xs font-semibold text-sky-100">
-                        {formatDate(summary.createdAt)}
-                      </span>
-                      <h3 className="mt-3 text-xl font-semibold text-white">{summary.title}</h3>
-                      {summary.summary && (
-                        <p className="mt-3 text-sm text-sky-100/80">
-                          {summary.summary.length > 120 ? `${summary.summary.slice(0, 120)}...` : summary.summary}
-                        </p>
-                      )}
-                    </div>
-                    <Link
-                      to={`/ai-summaries/${summary.id}`}
-                      className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-sky-300 transition hover:text-sky-100"
-                    >
-                      상세 보기
-                      <span aria-hidden>→</span>
-                    </Link>
-                  </article>
-                ))
-              ) : (
-                <p className="col-span-full rounded-lg border border-dashed border-sky-500/40 px-4 py-10 text-center text-sm text-sky-100/70">
-                  검색 조건에 맞는 AI 요약이 없습니다.
+          <div className="mt-8 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <article className="flex h-full flex-col justify-between rounded-2xl border border-white/10 bg-black/30 p-6 shadow-xl transition hover:border-sky-300/40 hover:bg-black/40">
+              <div className="space-y-3">
+                <span className="inline-flex items-center gap-2 rounded-full bg-sky-500/20 px-3 py-1 text-xs font-semibold text-sky-100">
+                  기관 수급
+                </span>
+                <h3 className="text-xl font-semibold text-white">기관 순매수 히스토리</h3>
+                <p className="text-sm text-sky-100/80">
+                  기관 투자자의 집중 매수 종목을 날짜별로 비교하며 시장의 큰손 흐름을 파악할 수 있습니다.
                 </p>
-              )}
-            </div>
-          )}
+              </div>
+              <Link
+                to="/market-history#institution-net-buy"
+                className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-sky-300 transition hover:text-sky-100"
+              >
+                섹션 이동
+                <span aria-hidden>→</span>
+              </Link>
+            </article>
+
+            <article className="flex h-full flex-col justify-between rounded-2xl border border-white/10 bg-black/30 p-6 shadow-xl transition hover:border-sky-300/40 hover:bg-black/40">
+              <div className="space-y-3">
+                <span className="inline-flex items-center gap-2 rounded-full bg-sky-500/20 px-3 py-1 text-xs font-semibold text-sky-100">
+                  외국인 수급
+                </span>
+                <h3 className="text-xl font-semibold text-white">외국인 순매수 히스토리</h3>
+                <p className="text-sm text-sky-100/80">
+                  글로벌 자금의 방향을 실시간에 가깝게 추적하며 매수 강도가 높아지는 종목을 확인하세요.
+                </p>
+              </div>
+              <Link
+                to="/market-history#foreign-net-buy"
+                className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-sky-300 transition hover:text-sky-100"
+              >
+                섹션 이동
+                <span aria-hidden>→</span>
+              </Link>
+            </article>
+
+            <article className="flex h-full flex-col justify-between rounded-2xl border border-white/10 bg-black/30 p-6 shadow-xl transition hover:border-sky-300/40 hover:bg-black/40">
+              <div className="space-y-3">
+                <span className="inline-flex items-center gap-2 rounded-full bg-sky-500/20 px-3 py-1 text-xs font-semibold text-sky-100">
+                  테마 리더보드
+                </span>
+                <h3 className="text-xl font-semibold text-white">주도 테마 한눈에</h3>
+                <p className="text-sm text-sky-100/80">
+                  상승/보합/하락 종목 수와 대표 주도주를 비교해 투자 아이디어를 빠르게 얻어보세요.
+                </p>
+              </div>
+              <Link
+                to="/market-history#theme-leaderboard"
+                className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-sky-300 transition hover:text-sky-100"
+              >
+                섹션 이동
+                <span aria-hidden>→</span>
+              </Link>
+            </article>
+          </div>
         </section>
 
         <section className="mx-auto w-full max-w-6xl rounded-3xl border border-gray-700/50 bg-gray-800/40 p-8 text-center shadow-2xl">

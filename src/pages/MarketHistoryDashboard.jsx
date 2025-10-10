@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Helmet } from "react-helmet";
 import { Link, useLocation } from "react-router-dom";
 import useSnapshotsHistory from "../hooks/useSnapshotsHistory";
+import useThemeLeaders from "../hooks/useThemeLeaders";
 
 const SECTION_CONFIG = [
   {
@@ -55,6 +56,19 @@ const formatNumber = (value) => {
   return value;
 };
 
+const directionBadgeClass = (direction) => {
+  switch (direction) {
+    case "상한":
+    case "하락":
+      return "bg-red-500/20 text-red-300";
+    case "보합":
+      return "bg-gray-500/20 text-gray-200";
+    case "상승":
+    default:
+      return "bg-emerald-500/20 text-emerald-200";
+  }
+};
+
 export default function MarketHistoryDashboard({ initialSection }) {
   const location = useLocation();
 
@@ -71,10 +85,41 @@ export default function MarketHistoryDashboard({ initialSection }) {
     limitCount: 12,
   });
 
+  const {
+    themes,
+    updatedAt: themeUpdatedAt,
+    isLoading: themeLoading,
+    errorMessage: themeError,
+    infoMessage: themeInfo,
+    fetchLatestThemes,
+    setErrorMessage: setThemeError,
+    setInfoMessage: setThemeInfo,
+  } = useThemeLeaders();
+
   const sections = [
     { ...SECTION_CONFIG[0], ...institutionHistory },
     { ...SECTION_CONFIG[1], ...foreignHistory },
     { ...SECTION_CONFIG[2], ...popularHistory },
+  ];
+
+  useEffect(() => {
+    fetchLatestThemes().catch(() => {
+      // 훅 내부에서 오류 처리
+    });
+    return () => {
+      setThemeError("");
+      setThemeInfo("");
+    };
+  }, [fetchLatestThemes, setThemeError, setThemeInfo]);
+
+  const displayedThemes = themes.slice(0, 15);
+  const navAnchors = [
+    ...sections.map((section) => ({
+      key: section.key,
+      anchor: section.anchor,
+      title: section.title,
+    })),
+    { key: "themes", anchor: "theme-leaderboard", title: "테마 리더보드" },
   ];
 
   useEffect(() => {
@@ -99,10 +144,10 @@ export default function MarketHistoryDashboard({ initialSection }) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-black text-gray-100">
       <Helmet>
-        <title>지지저항랩 - 수급 & 인기 종목 히스토리</title>
+        <title>지지저항랩 - 수급·인기·테마 히스토리</title>
         <meta
           name="description"
-          content="기관·외국인 순매수와 인기 검색 종목 변화를 한눈에 비교할 수 있는 지지저항랩 히스토리 대시보드"
+          content="기관·외국인 순매수, 인기 검색 종목, 테마 리더보드를 한 번에 비교할 수 있는 지지저항랩 히스토리 대시보드"
         />
       </Helmet>
 
@@ -111,15 +156,14 @@ export default function MarketHistoryDashboard({ initialSection }) {
           <div>
             <p className="text-sm uppercase tracking-[0.35em] text-gray-400">Market Flows Insight</p>
             <h1 className="mt-3 text-3xl font-bold text-white md:text-4xl">
-              수급 & 인기 종목 히스토리 대시보드
+              수급·인기·테마 히스토리 대시보드
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-relaxed text-gray-300 md:text-base">
-              기관 · 외국인 투자자의 순매수 흐름과 개인 투자자 관심도를 동시에 비교하면서 시장의 방향성을
-              빠르게 읽어보세요. 실시간에 가까운 스냅샷 데이터가 자동으로 갱신됩니다.
+              기관·외국인 순매수 흐름, 개인 투자자 관심도, 테마 주도주 변화를 함께 비교하면서 시장의 방향성을 빠르게 읽어보세요. 실시간에 가까운 스냅샷 데이터가 자동으로 갱신됩니다.
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
-            {sections.map((section) => (
+            {navAnchors.map((section) => (
               <a
                 key={section.key}
                 href={`#${section.anchor}`}
@@ -295,6 +339,138 @@ export default function MarketHistoryDashboard({ initialSection }) {
             </div>
           </section>
         ))}
+
+        <section
+          id="theme-leaderboard"
+          className="rounded-3xl border border-purple-500/30 bg-gradient-to-br from-purple-950/40 via-slate-950 to-black p-8 shadow-2xl shadow-black/30"
+        >
+          <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
+            <div className="space-y-3">
+              <div className="inline-flex items-center gap-2 rounded-full bg-purple-500/20 px-3 py-1 text-xs font-semibold text-purple-200">
+                테마 리더보드
+              </div>
+              <h2 className="text-2xl font-semibold text-white md:text-3xl">네이버 테마 주도주 흐름</h2>
+              <p className="text-sm text-gray-300 md:text-base">
+                상승·보합·하락 종목 수와 대표 주도주를 비교해 시장에서 주목받는 테마를 빠르게 확인하세요.
+              </p>
+              <p className="text-xs text-gray-400 md:text-sm">
+                {themeUpdatedAt ? `데이터 기준: ${themeUpdatedAt}` : "기본 제공 데이터를 보여주고 있습니다."}
+              </p>
+            </div>
+            <div className="flex flex-col items-end gap-3 text-sm text-gray-300">
+              {themeInfo && (
+                <span className="w-full rounded-lg bg-emerald-500/10 px-3 py-2 text-emerald-200 md:w-auto">{themeInfo}</span>
+              )}
+              <button
+                type="button"
+                onClick={fetchLatestThemes}
+                disabled={themeLoading}
+                className="inline-flex items-center gap-2 rounded-full bg-purple-500/80 px-4 py-2 font-semibold text-white transition hover:bg-purple-500 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {themeLoading ? "불러오는 중..." : "최신 테마 불러오기"}
+              </button>
+            </div>
+          </div>
+
+          {themeError ? (
+            <p className="mt-6 rounded-lg border border-red-500/40 bg-red-900/40 px-4 py-6 text-center text-sm text-red-200">
+              {themeError}
+            </p>
+          ) : themeLoading && displayedThemes.length === 0 ? (
+            <p className="mt-6 text-center text-sm text-gray-300">테마 데이터를 불러오는 중입니다...</p>
+          ) : displayedThemes.length === 0 ? (
+            <p className="mt-6 text-center text-sm text-gray-300">표시할 테마 데이터가 없습니다.</p>
+          ) : (
+            <div className="mt-8 overflow-x-auto">
+              <table className="min-w-full text-left text-sm text-gray-200">
+                <thead className="bg-white/5 text-xs uppercase tracking-wide text-gray-300">
+                  <tr>
+                    <th className="px-4 py-3">테마명</th>
+                    <th className="px-4 py-3">전일 대비</th>
+                    <th className="px-4 py-3">최근 3일 등락률</th>
+                    <th className="px-4 py-3">상승</th>
+                    <th className="px-4 py-3">보합</th>
+                    <th className="px-4 py-3">하락</th>
+                    <th className="px-4 py-3">주도주</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {displayedThemes.map((theme) => (
+                    <tr key={theme.id} className="border-b border-white/5 last:border-b-0">
+                      <td className="px-4 py-4 align-top">
+                        <a
+                          href={theme.themeLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-base font-semibold text-white transition hover:text-purple-200"
+                        >
+                          {theme.name}
+                        </a>
+                        <p className="mt-1 text-xs text-gray-400">테마 코드: {theme.themeCode || "-"}</p>
+                      </td>
+                      <td className="px-4 py-4 align-top">
+                        <span
+                          className={`font-semibold ${
+                            theme.changeRate && theme.changeRate.trim().startsWith("-") ? "text-red-300" : "text-emerald-300"
+                          }`}
+                        >
+                          {theme.changeRate || "-"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-4 align-top text-gray-200">{theme.averageThreeDayChange || "-"}</td>
+                      <td className="px-4 py-4 align-top text-emerald-300 font-semibold">{theme.risingCount || "0"}</td>
+                      <td className="px-4 py-4 align-top text-gray-200 font-semibold">{theme.flatCount || "0"}</td>
+                      <td className="px-4 py-4 align-top text-red-300 font-semibold">{theme.fallingCount || "0"}</td>
+                      <td className="px-4 py-4 align-top">
+                        <div className="space-y-2">
+                          {theme.leaders.length === 0 && (
+                            <p className="text-xs text-gray-400">주도주 데이터가 없습니다.</p>
+                          )}
+                          {theme.leaders.slice(0, 3).map((leader, index) => (
+                            leader.link ? (
+                              <a
+                                key={`${theme.id}-${leader.code || index}`}
+                                href={leader.link}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center justify-between gap-3 rounded-md bg-white/5 px-3 py-2 text-sm text-gray-100 transition hover:bg-white/10"
+                              >
+                                <span>
+                                  {leader.name}
+                                  {leader.code && <span className="ml-1 text-xs text-gray-400">({leader.code})</span>}
+                                </span>
+                                {leader.direction && (
+                                  <span className={`rounded-full px-2 py-1 text-xs font-semibold ${directionBadgeClass(leader.direction)}`}>
+                                    {leader.direction}
+                                  </span>
+                                )}
+                              </a>
+                            ) : (
+                              <div
+                                key={`${theme.id}-${leader.code || index}`}
+                                className="flex items-center justify-between gap-3 rounded-md bg-white/5 px-3 py-2 text-sm text-gray-100"
+                              >
+                                <span>
+                                  {leader.name}
+                                  {leader.code && <span className="ml-1 text-xs text-gray-400">({leader.code})</span>}
+                                </span>
+                                {leader.direction && (
+                                  <span className={`rounded-full px-2 py-1 text-xs font-semibold ${directionBadgeClass(leader.direction)}`}>
+                                    {leader.direction}
+                                  </span>
+                                )}
+                              </div>
+                            )
+                          ))}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
       </main>
     </div>
   );
