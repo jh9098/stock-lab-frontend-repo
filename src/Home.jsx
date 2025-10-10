@@ -492,26 +492,6 @@ export default function Home() {
 
       <div id="threejs-bg" className="fixed top-0 left-0 w-full h-full z-[-1]"></div>
 
-      <header className="bg-gray-800 shadow-md py-4">
-        <div className="container mx-auto px-4 flex flex-wrap justify-between items-center">
-          <Link to="/" className="text-2xl lg:text-3xl font-bold text-white">지지저항랩</Link>
-          <nav className="mt-4 md:mt-0">
-            <ul className="flex flex-wrap space-x-4 text-sm lg:text-base">
-              <li><a href="#market-status" className="text-gray-300 hover:text-white transition duration-300">시장 현황</a></li>
-              <li><Link to="/news" className="text-gray-300 hover:text-white transition duration-300">뉴스룸</Link></li>
-              <li><Link to="/recommendations" className="text-gray-300 hover:text-white transition duration-300">종목추천</Link></li>
-              <li><Link to="/forum" className="text-gray-300 hover:text-white transition duration-300">종목상담</Link></li>
-              <li><Link to="/causal" className="text-gray-300 hover:text-white transition duration-300">연쇄효과 추론</Link></li>
-              <li><Link to="/market-history" className="text-gray-300 hover:text-white transition duration-300">수급 히스토리</Link></li>
-              <li><a href="#foreign-net-buy" className="text-gray-300 hover:text-white transition duration-300">외국인 순매수</a></li>
-              <li><a href="#institution-net-buy" className="text-gray-300 hover:text-white transition duration-300">기관 순매수</a></li>
-              <li><a href="#social-media" className="text-gray-300 hover:text-white transition duration-300">미디어</a></li>
-              <li><a href="#extra-features" className="text-gray-300 hover:text-white transition duration-300">부가기능</a></li>
-            </ul>
-          </nav>
-        </div>
-      </header>
-
       <main className="container mx-auto px-4 py-8">
 
         {/**
@@ -534,14 +514,14 @@ export default function Home() {
             </div>
             <div className="flex flex-wrap gap-3 text-sm">
               <Link
-                to="/news"
+                to="/market-insights"
                 className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-4 py-2 font-semibold text-white transition hover:bg-white/15"
               >
-                시장 뉴스룸 바로가기
+                시장 인사이트 허브 바로가기
                 <span aria-hidden>→</span>
               </Link>
               <Link
-                to="/blog"
+                to="/market-insights"
                 className="inline-flex items-center gap-2 rounded-full bg-blue-500/90 px-4 py-2 font-semibold text-white transition hover:bg-blue-400/90"
               >
                 블로그 전체 보기
@@ -563,7 +543,7 @@ export default function Home() {
                     <h3 className="mt-3 text-xl font-semibold text-white">실시간 핵심 이슈 브리핑</h3>
                   </div>
                   <Link
-                    to="/ai-summaries"
+                    to="/market-insights"
                     className="inline-flex items-center gap-2 rounded-full border border-blue-400/30 px-3 py-1 text-xs font-semibold text-blue-200 transition hover:bg-blue-400/10"
                   >
                     전체 보기
@@ -610,7 +590,7 @@ export default function Home() {
                     <h3 className="mt-3 text-xl font-semibold text-white">전문가의 전략 노트</h3>
                   </div>
                   <Link
-                    to="/blog"
+                    to="/market-insights"
                     className="inline-flex items-center gap-2 rounded-full border border-emerald-400/30 px-3 py-1 text-xs font-semibold text-emerald-200 transition hover:bg-emerald-400/10"
                   >
                     전체 보기
@@ -1302,8 +1282,8 @@ export default function Home() {
                     테마 주도주 페이지
                     <span aria-hidden>→</span>
                   </Link>
-                  <Link to="/ai-summaries" className="flex items-center justify-between gap-3 rounded-lg border border-white/5 bg-white/5 px-3 py-2 transition hover:border-amber-300/40 hover:text-amber-200">
-                    AI 시장 이슈 요약
+                  <Link to="/market-insights" className="flex items-center justify-between gap-3 rounded-lg border border-white/5 bg-white/5 px-3 py-2 transition hover:border-amber-300/40 hover:text-amber-200">
+                    시장 인사이트 허브
                     <span aria-hidden>→</span>
                   </Link>
                 </div>
