@@ -14,7 +14,6 @@ const NAV_SECTIONS = [
     label: "투자 전략",
     items: [
       { label: "종목 추천", to: "/recommendations" },
-      { label: "테마 리더보드", to: "/themes" },
       { label: "포트폴리오", to: "/portfolio" },
     ],
   },
@@ -135,7 +134,7 @@ export default function MainNavigation() {
                       isOpen
                         ? "block md:visible md:opacity-100"
                         : "hidden md:invisible md:opacity-0"
-                    } mt-2 rounded-lg border border-gray-700 bg-gray-800/95 p-3 shadow-lg transition md:absolute md:left-0 md:z-20 md:mt-3 md:w-56`}
+                    } mt-2 rounded-lg border border-gray-700 bg-gray-800/95 p-3 shadow-lg transition md:absolute md:left-0 md:top-full md:z-20 md:mt-0 md:w-56 md:pt-3`}
                   >
                     <ul className="space-y-1 text-sm">
                       {section.items.map((item) => (

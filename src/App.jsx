@@ -4,7 +4,6 @@ import { Routes, Route } from "react-router-dom";
 import Home from "./Home";
 import BlogPostDetail from "./BlogPostDetail";
 import RecommendationsPage from "./RecommendationsPage";
-import ThemesPage from "./ThemesPage";
 import ForumPage from "./ForumPage";
 import ForumWritePage from "./ForumWritePage";
 import ForumDetailPage from "./ForumDetailPage";
@@ -35,7 +34,6 @@ function App() {
         <Route path="/market-insights" element={<MarketInsightsPage />} />
         <Route path="/blog/:postId" element={<BlogPostDetail />} />
         <Route path="/recommendations" element={<RecommendationsPage />} />
-        <Route path="/themes" element={<ThemesPage />} />
         <Route path="/forum" element={<ForumPage />} />
         <Route path="/forum/write" element={<ForumWritePage />} />
         <Route path="/forum/:postId" element={<ForumDetailPage />} />

@@ -889,10 +889,10 @@ export default function Home() {
 
             <div className="mt-6 text-right">
               <Link
-                to="/themes"
+                to="/market-history#theme-leaderboard"
                 className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/20"
               >
-                테마 상세 페이지로 이동
+                시장 히스토리 대시보드로 이동
                 <span aria-hidden>→</span>
               </Link>
             </div>
@@ -1272,8 +1272,11 @@ export default function Home() {
                     수급 & 인기 대시보드
                     <span aria-hidden>→</span>
                   </Link>
-                  <Link to="/themes" className="flex items-center justify-between gap-3 rounded-lg border border-white/5 bg-white/5 px-3 py-2 transition hover:border-amber-300/40 hover:text-amber-200">
-                    테마 주도주 페이지
+                  <Link
+                    to="/market-history#theme-leaderboard"
+                    className="flex items-center justify-between gap-3 rounded-lg border border-white/5 bg-white/5 px-3 py-2 transition hover:border-amber-300/40 hover:text-amber-200"
+                  >
+                    테마 리더보드 대시보드
                     <span aria-hidden>→</span>
                   </Link>
                   <Link to="/market-insights" className="flex items-center justify-between gap-3 rounded-lg border border-white/5 bg-white/5 px-3 py-2 transition hover:border-amber-300/40 hover:text-amber-200">

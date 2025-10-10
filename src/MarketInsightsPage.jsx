@@ -26,6 +26,9 @@ export default function MarketInsightsPage() {
   const [blogSearch, setBlogSearch] = useState('');
   const [blogError, setBlogError] = useState(null);
   const [blogLoading, setBlogLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const POSTS_PER_PAGE = 9;
 
   useEffect(() => {
     const fetchBlogPosts = async () => {
@@ -63,6 +66,44 @@ export default function MarketInsightsPage() {
     });
   }, [blogPosts, blogSearch]);
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [blogSearch]);
+
+  const totalPages = useMemo(() => Math.ceil(filteredBlogPosts.length / POSTS_PER_PAGE), [filteredBlogPosts.length]);
+
+  useEffect(() => {
+    if (totalPages > 0 && currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
+  const paginatedPosts = useMemo(() => {
+    const startIndex = (currentPage - 1) * POSTS_PER_PAGE;
+    return filteredBlogPosts.slice(startIndex, startIndex + POSTS_PER_PAGE);
+  }, [filteredBlogPosts, currentPage]);
+
+  const currentGroupStart = useMemo(() => {
+    if (currentPage <= 0) {
+      return 1;
+    }
+    return Math.floor((currentPage - 1) / 10) * 10 + 1;
+  }, [currentPage]);
+
+  const currentGroupEnd = useMemo(() => {
+    if (!totalPages) {
+      return 0;
+    }
+    return Math.min(currentGroupStart + 9, totalPages);
+  }, [currentGroupStart, totalPages]);
+
+  const pageNumbers = useMemo(() => {
+    if (!totalPages) {
+      return [];
+    }
+    return Array.from({ length: currentGroupEnd - currentGroupStart + 1 }, (_, index) => currentGroupStart + index);
+  }, [currentGroupEnd, currentGroupStart, totalPages]);
+
   const isLoading = blogLoading;
 
   if (isLoading) {
@@ -79,18 +120,16 @@ export default function MarketInsightsPage() {
         <title>시장 인사이트 - 지지저항 Lab</title>
         <meta
           name="description"
-          content="지지저항랩의 블로그와 수급·테마 데이터 허브를 한 번에 살펴볼 수 있는 시장 인사이트 페이지입니다."
+          content="지지저항랩 블로그의 시장 인사이트 글을 검색하고 최신 순으로 살펴보세요."
         />
       </Helmet>
 
       <div className="mx-auto flex max-w-6xl flex-col gap-16">
         <section className="text-center">
           <p className="text-sm font-semibold uppercase tracking-[0.35em] text-emerald-200/80">Market Insight Hub</p>
-          <h1 className="mt-4 text-4xl font-extrabold text-white md:text-5xl">
-            블로그 &amp; 시장 데이터 허브
-          </h1>
+          <h1 className="mt-4 text-4xl font-extrabold text-white md:text-5xl">시장 인사이트 블로그</h1>
           <p className="mt-4 text-base text-gray-300 md:text-lg">
-            전문가 블로그와 수급·테마 대시보드를 함께 살펴보며 더 빠르게 투자 아이디어를 구성하세요.
+            전문가 블로그 글을 검색하고 최신 순으로 살펴보며 투자 아이디어를 빠르게 정리하세요.
           </p>
         </section>
 
@@ -127,7 +166,7 @@ export default function MarketInsightsPage() {
           ) : (
             <div className="mt-8 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               {filteredBlogPosts.length > 0 ? (
-                filteredBlogPosts.map((post) => (
+                paginatedPosts.map((post) => (
                   <article
                     key={post.id}
                     className="flex h-full flex-col justify-between rounded-2xl border border-emerald-500/20 bg-black/30 p-6 shadow-xl transition hover:border-emerald-300/40 hover:bg-black/40"
@@ -160,95 +199,84 @@ export default function MarketInsightsPage() {
             </div>
           )}
         </section>
+        {totalPages > 1 && (
+          <nav
+            aria-label="블로그 페이지 이동"
+            className="mx-auto flex max-w-6xl flex-wrap items-center justify-center gap-2 rounded-3xl border border-emerald-500/20 bg-black/20 px-6 py-4 text-sm text-emerald-100"
+          >
+            <span className="mr-2 rounded-md border border-emerald-500/20 bg-black/30 px-3 py-2 text-xs font-semibold text-emerald-200">
+              페이지 {currentPage} / {totalPages}
+            </span>
+            <button
+              type="button"
+              onClick={() => setCurrentPage(Math.max(1, currentGroupStart - 10))}
+              disabled={currentGroupStart === 1}
+              className={`rounded-md px-3 py-2 font-semibold transition ${
+                currentGroupStart === 1
+                  ? 'cursor-not-allowed border border-emerald-500/10 bg-emerald-500/5 text-emerald-300/40'
+                  : 'border border-emerald-500/30 bg-black/40 hover:border-emerald-300/60 hover:text-emerald-100'
+              }`}
+              aria-label="이전 10페이지"
+            >
+              «
+            </button>
+            <button
+              type="button"
+              onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+              disabled={currentPage === 1}
+              className={`rounded-md px-3 py-2 font-semibold transition ${
+                currentPage === 1
+                  ? 'cursor-not-allowed border border-emerald-500/10 bg-emerald-500/5 text-emerald-300/40'
+                  : 'border border-emerald-500/30 bg-black/40 hover:border-emerald-300/60 hover:text-emerald-100'
+              }`}
+              aria-label="이전 페이지"
+            >
+              ‹
+            </button>
+            {pageNumbers.map((page) => (
+              <button
+                key={`blog-page-${page}`}
+                type="button"
+                onClick={() => setCurrentPage(page)}
+                className={`rounded-md px-3 py-2 font-semibold transition ${
+                  currentPage === page
+                    ? 'border border-emerald-300 bg-emerald-500/20 text-white shadow-lg'
+                    : 'border border-emerald-500/20 bg-black/40 text-emerald-100 hover:border-emerald-300/60 hover:text-white'
+                }`}
+                aria-current={currentPage === page ? 'page' : undefined}
+              >
+                {page}
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+              disabled={currentPage === totalPages}
+              className={`rounded-md px-3 py-2 font-semibold transition ${
+                currentPage === totalPages
+                  ? 'cursor-not-allowed border border-emerald-500/10 bg-emerald-500/5 text-emerald-300/40'
+                  : 'border border-emerald-500/30 bg-black/40 hover:border-emerald-300/60 hover:text-emerald-100'
+              }`}
+              aria-label="다음 페이지"
+            >
+              ›
+            </button>
+            <button
+              type="button"
+              onClick={() => setCurrentPage(Math.min(totalPages, currentGroupStart + 10))}
+              disabled={!totalPages || currentGroupEnd === totalPages}
+              className={`rounded-md px-3 py-2 font-semibold transition ${
+                !totalPages || currentGroupEnd === totalPages
+                  ? 'cursor-not-allowed border border-emerald-500/10 bg-emerald-500/5 text-emerald-300/40'
+                  : 'border border-emerald-500/30 bg-black/40 hover:border-emerald-300/60 hover:text-emerald-100'
+              }`}
+              aria-label="다음 10페이지"
+            >
+              »
+            </button>
+          </nav>
+        )}
 
-        <section className="mx-auto w-full max-w-6xl rounded-3xl border border-sky-500/20 bg-gradient-to-br from-sky-900 via-slate-900 to-slate-950 p-8 shadow-2xl">
-          <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-            <div>
-              <span className="inline-flex items-center gap-2 rounded-full bg-sky-500/20 px-3 py-1 text-xs font-semibold text-sky-200">
-                Market Data Hub
-              </span>
-              <h2 className="mt-3 text-3xl font-semibold text-white">수급·인기·테마 데이터 허브</h2>
-              <p className="mt-3 text-sm text-sky-100/80 md:text-base">
-                기관/외국인 수급, 인기 검색 종목, 테마 리더보드를 한 번에 살펴보고 히스토리 대시보드로 이동하세요.
-              </p>
-            </div>
-            <div className="flex w-full flex-col gap-3 md:w-72">
-              <Link
-                to="/market-history"
-                className="inline-flex items-center justify-center gap-2 rounded-lg border border-sky-400/40 bg-white/5 px-4 py-2 text-sm font-semibold text-sky-100 transition hover:bg-white/10"
-              >
-                대시보드 바로가기
-                <span aria-hidden>→</span>
-              </Link>
-              <Link
-                to="/market-history#theme-leaderboard"
-                className="inline-flex items-center justify-center gap-2 rounded-lg border border-sky-400/20 bg-sky-500/20 px-4 py-2 text-sm font-semibold text-sky-100 transition hover:bg-sky-500/30"
-              >
-                테마 리더보드 미리보기
-                <span aria-hidden>→</span>
-              </Link>
-            </div>
-          </div>
-
-          <div className="mt-8 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            <article className="flex h-full flex-col justify-between rounded-2xl border border-white/10 bg-black/30 p-6 shadow-xl transition hover:border-sky-300/40 hover:bg-black/40">
-              <div className="space-y-3">
-                <span className="inline-flex items-center gap-2 rounded-full bg-sky-500/20 px-3 py-1 text-xs font-semibold text-sky-100">
-                  기관 수급
-                </span>
-                <h3 className="text-xl font-semibold text-white">기관 순매수 히스토리</h3>
-                <p className="text-sm text-sky-100/80">
-                  기관 투자자의 집중 매수 종목을 날짜별로 비교하며 시장의 큰손 흐름을 파악할 수 있습니다.
-                </p>
-              </div>
-              <Link
-                to="/market-history#institution-net-buy"
-                className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-sky-300 transition hover:text-sky-100"
-              >
-                섹션 이동
-                <span aria-hidden>→</span>
-              </Link>
-            </article>
-
-            <article className="flex h-full flex-col justify-between rounded-2xl border border-white/10 bg-black/30 p-6 shadow-xl transition hover:border-sky-300/40 hover:bg-black/40">
-              <div className="space-y-3">
-                <span className="inline-flex items-center gap-2 rounded-full bg-sky-500/20 px-3 py-1 text-xs font-semibold text-sky-100">
-                  외국인 수급
-                </span>
-                <h3 className="text-xl font-semibold text-white">외국인 순매수 히스토리</h3>
-                <p className="text-sm text-sky-100/80">
-                  글로벌 자금의 방향을 실시간에 가깝게 추적하며 매수 강도가 높아지는 종목을 확인하세요.
-                </p>
-              </div>
-              <Link
-                to="/market-history#foreign-net-buy"
-                className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-sky-300 transition hover:text-sky-100"
-              >
-                섹션 이동
-                <span aria-hidden>→</span>
-              </Link>
-            </article>
-
-            <article className="flex h-full flex-col justify-between rounded-2xl border border-white/10 bg-black/30 p-6 shadow-xl transition hover:border-sky-300/40 hover:bg-black/40">
-              <div className="space-y-3">
-                <span className="inline-flex items-center gap-2 rounded-full bg-sky-500/20 px-3 py-1 text-xs font-semibold text-sky-100">
-                  테마 리더보드
-                </span>
-                <h3 className="text-xl font-semibold text-white">주도 테마 한눈에</h3>
-                <p className="text-sm text-sky-100/80">
-                  상승/보합/하락 종목 수와 대표 주도주를 비교해 투자 아이디어를 빠르게 얻어보세요.
-                </p>
-              </div>
-              <Link
-                to="/market-history#theme-leaderboard"
-                className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-sky-300 transition hover:text-sky-100"
-              >
-                섹션 이동
-                <span aria-hidden>→</span>
-              </Link>
-            </article>
-          </div>
-        </section>
 
         <section className="mx-auto w-full max-w-6xl rounded-3xl border border-gray-700/50 bg-gray-800/40 p-8 text-center shadow-2xl">
           <h2 className="text-2xl font-semibold text-white">다른 투자 도구도 살펴보세요</h2>

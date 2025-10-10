@@ -147,10 +147,10 @@ export default function ThemeLeadersSection() {
 
       <div className="mt-6 text-center">
         <Link
-          to="/themes"
+          to="/market-history#theme-leaderboard"
           className="bg-gray-600 hover:bg-gray-500 text-white font-semibold py-2 px-6 rounded-md text-sm transition duration-300"
         >
-          테마 상세 페이지로 이동
+          시장 히스토리 대시보드로 이동
         </Link>
       </div>
     </section>
