@@ -133,7 +133,7 @@ def iter_stock_list(stock_list_file: str) -> Iterable[Dict[str, str]]:
     """엑셀 파일에서 종목 코드와 이름 정보를 생성합니다."""
 
     try:
-        df = pd.read_excel(stock_list_file, dtype={"단축코드": str})
+        df = pd.read_excel(stock_list_file)
     except FileNotFoundError as exc:
         raise FileNotFoundError(
             f"'{stock_list_file}' 파일을 찾을 수 없습니다. 경로를 확인하세요."
@@ -141,17 +141,35 @@ def iter_stock_list(stock_list_file: str) -> Iterable[Dict[str, str]]:
     except Exception as exc:  # pylint: disable=broad-except
         raise RuntimeError(f"엑셀 파일을 읽는 중 오류가 발생했습니다: {exc}") from exc
 
-    required_columns = {"단축코드", "한글 종목약명"}
-    missing = required_columns - set(df.columns)
-    if missing:
+    df.columns = [str(col).strip() for col in df.columns]
+
+    ticker_candidates = ["단축코드", "단축 코드", "티커", "종목코드"]
+    name_candidates = ["한글 종목약명", "한글종목약명", "종목명", "한글명"]
+
+    def resolve_column(candidates: List[str]) -> str:
+        for candidate in candidates:
+            if candidate in df.columns:
+                return candidate
         raise KeyError(
-            "엑셀 파일에 필요한 열이 없습니다: " + ", ".join(sorted(missing))
+            "엑셀 파일에 필요한 열을 찾을 수 없습니다: "
+            + ", ".join(candidates)
         )
 
-    df["단축코드"] = df["단축코드"].str.zfill(6)
+    ticker_col = resolve_column(ticker_candidates)
+    name_col = resolve_column(name_candidates)
 
-    for row in df.itertuples(index=False):
-        yield {"ticker": getattr(row, "단축코드"), "name": getattr(row, "한글 종목약명")}
+    df = df[[ticker_col, name_col]].dropna(how="any")
+    df[ticker_col] = (
+        df[ticker_col]
+        .astype(str)
+        .str.strip()
+        .str.replace(r"\.0$", "", regex=True)
+        .str.zfill(6)
+    )
+    df[name_col] = df[name_col].astype(str).str.strip()
+
+    for record in df.to_dict(orient="records"):
+        yield {"ticker": record[ticker_col], "name": record[name_col]}
 
 
 def main() -> int:
