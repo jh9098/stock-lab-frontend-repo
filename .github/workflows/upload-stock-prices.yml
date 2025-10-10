@@ -2,7 +2,9 @@ name: Upload daily stock prices
 
 on:
   schedule:
-    - cron: '0 0 * * *'
+    - cron: '10 0 * * 1-5'
+    - cron: '0 2 * * 1-5'
+    - cron: '30 6 * * 1-5'
   workflow_dispatch:
 
 jobs:

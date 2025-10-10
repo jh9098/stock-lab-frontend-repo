@@ -7,12 +7,14 @@ import logging
 import os
 import sys
 import time
+from datetime import date, datetime
 from pathlib import Path
 from typing import Dict, Iterable, List
 
 import pandas as pd
 import requests
 from bs4 import BeautifulSoup
+import holidays
 import firebase_admin
 from firebase_admin import credentials, firestore
 
@@ -23,6 +25,24 @@ DEFAULT_PAGES_TO_SCRAPE = int(os.getenv("PAGES_TO_SCRAPE", "1"))
 DEFAULT_DELAY_SECONDS = float(os.getenv("SCRAPE_DELAY_SECONDS", "0.3"))
 SCRIPT_DIR = Path(__file__).resolve().parent
 DEFAULT_STOCK_LIST_FILE = os.getenv("STOCK_LIST_FILE", str(SCRIPT_DIR / "stock_list.xlsx"))
+
+
+def is_korean_trading_day(target_date: date | None = None) -> bool:
+    """주어진 날짜가 한국 주식 시장의 거래일인지 확인합니다."""
+
+    if target_date is None:
+        target_date = datetime.now().date()
+
+    # 주말(토, 일)은 휴장일로 간주합니다.
+    if target_date.weekday() >= 5:
+        return False
+
+    # 대한민국 공휴일(대체공휴일 포함) 여부를 검사합니다.
+    korea_holidays = holidays.KR(years=target_date.year)
+    if target_date in korea_holidays:
+        return False
+
+    return True
 
 
 def initialize_firestore() -> firestore.Client:
@@ -174,6 +194,14 @@ def iter_stock_list(stock_list_file: str) -> Iterable[Dict[str, str]]:
 
 def main() -> int:
     """스크립트 실행 진입점."""
+
+    today = datetime.now().date()
+    if not is_korean_trading_day(today):
+        LOGGER.info(
+            "오늘(%s)은 한국 주식 시장 휴장일이므로 업로드를 건너뜁니다.",
+            today.isoformat(),
+        )
+        return 0
 
     stock_list_file = DEFAULT_STOCK_LIST_FILE
     db = initialize_firestore()
