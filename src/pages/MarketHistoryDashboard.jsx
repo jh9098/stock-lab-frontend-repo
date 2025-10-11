@@ -354,7 +354,9 @@ export default function MarketHistoryDashboard({ initialSection }) {
                 상승·보합·하락 종목 수와 대표 주도주를 비교해 시장에서 주목받는 테마를 빠르게 확인하세요.
               </p>
               <p className="text-xs text-gray-400 md:text-sm">
-                {themeUpdatedAt ? `데이터 기준: ${themeUpdatedAt}` : "기본 제공 데이터를 보여주고 있습니다."}
+                {themeUpdatedAt
+                  ? `데이터 기준: ${themeUpdatedAt}`
+                  : "저장된 테마 데이터가 아직 없습니다. 상단의 버튼으로 최신 정보를 불러와 주세요."}
               </p>
             </div>
             <div className="flex flex-col items-end gap-3 text-sm text-gray-300">
