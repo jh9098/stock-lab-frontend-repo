@@ -790,7 +790,9 @@ export default function Home() {
               </div>
               <div className="flex flex-col gap-2 text-sm text-gray-300 sm:flex-row sm:items-center">
                 <span>
-                  {themeUpdatedAt ? `기준 시각: ${themeUpdatedAt}` : "기본 데이터 표시 중"}
+                  {themeUpdatedAt
+                    ? `기준 시각: ${themeUpdatedAt}`
+                    : "저장된 테마 데이터를 불러오는 중"}
                 </span>
                 <button
                   type="button"
