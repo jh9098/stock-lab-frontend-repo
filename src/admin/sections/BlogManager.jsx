@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
 import { addDoc, collection, deleteDoc, doc, getDocs, orderBy, query, updateDoc } from "firebase/firestore";
 import { db } from "../../firebaseConfig";
 import { useAdminContext } from "../AdminContext";
 import useQuillImageModules from "../components/useQuillImageModules";
+import PaginationControls from "../components/PaginationControls";
 
 export default function BlogManager() {
   const { setMessage } = useAdminContext();
@@ -14,6 +15,7 @@ export default function BlogManager() {
   const [editingId, setEditingId] = useState(null);
   const [quillKey, setQuillKey] = useState(0);
   const quillRef = useRef(null);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const [form, setForm] = useState({
     title: "",
@@ -23,6 +25,25 @@ export default function BlogManager() {
   });
 
   const modules = useQuillImageModules(quillRef, setMessage);
+  const ITEMS_PER_PAGE = 20;
+  const totalPages = Math.max(1, Math.ceil(posts.length / ITEMS_PER_PAGE));
+
+  useEffect(() => {
+    setCurrentPage((prev) => {
+      if (prev > totalPages) {
+        return totalPages;
+      }
+      if (prev < 1) {
+        return 1;
+      }
+      return prev;
+    });
+  }, [totalPages]);
+
+  const paginatedPosts = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    return posts.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [posts, currentPage]);
 
   const resetForm = useCallback(() => {
     setForm({ title: "", author: "", summary: "", contentHtml: "" });
@@ -182,7 +203,9 @@ export default function BlogManager() {
       <div className="bg-gray-900 border border-gray-800 rounded-xl">
         <div className="px-6 py-4 border-b border-gray-800 flex items-center justify-between">
           <h3 className="text-lg font-semibold text-white">등록된 블로그 글</h3>
-          <span className="text-sm text-gray-400">총 {posts.length}건</span>
+          <span className="text-sm text-gray-400">
+            총 {posts.length}건 · 페이지 {currentPage} / {totalPages}
+          </span>
         </div>
         <div className="divide-y divide-gray-800">
           {loading && <p className="px-6 py-4 text-sm text-gray-400">데이터를 불러오는 중입니다...</p>}
@@ -190,7 +213,7 @@ export default function BlogManager() {
           {!loading && !posts.length && !error && (
             <p className="px-6 py-4 text-sm text-gray-400">등록된 블로그 글이 없습니다.</p>
           )}
-          {posts.map((post) => (
+          {paginatedPosts.map((post) => (
             <div key={post.id} className="px-6 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div>
                 <p className="text-white font-semibold">{post.title}</p>
@@ -215,6 +238,13 @@ export default function BlogManager() {
             </div>
           ))}
         </div>
+        <PaginationControls
+          currentPage={currentPage}
+          totalItems={posts.length}
+          pageSize={ITEMS_PER_PAGE}
+          onPageChange={setCurrentPage}
+          className="rounded-b-xl border-t border-gray-800 bg-gray-950/60 px-6 py-4"
+        />
       </div>
     </section>
   );
