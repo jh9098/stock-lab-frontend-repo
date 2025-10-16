@@ -2,6 +2,26 @@ import { useCallback, useEffect, useState } from "react";
 import { signInAnonymously } from "firebase/auth";
 import { auth } from "../firebaseConfig";
 import { API_BASE_URL } from "../lib/apiConfig";
+const buildAdminApiUrl = (path = "") => {
+  const trimmedPath = path.replace(/^\//, "");
+  const normalizedBase = (API_BASE_URL || "").replace(/\/$/, "");
+
+  let baseWithApi;
+  if (!normalizedBase) {
+    baseWithApi = "/api";
+  } else if (/\/api$/i.test(normalizedBase)) {
+    baseWithApi = normalizedBase;
+  } else {
+    baseWithApi = `${normalizedBase}/api`;
+  }
+
+  if (!trimmedPath) {
+    return baseWithApi;
+  }
+
+  return `${baseWithApi}/${trimmedPath}`;
+};
+
 
 const SESSION_KEY = "adminLoggedIn";
 
@@ -39,7 +59,7 @@ export default function useAdminAuth() {
       setPending(true);
       setMessage("로그인 시도 중...");
       try {
-        const response = await fetch(`${API_BASE_URL}/api/admin/login`, {
+        const response = await fetch(buildAdminApiUrl("admin/login"), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ password }),
