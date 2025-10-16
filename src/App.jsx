@@ -23,36 +23,200 @@ import MarketInsightsPage from "./MarketInsightsPage";
 import ContentCommunityPage from "./ContentCommunityPage";
 import CustomFeaturesPage from "./CustomFeaturesPage";
 import SiteLayout from "./components/SiteLayout";
+import AccessGuard from "./components/AccessGuard";
+import UserAccessManager from "./admin/sections/UserAccessManager";
 // NewsDetailPage는 이제 필요 없으므로 제거
 
 function App() {
   return (
     <Routes>
       <Route element={<SiteLayout />}>
-        <Route path="/" element={<Home />} />
-        <Route path="/blog" element={<MarketInsightsPage />} />
-        <Route path="/market-insights" element={<MarketInsightsPage />} />
-        <Route path="/blog/:postId" element={<BlogPostDetail />} />
-        <Route path="/recommendations" element={<RecommendationsPage />} />
-        <Route path="/forum" element={<ForumPage />} />
-        <Route path="/forum/write" element={<ForumWritePage />} />
-        <Route path="/forum/:postId" element={<ForumDetailPage />} />
-        <Route path="/portfolio" element={<PortfolioPage />} />
-        <Route path="/market-history" element={<MarketHistoryDashboard />} />
-        <Route path="/popular-history" element={<PopularStocksHistory />} />
-        <Route path="/foreign-net-buy-history" element={<ForeignNetBuyHistory />} />
-        <Route path="/institution-net-buy-history" element={<InstitutionNetBuyHistory />} />
-        <Route path="/content-community" element={<ContentCommunityPage />} />
-        <Route path="/custom-features" element={<CustomFeaturesPage />} />
-        <Route path="/causal" element={<CausalInference />} />
+        <Route
+          path="/"
+          element={
+            <AccessGuard pathKey="/">
+              <Home />
+            </AccessGuard>
+          }
+        />
+        <Route
+          path="/blog"
+          element={
+            <AccessGuard pathKey="/blog">
+              <MarketInsightsPage />
+            </AccessGuard>
+          }
+        />
+        <Route
+          path="/market-insights"
+          element={
+            <AccessGuard pathKey="/market-insights">
+              <MarketInsightsPage />
+            </AccessGuard>
+          }
+        />
+        <Route
+          path="/blog/:postId"
+          element={
+            <AccessGuard pathKey="/blog/*">
+              <BlogPostDetail />
+            </AccessGuard>
+          }
+        />
+        <Route
+          path="/recommendations"
+          element={
+            <AccessGuard pathKey="/recommendations">
+              <RecommendationsPage />
+            </AccessGuard>
+          }
+        />
+        <Route
+          path="/forum"
+          element={
+            <AccessGuard pathKey="/forum">
+              <ForumPage />
+            </AccessGuard>
+          }
+        />
+        <Route
+          path="/forum/write"
+          element={
+            <AccessGuard pathKey="/forum/write">
+              <ForumWritePage />
+            </AccessGuard>
+          }
+        />
+        <Route
+          path="/forum/:postId"
+          element={
+            <AccessGuard pathKey="/forum/*">
+              <ForumDetailPage />
+            </AccessGuard>
+          }
+        />
+        <Route
+          path="/portfolio"
+          element={
+            <AccessGuard pathKey="/portfolio" requiresAuth>
+              <PortfolioPage />
+            </AccessGuard>
+          }
+        />
+        <Route
+          path="/market-history"
+          element={
+            <AccessGuard pathKey="/market-history">
+              <MarketHistoryDashboard />
+            </AccessGuard>
+          }
+        />
+        <Route
+          path="/popular-history"
+          element={
+            <AccessGuard pathKey="/popular-history">
+              <PopularStocksHistory />
+            </AccessGuard>
+          }
+        />
+        <Route
+          path="/foreign-net-buy-history"
+          element={
+            <AccessGuard pathKey="/foreign-net-buy-history">
+              <ForeignNetBuyHistory />
+            </AccessGuard>
+          }
+        />
+        <Route
+          path="/institution-net-buy-history"
+          element={
+            <AccessGuard pathKey="/institution-net-buy-history">
+              <InstitutionNetBuyHistory />
+            </AccessGuard>
+          }
+        />
+        <Route
+          path="/content-community"
+          element={
+            <AccessGuard pathKey="/content-community">
+              <ContentCommunityPage />
+            </AccessGuard>
+          }
+        />
+        <Route
+          path="/custom-features"
+          element={
+            <AccessGuard pathKey="/custom-features">
+              <CustomFeaturesPage />
+            </AccessGuard>
+          }
+        />
+        <Route
+          path="/causal"
+          element={
+            <AccessGuard pathKey="/causal">
+              <CausalInference />
+            </AccessGuard>
+          }
+        />
       </Route>
 
-      <Route path="/admin" element={<AdminLayout />}>
-        <Route index element={<AdminDashboard />} />
-        <Route path="blog" element={<BlogManager />} />
-        <Route path="stocks" element={<StockAnalysisManager />} />
-        <Route path="forum" element={<ConsultManager />} />
-        <Route path="portfolio" element={<PortfolioManager />} />
+      <Route
+        path="/admin"
+        element={
+          <AccessGuard pathKey="/admin" requiresAuth allowedRoles={["admin"]}>
+            <AdminLayout />
+          </AccessGuard>
+        }
+      >
+        <Route
+          index
+          element={
+            <AccessGuard pathKey="/admin" requiresAuth allowedRoles={["admin"]}>
+              <AdminDashboard />
+            </AccessGuard>
+          }
+        />
+        <Route
+          path="users"
+          element={
+            <AccessGuard pathKey="/admin/*" requiresAuth allowedRoles={["admin"]}>
+              <UserAccessManager />
+            </AccessGuard>
+          }
+        />
+        <Route
+          path="blog"
+          element={
+            <AccessGuard pathKey="/admin/*" requiresAuth allowedRoles={["admin"]}>
+              <BlogManager />
+            </AccessGuard>
+          }
+        />
+        <Route
+          path="stocks"
+          element={
+            <AccessGuard pathKey="/admin/*" requiresAuth allowedRoles={["admin"]}>
+              <StockAnalysisManager />
+            </AccessGuard>
+          }
+        />
+        <Route
+          path="forum"
+          element={
+            <AccessGuard pathKey="/admin/*" requiresAuth allowedRoles={["admin"]}>
+              <ConsultManager />
+            </AccessGuard>
+          }
+        />
+        <Route
+          path="portfolio"
+          element={
+            <AccessGuard pathKey="/admin/*" requiresAuth allowedRoles={["admin"]}>
+              <PortfolioManager />
+            </AccessGuard>
+          }
+        />
       </Route>
 
       {/* NewsDetailPage 라우트는 이제 필요 없으므로 제거됩니다. */}
