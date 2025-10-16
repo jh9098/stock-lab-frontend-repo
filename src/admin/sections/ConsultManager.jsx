@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { collection, deleteDoc, doc, getDocs, orderBy, query, updateDoc } from "firebase/firestore";
 import { db } from "../../firebaseConfig";
 import { useAdminContext } from "../AdminContext";
+import PaginationControls from "../components/PaginationControls";
 
 function formatDate(timestamp) {
   if (!timestamp) return "-";
@@ -20,6 +21,26 @@ export default function ConsultManager() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [commentDrafts, setCommentDrafts] = useState({});
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 20;
+  const totalPages = Math.max(1, Math.ceil(posts.length / ITEMS_PER_PAGE));
+
+  useEffect(() => {
+    setCurrentPage((prev) => {
+      if (prev > totalPages) {
+        return totalPages;
+      }
+      if (prev < 1) {
+        return 1;
+      }
+      return prev;
+    });
+  }, [totalPages]);
+
+  const paginatedPosts = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    return posts.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [posts, currentPage]);
 
   const fetchPosts = useCallback(async () => {
     setLoading(true);
@@ -89,7 +110,9 @@ export default function ConsultManager() {
       <div className="bg-gray-900 border border-gray-800 rounded-xl">
         <div className="px-6 py-4 border-b border-gray-800 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-white">상담 게시판 관리</h2>
-          <span className="text-sm text-gray-400">총 {posts.length}건</span>
+          <span className="text-sm text-gray-400">
+            총 {posts.length}건 · 페이지 {currentPage} / {totalPages}
+          </span>
         </div>
         <div className="divide-y divide-gray-800">
           {loading && <p className="px-6 py-4 text-sm text-gray-400">데이터를 불러오는 중입니다...</p>}
@@ -97,7 +120,7 @@ export default function ConsultManager() {
           {!loading && !posts.length && !error && (
             <p className="px-6 py-4 text-sm text-gray-400">등록된 상담 요청이 없습니다.</p>
           )}
-          {posts.map((post) => (
+          {paginatedPosts.map((post) => (
             <div key={post.id} className="px-6 py-4 space-y-3">
               <div className="flex flex-col gap-1">
                 <div className="flex flex-wrap items-center gap-2 justify-between">
@@ -143,6 +166,13 @@ export default function ConsultManager() {
             </div>
           ))}
         </div>
+        <PaginationControls
+          currentPage={currentPage}
+          totalItems={posts.length}
+          pageSize={ITEMS_PER_PAGE}
+          onPageChange={setCurrentPage}
+          className="rounded-b-xl border-t border-gray-800 bg-gray-950/60 px-6 py-4"
+        />
       </div>
     </section>
   );

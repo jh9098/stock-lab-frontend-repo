@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { addDoc, collection, deleteDoc, doc, getDocs, orderBy, query, updateDoc } from "firebase/firestore";
 import { db } from "../../firebaseConfig";
 import { useAdminContext } from "../AdminContext";
+import PaginationControls from "../components/PaginationControls";
 
 const STATUS_OPTIONS = [
   { value: "진행중", label: "진행중" },
@@ -22,6 +23,26 @@ export default function StockAnalysisManager() {
     status: "진행중",
     returnRate: "",
   });
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 20;
+  const totalPages = Math.max(1, Math.ceil(analyses.length / ITEMS_PER_PAGE));
+
+  useEffect(() => {
+    setCurrentPage((prev) => {
+      if (prev > totalPages) {
+        return totalPages;
+      }
+      if (prev < 1) {
+        return 1;
+      }
+      return prev;
+    });
+  }, [totalPages]);
+
+  const paginatedAnalyses = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    return analyses.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [analyses, currentPage]);
 
   const fetchAnalyses = useCallback(async () => {
     setLoading(true);
@@ -209,7 +230,9 @@ export default function StockAnalysisManager() {
       <div className="bg-gray-900 border border-gray-800 rounded-xl">
         <div className="px-6 py-4 border-b border-gray-800 flex items-center justify-between">
           <h3 className="text-lg font-semibold text-white">등록된 종목 분석</h3>
-          <span className="text-sm text-gray-400">총 {analyses.length}건</span>
+          <span className="text-sm text-gray-400">
+            총 {analyses.length}건 · 페이지 {currentPage} / {totalPages}
+          </span>
         </div>
         <div className="divide-y divide-gray-800">
           {loading && <p className="px-6 py-4 text-sm text-gray-400">데이터를 불러오는 중입니다...</p>}
@@ -217,7 +240,7 @@ export default function StockAnalysisManager() {
           {!loading && !analyses.length && !error && (
             <p className="px-6 py-4 text-sm text-gray-400">등록된 종목 분석이 없습니다.</p>
           )}
-          {analyses.map((analysis) => (
+          {paginatedAnalyses.map((analysis) => (
             <div key={analysis.id} className="px-6 py-4 space-y-2">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
@@ -260,6 +283,13 @@ export default function StockAnalysisManager() {
             </div>
           ))}
         </div>
+        <PaginationControls
+          currentPage={currentPage}
+          totalItems={analyses.length}
+          pageSize={ITEMS_PER_PAGE}
+          onPageChange={setCurrentPage}
+          className="rounded-b-xl border-t border-gray-800 bg-gray-950/60 px-6 py-4"
+        />
       </div>
     </section>
   );
