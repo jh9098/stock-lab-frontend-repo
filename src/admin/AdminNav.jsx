@@ -2,6 +2,7 @@ import { NavLink } from "react-router-dom";
 
 const NAV_ITEMS = [
   { to: "/admin", label: "대시보드" },
+  { to: "/admin/users", label: "회원 및 권한" },
   { to: "/admin/blog", label: "블로그 관리" },
   { to: "/admin/stocks", label: "종목 분석" },
   { to: "/admin/forum", label: "상담 게시판" },

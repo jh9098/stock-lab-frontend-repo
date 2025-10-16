@@ -4,6 +4,7 @@ export const AdminContext = createContext({
   message: "",
   setMessage: () => {},
   logout: () => {},
+  profile: null,
 });
 
 export function useAdminContext() {
