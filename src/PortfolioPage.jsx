@@ -243,6 +243,36 @@ export default function PortfolioPage() {
       .map((item) => ({ date: item.date, close: item.close }));
   }, [priceSeries]);
 
+  const supportLevels = useMemo(() => {
+    const rawSupport = selectedStock?.supportLines;
+    if (!rawSupport) {
+      return [];
+    }
+
+    return (Array.isArray(rawSupport) ? rawSupport : [])
+      .map((value) => {
+        const numeric = Number(value);
+        return Number.isFinite(numeric) ? numeric : null;
+      })
+      .filter((value) => value != null)
+      .sort((a, b) => a - b);
+  }, [selectedStock]);
+
+  const resistanceLevels = useMemo(() => {
+    const rawResistance = selectedStock?.resistanceLines;
+    if (!rawResistance) {
+      return [];
+    }
+
+    return (Array.isArray(rawResistance) ? rawResistance : [])
+      .map((value) => {
+        const numeric = Number(value);
+        return Number.isFinite(numeric) ? numeric : null;
+      })
+      .filter((value) => value != null)
+      .sort((a, b) => a - b);
+  }, [selectedStock]);
+
   const legAnalysis = useMemo(() => {
     if (!selectedStock) {
       return {
@@ -662,6 +692,74 @@ export default function PortfolioPage() {
                 </button>
               </div>
 
+              <div className="space-y-3">
+                <h3 className="text-gray-300 font-semibold">가격 차트</h3>
+                <div className="h-72 w-full overflow-hidden rounded-lg border border-gray-700 bg-gray-900">
+                  {priceSeries.length ? (
+                    <Suspense
+                      fallback={
+                        <div className="flex h-full items-center justify-center text-sm text-gray-400">
+                          차트 모듈을 불러오는 중입니다...
+                        </div>
+                      }
+                    >
+                      <PriceLineChart
+                        data={priceSeries}
+                        supportLines={supportLevels}
+                        resistanceLines={resistanceLevels}
+                      />
+                    </Suspense>
+                  ) : (
+                    <div className="flex h-full items-center justify-center text-sm text-gray-400">
+                      가격 데이터가 없습니다.
+                    </div>
+                  )}
+                </div>
+
+                {(supportLevels.length || resistanceLevels.length) && (
+                  <div className="flex flex-wrap gap-3 text-xs text-gray-300">
+                    {supportLevels.length > 0 && (
+                      <span className="flex items-center gap-2">
+                        <span className="h-2 w-2 rounded-full" style={{ backgroundColor: "#48BB78" }} />
+                        지지선: {supportLevels.map((value) => `${Math.round(value).toLocaleString()}원`).join(", ")}
+                      </span>
+                    )}
+                    {resistanceLevels.length > 0 && (
+                      <span className="flex items-center gap-2">
+                        <span className="h-2 w-2 rounded-full" style={{ backgroundColor: "#F56565" }} />
+                        저항선: {resistanceLevels
+                          .map((value) => `${Math.round(value).toLocaleString()}원`)
+                          .join(", ")}
+                      </span>
+                    )}
+                  </div>
+                )}
+
+                {priceSeries.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-xs text-gray-400">최근 종가</p>
+                    <ul className="grid gap-2 sm:grid-cols-2 text-sm">
+                      {recentPrices.map((item) => {
+                        const numericClose = Number(item.close);
+                        const closeText = Number.isFinite(numericClose)
+                          ? `${numericClose.toLocaleString()}원`
+                          : item.close;
+
+                        return (
+                          <li
+                            key={item.date}
+                            className="flex items-center justify-between bg-gray-900 px-3 py-2 rounded border border-gray-700"
+                          >
+                            <span className="text-gray-300">{item.date}</span>
+                            <span className="font-semibold text-white">{closeText}</span>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                )}
+              </div>
+
               <div className="rounded-lg bg-gray-900 px-4 py-2 text-xs text-gray-400 flex flex-wrap gap-x-6 gap-y-1">
                 <span>최근 업데이트: {formatDate(selectedStock.updatedAt)}</span>
                 <span>전략 등록일: {formatDate(selectedStock.createdAt)}</span>
@@ -800,45 +898,6 @@ export default function PortfolioPage() {
                   <p className="text-sm text-gray-400">
                     아직 가격 추적 정보가 없어 실행 여부를 계산할 수 없습니다.
                   </p>
-                )}
-              </div>
-
-              <div>
-                <h3 className="text-gray-300 font-semibold mb-2">최근 종가 추이</h3>
-                {priceSeries.length ? (
-                  <div className="space-y-3">
-                    <div className="h-64 w-full overflow-hidden rounded-lg border border-gray-700 bg-gray-900">
-                      <Suspense
-                        fallback={
-                          <div className="flex h-full items-center justify-center text-sm text-gray-400">
-                            차트 모듈을 불러오는 중입니다...
-                          </div>
-                        }
-                      >
-                        <PriceLineChart data={priceSeries} />
-                      </Suspense>
-                    </div>
-                    <ul className="grid gap-2 sm:grid-cols-2 text-sm">
-                      {recentPrices.map((item) => {
-                        const numericClose = Number(item.close);
-                        const closeText = Number.isFinite(numericClose)
-                          ? `${numericClose.toLocaleString()}원`
-                          : item.close;
-
-                        return (
-                          <li
-                            key={item.date}
-                            className="flex items-center justify-between bg-gray-900 px-3 py-2 rounded border border-gray-700"
-                          >
-                            <span className="text-gray-300">{item.date}</span>
-                            <span className="font-semibold text-white">{closeText}</span>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  </div>
-                ) : (
-                  <p className="text-sm text-gray-400">가격 데이터가 없습니다.</p>
                 )}
               </div>
 
