@@ -1,6 +1,10 @@
 const AXIS_COLOR = "#4A5568";
 const LINE_COLOR = "#38B2AC";
 const AREA_COLOR = "rgba(56, 178, 172, 0.15)";
+const SUPPORT_COLOR = "#48BB78";
+const RESISTANCE_COLOR = "#F56565";
+const CHART_TOP = 10;
+const CHART_HEIGHT = 80;
 
 const formatNumber = (value) => {
   if (value == null || Number.isNaN(Number(value))) {
@@ -29,7 +33,24 @@ const pickTicks = (items) => {
   ];
 };
 
-export default function PriceLineChart({ data }) {
+const toNumberArray = (values = []) => {
+  if (!Array.isArray(values)) {
+    return [];
+  }
+
+  return values
+    .map((value) => {
+      const numeric = Number(value);
+      return Number.isFinite(numeric) ? numeric : null;
+    })
+    .filter((value) => value != null);
+};
+
+const uniqueSorted = (values = []) => {
+  return Array.from(new Set(values)).sort((a, b) => a - b);
+};
+
+export default function PriceLineChart({ data, supportLines = [], resistanceLines = [] }) {
   const safeData = Array.isArray(data)
     ? data.filter((item) => Number.isFinite(item?.close)).map((item) => ({
         ...item,
@@ -46,15 +67,29 @@ export default function PriceLineChart({ data }) {
   }
 
   const closes = safeData.map((item) => item.close);
-  const minClose = Math.min(...closes);
-  const maxClose = Math.max(...closes);
-  const priceRange = maxClose - minClose || 1;
+  const parsedSupportLines = uniqueSorted(toNumberArray(supportLines));
+  const parsedResistanceLines = uniqueSorted(toNumberArray(resistanceLines));
+
+  const allValues = [...closes, ...parsedSupportLines, ...parsedResistanceLines];
+  const minValue = allValues.length ? Math.min(...allValues) : Math.min(...closes);
+  const maxValue = allValues.length ? Math.max(...allValues) : Math.max(...closes);
+  const valueRange = maxValue - minValue || 1;
+
+  const normalise = (value) => {
+    if (!Number.isFinite(value)) {
+      return 0;
+    }
+    if (valueRange === 0) {
+      return 0.5;
+    }
+    return (value - minValue) / valueRange;
+  };
 
   const points = safeData.map((item, index) => {
     const xRatio = safeData.length === 1 ? 0.5 : index / (safeData.length - 1);
-    const yRatio = (item.close - minClose) / priceRange;
+    const yRatio = normalise(item.close);
     const x = xRatio * 100;
-    const y = 100 - yRatio * 80 - 10;
+    const y = 100 - yRatio * CHART_HEIGHT - CHART_TOP;
     return { x, y, item };
   });
 
@@ -65,15 +100,21 @@ export default function PriceLineChart({ data }) {
   const areaData = `M${points[0].x.toFixed(2)},${points[0].y.toFixed(2)} ${points
     .slice(1)
     .map((point) => `L${point.x.toFixed(2)},${point.y.toFixed(2)}`)
-    .join(" ")} L${points[points.length - 1].x.toFixed(2)},90 L${points[0].x.toFixed(2)},90 Z`;
+    .join(" ")} L${points[points.length - 1].x.toFixed(2)},${CHART_TOP + CHART_HEIGHT} L${points[0].x.toFixed(2)},${
+    CHART_TOP + CHART_HEIGHT
+  } Z`;
 
-  const priceTicks = [minClose, maxClose];
-  if (priceRange > 0) {
-    const mid = minClose + priceRange / 2;
-    priceTicks.splice(1, 0, mid);
-  }
+  const priceTicks = valueRange === 0
+    ? [minValue]
+    : [minValue, minValue + valueRange / 2, maxValue];
+  const uniquePriceTicks = uniqueSorted(priceTicks.map((tick) => Number.parseFloat(tick)));
 
   const dateLabels = pickTicks(safeData.map((item) => item.label));
+
+  const levelLines = [
+    ...parsedSupportLines.map((value) => ({ value, type: "support" })),
+    ...parsedResistanceLines.map((value) => ({ value, type: "resistance" })),
+  ];
 
   return (
     <div className="flex h-full w-full flex-col">
@@ -91,14 +132,52 @@ export default function PriceLineChart({ data }) {
           </linearGradient>
         </defs>
 
-        <rect x="0" y="10" width="100" height="80" fill="#1A202C" rx="2" />
+        <rect x="0" y={CHART_TOP} width="100" height={CHART_HEIGHT} fill="#1A202C" rx="2" />
 
-        {priceTicks.map((tick) => {
-          const ratio = (tick - minClose) / priceRange;
-          const y = 100 - ratio * 80 - 10;
+        {uniquePriceTicks.map((tick) => {
+          const ratio = normalise(tick);
+          const y = 100 - ratio * CHART_HEIGHT - CHART_TOP;
           return (
             <g key={tick}>
               <line x1="0" y1={y} x2="100" y2={y} stroke={AXIS_COLOR} strokeWidth="0.3" />
+            </g>
+          );
+        })}
+
+        {levelLines.map((line) => {
+          const ratio = normalise(line.value);
+          const y = 100 - ratio * CHART_HEIGHT - CHART_TOP;
+          const strokeColor = line.type === "support" ? SUPPORT_COLOR : RESISTANCE_COLOR;
+          const label = `${formatNumber(Math.round(line.value))}원`;
+
+          return (
+            <g key={`${line.type}-${line.value}`}>
+              <line
+                x1="0"
+                y1={y}
+                x2="100"
+                y2={y}
+                stroke={strokeColor}
+                strokeWidth="0.4"
+                strokeDasharray="1.5 1.2"
+              />
+              <rect
+                x="70"
+                y={Math.min(Math.max(y - 4, CHART_TOP), CHART_TOP + CHART_HEIGHT - 6)}
+                width="29"
+                height="6"
+                rx="1"
+                fill="rgba(15, 23, 42, 0.85)"
+              />
+              <text
+                x="84.5"
+                y={Math.min(Math.max(y, CHART_TOP + 4), CHART_TOP + CHART_HEIGHT - 2)}
+                textAnchor="middle"
+                fontSize="2.6"
+                fill={strokeColor}
+              >
+                {line.type === "support" ? "지지선" : "저항선"} {label}
+              </text>
             </g>
           );
         })}
@@ -118,9 +197,9 @@ export default function PriceLineChart({ data }) {
       </svg>
 
       <div className="mt-2 grid grid-cols-3 text-[10px] sm:text-xs" style={{ color: "#CBD5F5" }}>
-        {priceTicks.map((tick, index) => {
+        {uniquePriceTicks.map((tick, index) => {
           const alignmentClass =
-            index === 0 ? "text-left" : index === priceTicks.length - 1 ? "text-right" : "text-center";
+            index === 0 ? "text-left" : index === uniquePriceTicks.length - 1 ? "text-right" : "text-center";
           return (
             <span key={`price-${index}`} className={alignmentClass}>
               {formatNumber(Math.round(tick))}원
