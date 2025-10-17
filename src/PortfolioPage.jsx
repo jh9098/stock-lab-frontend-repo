@@ -343,12 +343,22 @@ export default function PortfolioPage() {
       let encounteredError = false;
       let fetchedPrices = [];
 
+      const baseDateString = (() => {
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, "0");
+        const day = String(today.getDate()).padStart(2, "0");
+        return `${year}${month}${day}`;
+      })();
+
       for (const candidate of apiTickerCandidates) {
         try {
           const searchParams = new URLSearchParams({
             symbol: candidate,
             timeframe: "day",
             count: "180",
+            baseDate: baseDateString,
+            adjusted: "1",
           });
           const response = await fetch(
             `/.netlify/functions/kiwoom-chart?${searchParams.toString()}`
