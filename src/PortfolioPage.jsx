@@ -370,97 +370,41 @@ export default function PortfolioPage() {
     if (!rawHistory) {
       return [];
     }
-
+    
     const toDate = (value) => {
-      if (value == null) {
-        return null;
-      }
-
+      if (value == null) return null;
       if (value instanceof Date) {
-        return Number.isNaN(value.getTime()) ? null : value;
+        return !Number.isNaN(value.getTime()) ? value : null;
       }
-
-      if (typeof value.toDate === "function") {
+      if (typeof value.toDate === 'function') {
         try {
-          const converted = value.toDate();
-          if (converted instanceof Date && !Number.isNaN(converted.getTime())) {
-            return converted;
-          }
-        } catch (error) {
-          console.warn("가격 데이터 변환 실패", error);
-        }
-      }
-
-      const normaliseStringInput = (input) => {
-        const trimmed = String(input).trim();
-        if (!trimmed) {
+          const d = value.toDate();
+          return d instanceof Date && !Number.isNaN(d.getTime()) ? d : null;
+        } catch (e) {
           return null;
         }
-
-        const digitsOnly = trimmed.replace(/[^0-9]/g, "");
-        if (digitsOnly.length === 8) {
-          const year = digitsOnly.slice(0, 4);
-          const month = digitsOnly.slice(4, 6);
-          const day = digitsOnly.slice(6, 8);
-          return `${year}-${month}-${day}`;
-        }
-
-        const replaced = trimmed.replace(/[./]/g, "-");
-        const isoMatch = replaced.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
-        if (isoMatch) {
-          const [, year, month, day] = isoMatch;
-          return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
-        }
-
-        return trimmed;
-      };
-
-      const parseFromNumber = (numeric) => {
-        if (!Number.isFinite(numeric)) {
-          return null;
-        }
-
-        if (numeric > 1e12) {
-          return new Date(numeric);
-        }
-
-        if (numeric > 1e9) {
-          return new Date(numeric * 1000);
-        }
-
-        const digits = Math.trunc(numeric);
-        if (digits >= 19000101 && digits <= 30000101) {
-          const text = String(digits).padStart(8, "0");
-          const year = text.slice(0, 4);
-          const month = text.slice(4, 6);
-          const day = text.slice(6, 8);
-          return new Date(`${year}-${month}-${day}`);
-        }
-
-        return null;
-      };
-
-      if (typeof value === "number") {
-        const parsedNumber = parseFromNumber(value);
-        if (parsedNumber instanceof Date && !Number.isNaN(parsedNumber.getTime())) {
-          return parsedNumber;
-        }
       }
 
-      if (typeof value === "string") {
-        const normalised = normaliseStringInput(value);
-        if (normalised) {
-          const parsed = new Date(normalised);
-          if (parsed instanceof Date && !Number.isNaN(parsed.getTime())) {
-            return parsed;
-          }
-        }
+      const text = String(value).trim();
+      const match = text.match(/^(\d{4})[-./]?(\d{1,2})[-./]?(\d{1,2})/);
+
+      if (match) {
+        const [, year, month, day] = match;
+        const d = new Date(Number(year), Number(month) - 1, Number(day));
+        if (!Number.isNaN(d.getTime())) return d;
+      }
+      
+      const digitsOnly = text.replace(/[^0-9]/g, "");
+      if (digitsOnly.length === 8) {
+          const year = parseInt(digitsOnly.slice(0, 4), 10);
+          const month = parseInt(digitsOnly.slice(4, 6), 10);
+          const day = parseInt(digitsOnly.slice(6, 8), 10);
+          const d = new Date(year, month - 1, day);
+          if (!Number.isNaN(d.getTime())) return d;
       }
 
-      const fallbackParsed = new Date(value);
-      return fallbackParsed instanceof Date && !Number.isNaN(fallbackParsed.getTime())
-        ? fallbackParsed
-        : null;
+      const fallback = new Date(value);
+      return !Number.isNaN(fallback.getTime()) ? fallback : null;
     };
 
     const parseNumeric = (value) => {
