@@ -194,28 +194,48 @@ export default function PortfolioPage() {
 
     const ticker = selectedStock.ticker;
 
+    const existingEntry = priceCacheRef.current[ticker];
+
     if (Array.isArray(selectedStock.priceHistory) && selectedStock.priceHistory.length) {
-      priceCacheRef.current[ticker] = selectedStock.priceHistory;
+      const shouldSeedFromSelected =
+        !existingEntry?.isComplete ||
+        !Array.isArray(existingEntry?.data) ||
+        existingEntry.data.length < selectedStock.priceHistory.length;
+
+      if (shouldSeedFromSelected) {
+        priceCacheRef.current[ticker] = {
+          data: selectedStock.priceHistory,
+          isComplete: existingEntry?.isComplete ?? false,
+          lastUpdated: existingEntry?.lastUpdated ?? 0,
+        };
+      }
     }
 
-    const cached = priceCacheRef.current[ticker];
-    if (cached) {
-      setPriceHistory(cached);
-      setPriceLoading(false);
+    const cacheEntry = priceCacheRef.current[ticker];
+    const hasCachedData = Array.isArray(cacheEntry?.data) && cacheEntry.data.length > 0;
+
+    setPriceHistory(hasCachedData ? cacheEntry.data : []);
+    setPriceLoading(!hasCachedData && !cacheEntry?.isComplete);
+
+    if (cacheEntry?.isComplete) {
       return () => {
         cancelled = true;
       };
     }
 
-    setPriceHistory([]);
-
     const fetchPriceHistory = async () => {
-      setPriceLoading(true);
+      if (!hasCachedData) {
+        setPriceLoading(true);
+      }
       try {
         const priceDoc = await getDoc(doc(db, "stock_prices", ticker));
         if (!priceDoc.exists()) {
           if (!cancelled) {
-            priceCacheRef.current[ticker] = [];
+            priceCacheRef.current[ticker] = {
+              data: [],
+              isComplete: true,
+              lastUpdated: Date.now(),
+            };
             setPriceHistory([]);
           }
           return;
@@ -225,14 +245,24 @@ export default function PortfolioPage() {
         const prices = Array.isArray(data?.prices) ? data.prices : [];
 
         if (!cancelled) {
-          priceCacheRef.current[ticker] = prices;
+          priceCacheRef.current[ticker] = {
+            data: prices,
+            isComplete: true,
+            lastUpdated: Date.now(),
+          };
           setPriceHistory(prices);
         }
       } catch (error) {
         console.error("주가 데이터를 불러오지 못했습니다.", error);
         if (!cancelled) {
-          priceCacheRef.current[ticker] = [];
-          setPriceHistory([]);
+          priceCacheRef.current[ticker] = {
+            data: cacheEntry?.data ?? [],
+            isComplete: false,
+            lastUpdated: Date.now(),
+          };
+          if (!hasCachedData) {
+            setPriceHistory([]);
+          }
         }
       } finally {
         if (!cancelled) {
