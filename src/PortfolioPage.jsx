@@ -1,6 +1,6 @@
-import { Suspense, lazy, useEffect, useMemo, useState } from "react";
+import { Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
 import { Helmet } from "react-helmet";
-import { collection, doc, serverTimestamp, setDoc } from "firebase/firestore";
+import { collection, doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
 import usePortfolioData from "./hooks/usePortfolioData";
 import { db } from "./firebaseConfig";
 import useAuth from "./useAuth";
@@ -177,6 +177,76 @@ export default function PortfolioPage() {
   const { loading, stocks } = usePortfolioData();
   const [selectedStock, setSelectedStock] = useState(null);
   const [statusFilter, setStatusFilter] = useState("전체");
+  const [priceHistory, setPriceHistory] = useState([]);
+  const [priceLoading, setPriceLoading] = useState(false);
+  const priceCacheRef = useRef({});
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!selectedStock?.ticker) {
+      setPriceHistory([]);
+      setPriceLoading(false);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    const ticker = selectedStock.ticker;
+
+    if (Array.isArray(selectedStock.priceHistory) && selectedStock.priceHistory.length) {
+      priceCacheRef.current[ticker] = selectedStock.priceHistory;
+    }
+
+    const cached = priceCacheRef.current[ticker];
+    if (cached) {
+      setPriceHistory(cached);
+      setPriceLoading(false);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    setPriceHistory([]);
+
+    const fetchPriceHistory = async () => {
+      setPriceLoading(true);
+      try {
+        const priceDoc = await getDoc(doc(db, "stock_prices", ticker));
+        if (!priceDoc.exists()) {
+          if (!cancelled) {
+            priceCacheRef.current[ticker] = [];
+            setPriceHistory([]);
+          }
+          return;
+        }
+
+        const data = priceDoc.data();
+        const prices = Array.isArray(data?.prices) ? data.prices : [];
+
+        if (!cancelled) {
+          priceCacheRef.current[ticker] = prices;
+          setPriceHistory(prices);
+        }
+      } catch (error) {
+        console.error("주가 데이터를 불러오지 못했습니다.", error);
+        if (!cancelled) {
+          priceCacheRef.current[ticker] = [];
+          setPriceHistory([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setPriceLoading(false);
+        }
+      }
+    };
+
+    fetchPriceHistory();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedStock]);
   const filteredStocks = useMemo(() => {
     if (statusFilter === "전체") {
       return stocks;
@@ -184,7 +254,11 @@ export default function PortfolioPage() {
     return stocks.filter((stock) => (stock.status ?? "") === statusFilter);
   }, [statusFilter, stocks]);
   const priceSeries = useMemo(() => {
-    if (!selectedStock?.priceHistory) {
+    const rawHistory = Array.isArray(priceHistory) && priceHistory.length
+      ? priceHistory
+      : selectedStock?.priceHistory;
+
+    if (!rawHistory) {
       return [];
     }
 
@@ -207,8 +281,8 @@ export default function PortfolioPage() {
       return parsed instanceof Date && !Number.isNaN(parsed.getTime()) ? parsed : null;
     };
 
-    return (Array.isArray(selectedStock.priceHistory)
-      ? selectedStock.priceHistory
+    return (Array.isArray(rawHistory)
+      ? rawHistory
       : []
     )
       .map((item) => {
@@ -230,7 +304,7 @@ export default function PortfolioPage() {
       })
       .filter(Boolean)
       .sort((a, b) => a.dateValue - b.dateValue);
-  }, [selectedStock]);
+  }, [priceHistory, selectedStock]);
 
   const recentPrices = useMemo(() => {
     if (!priceSeries.length) {
@@ -695,7 +769,11 @@ export default function PortfolioPage() {
               <div className="space-y-3">
                 <h3 className="text-gray-300 font-semibold">가격 차트</h3>
                 <div className="h-72 w-full overflow-hidden rounded-lg border border-gray-700 bg-gray-900">
-                  {priceSeries.length ? (
+                  {priceLoading ? (
+                    <div className="flex h-full items-center justify-center text-sm text-gray-400">
+                      차트 데이터를 불러오는 중입니다...
+                    </div>
+                  ) : priceSeries.length ? (
                     <Suspense
                       fallback={
                         <div className="flex h-full items-center justify-center text-sm text-gray-400">
