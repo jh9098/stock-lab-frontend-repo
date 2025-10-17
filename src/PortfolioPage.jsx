@@ -5,7 +5,7 @@ import usePortfolioData from "./hooks/usePortfolioData";
 import { db } from "./firebaseConfig";
 import useAuth from "./useAuth";
 
-const PriceLineChart = lazy(() => import("./components/PriceLineChart"));
+const CandlestickChart = lazy(() => import("./components/CandlestickChart"));
 
 function ProgressBar({ value }) {
   const percentage = Math.max(0, Math.min(100, Math.round((value ?? 0) * 100)));
@@ -281,22 +281,48 @@ export default function PortfolioPage() {
       return parsed instanceof Date && !Number.isNaN(parsed.getTime()) ? parsed : null;
     };
 
+    const parseNumeric = (value) => {
+      const numeric = Number(value);
+      return Number.isFinite(numeric) ? numeric : null;
+    };
+
     return (Array.isArray(rawHistory)
       ? rawHistory
       : []
     )
       .map((item) => {
         const dateValue = toDate(item.date ?? item.timestamp);
-        const close = Number(
-          item.close ?? item.price ?? item.closePrice ?? item.endPrice
+        const close = parseNumeric(
+          item.close ?? item.price ?? item.closePrice ?? item.endPrice ?? item.c
         );
 
-        if (!Number.isFinite(close) || !dateValue) {
+        if (close == null || !dateValue) {
           return null;
         }
 
+        const open =
+          parseNumeric(
+            item.open ??
+              item.openPrice ??
+              item.startPrice ??
+              item.o ??
+              item.firstPrice ??
+              item.beginPrice
+          ) ?? close;
+        const high =
+          parseNumeric(
+            item.high ?? item.highPrice ?? item.h ?? item.maxPrice ?? item.highest
+          ) ?? Math.max(open, close);
+        const low =
+          parseNumeric(
+            item.low ?? item.lowPrice ?? item.l ?? item.minPrice ?? item.lowest
+          ) ?? Math.min(open, close);
+
         return {
           ...item,
+          open,
+          high,
+          low,
           close,
           date: item.date ?? item.timestamp ?? dateValue.toISOString().slice(0, 10),
           dateValue,
@@ -305,6 +331,25 @@ export default function PortfolioPage() {
       .filter(Boolean)
       .sort((a, b) => a.dateValue - b.dateValue);
   }, [priceHistory, selectedStock]);
+
+  const chartSeries = useMemo(() => {
+    if (!priceSeries.length) {
+      return [];
+    }
+
+    const now = new Date();
+    const threeMonthsAgo = new Date(now.getTime());
+    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+
+    const recent = priceSeries.filter((item) => item.dateValue >= threeMonthsAgo);
+
+    if (recent.length) {
+      return recent;
+    }
+
+    const fallbackCount = Math.min(priceSeries.length, 60);
+    return priceSeries.slice(priceSeries.length - fallbackCount);
+  }, [priceSeries]);
 
   const recentPrices = useMemo(() => {
     if (!priceSeries.length) {
@@ -773,7 +818,7 @@ export default function PortfolioPage() {
                     <div className="flex h-full items-center justify-center text-sm text-gray-400">
                       차트 데이터를 불러오는 중입니다...
                     </div>
-                  ) : priceSeries.length ? (
+                  ) : chartSeries.length ? (
                     <Suspense
                       fallback={
                         <div className="flex h-full items-center justify-center text-sm text-gray-400">
@@ -781,8 +826,8 @@ export default function PortfolioPage() {
                         </div>
                       }
                     >
-                      <PriceLineChart
-                        data={priceSeries}
+                      <CandlestickChart
+                        data={chartSeries}
                         supportLines={supportLevels}
                         resistanceLines={resistanceLevels}
                       />
