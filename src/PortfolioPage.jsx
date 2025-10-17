@@ -181,10 +181,73 @@ export default function PortfolioPage() {
   const [priceLoading, setPriceLoading] = useState(false);
   const priceCacheRef = useRef({});
 
+  const tickerCandidates = useMemo(() => {
+    if (!selectedStock) {
+      return [];
+    }
+
+    const rawValues = [
+      selectedStock.ticker,
+      selectedStock.code,
+      selectedStock.symbol,
+      selectedStock.id,
+    ];
+
+    const candidateSet = new Set();
+
+    const appendCandidates = (value) => {
+      if (value == null) {
+        return;
+      }
+
+      const text = String(value).trim();
+      if (!text) {
+        return;
+      }
+
+      const upper = text.toUpperCase();
+      candidateSet.add(upper);
+
+      const colonSplit = upper.includes(":") ? upper.split(":").pop() : upper;
+      if (colonSplit) {
+        candidateSet.add(colonSplit);
+      }
+
+      const dotSplit = colonSplit.includes(".") ? colonSplit.split(".")[0] : colonSplit;
+      if (dotSplit) {
+        candidateSet.add(dotSplit);
+      }
+
+      const digitsOnly = dotSplit.replace(/[^0-9]/g, "");
+      if (digitsOnly.length >= 4) {
+        candidateSet.add(digitsOnly);
+      }
+    };
+
+    rawValues.forEach(appendCandidates);
+
+    const ordered = Array.from(candidateSet).sort((a, b) => {
+      const score = (value) => {
+        if (/^[0-9]{4,}$/.test(value)) {
+          return 0;
+        }
+        if (/^[0-9A-Z]+$/.test(value)) {
+          return 1;
+        }
+        return 2;
+      };
+
+      const diff = score(a) - score(b);
+      return diff !== 0 ? diff : a.localeCompare(b);
+    });
+
+    return ordered;
+  }, [selectedStock]);
+
   useEffect(() => {
     let cancelled = false;
 
-    if (!selectedStock?.ticker) {
+    if (!tickerCandidates.length) {
       setPriceHistory([]);
       setPriceLoading(false);
       return () => {
@@ -192,32 +255,40 @@ export default function PortfolioPage() {
       };
     }
 
-    const ticker = selectedStock.ticker;
-
-    const existingEntry = priceCacheRef.current[ticker];
-
     if (Array.isArray(selectedStock.priceHistory) && selectedStock.priceHistory.length) {
-      const shouldSeedFromSelected =
-        !existingEntry?.isComplete ||
-        !Array.isArray(existingEntry?.data) ||
-        existingEntry.data.length < selectedStock.priceHistory.length;
+      tickerCandidates.forEach((key) => {
+        const previous = priceCacheRef.current[key];
+        const shouldSeedFromSelected =
+          !previous?.isComplete ||
+          !Array.isArray(previous?.data) ||
+          previous.data.length < selectedStock.priceHistory.length;
 
-      if (shouldSeedFromSelected) {
-        priceCacheRef.current[ticker] = {
-          data: selectedStock.priceHistory,
-          isComplete: existingEntry?.isComplete ?? false,
-          lastUpdated: existingEntry?.lastUpdated ?? 0,
-        };
-      }
+        if (shouldSeedFromSelected) {
+          priceCacheRef.current[key] = {
+            data: selectedStock.priceHistory,
+            isComplete: previous?.isComplete ?? false,
+            lastUpdated: previous?.lastUpdated ?? 0,
+          };
+        }
+      });
     }
 
-    const cacheEntry = priceCacheRef.current[ticker];
-    const hasCachedData = Array.isArray(cacheEntry?.data) && cacheEntry.data.length > 0;
+    const refreshedEntries = tickerCandidates.map((key) => ({
+      key,
+      entry: priceCacheRef.current[key],
+    }));
 
-    setPriceHistory(hasCachedData ? cacheEntry.data : []);
-    setPriceLoading(!hasCachedData && !cacheEntry?.isComplete);
+    const primaryEntry =
+      refreshedEntries.find((item) => Array.isArray(item.entry?.data) && item.entry.data.length > 0) ??
+      refreshedEntries[0];
 
-    if (cacheEntry?.isComplete) {
+    const hasCachedData =
+      Array.isArray(primaryEntry?.entry?.data) && primaryEntry.entry.data.length > 0;
+
+    setPriceHistory(hasCachedData ? primaryEntry.entry.data : []);
+    setPriceLoading(!hasCachedData && !primaryEntry?.entry?.isComplete);
+
+    if (primaryEntry?.entry?.isComplete && hasCachedData) {
       return () => {
         cancelled = true;
       };
@@ -227,47 +298,55 @@ export default function PortfolioPage() {
       if (!hasCachedData) {
         setPriceLoading(true);
       }
-      try {
-        const priceDoc = await getDoc(doc(db, "stock_prices", ticker));
-        if (!priceDoc.exists()) {
+      let fetched = false;
+      let encounteredError = false;
+      let fetchedPrices = [];
+
+      for (const candidate of tickerCandidates) {
+        try {
+          const priceDoc = await getDoc(doc(db, "stock_prices", candidate));
+          if (!priceDoc.exists()) {
+            continue;
+          }
+
+          const data = priceDoc.data();
+          fetchedPrices = Array.isArray(data?.prices) ? data.prices : [];
+          fetched = true;
+
           if (!cancelled) {
-            priceCacheRef.current[ticker] = {
-              data: [],
-              isComplete: true,
+            tickerCandidates.forEach((key) => {
+              priceCacheRef.current[key] = {
+                data: fetchedPrices,
+                isComplete: true,
+                lastUpdated: Date.now(),
+              };
+            });
+            setPriceHistory(fetchedPrices);
+          }
+          break;
+        } catch (error) {
+          encounteredError = true;
+          console.error(
+            `주가 데이터를 불러오지 못했습니다. (티커 후보: ${candidate})`,
+            error
+          );
+        }
+      }
+
+      if (!cancelled) {
+        if (!fetched) {
+          tickerCandidates.forEach((key) => {
+            priceCacheRef.current[key] = {
+              data: primaryEntry?.entry?.data ?? [],
+              isComplete: !encounteredError,
               lastUpdated: Date.now(),
             };
-            setPriceHistory([]);
-          }
-          return;
-        }
-
-        const data = priceDoc.data();
-        const prices = Array.isArray(data?.prices) ? data.prices : [];
-
-        if (!cancelled) {
-          priceCacheRef.current[ticker] = {
-            data: prices,
-            isComplete: true,
-            lastUpdated: Date.now(),
-          };
-          setPriceHistory(prices);
-        }
-      } catch (error) {
-        console.error("주가 데이터를 불러오지 못했습니다.", error);
-        if (!cancelled) {
-          priceCacheRef.current[ticker] = {
-            data: cacheEntry?.data ?? [],
-            isComplete: false,
-            lastUpdated: Date.now(),
-          };
+          });
           if (!hasCachedData) {
             setPriceHistory([]);
           }
         }
-      } finally {
-        if (!cancelled) {
-          setPriceLoading(false);
-        }
+        setPriceLoading(false);
       }
     };
 
@@ -276,7 +355,7 @@ export default function PortfolioPage() {
     return () => {
       cancelled = true;
     };
-  }, [selectedStock]);
+  }, [selectedStock, tickerCandidates]);
   const filteredStocks = useMemo(() => {
     if (statusFilter === "전체") {
       return stocks;
@@ -293,10 +372,14 @@ export default function PortfolioPage() {
     }
 
     const toDate = (value) => {
-      if (!value) return null;
-      if (value instanceof Date) {
-        return value;
+      if (value == null) {
+        return null;
       }
+
+      if (value instanceof Date) {
+        return Number.isNaN(value.getTime()) ? null : value;
+      }
+
       if (typeof value.toDate === "function") {
         try {
           const converted = value.toDate();
@@ -307,12 +390,99 @@ export default function PortfolioPage() {
           console.warn("가격 데이터 변환 실패", error);
         }
       }
-      const parsed = new Date(value);
-      return parsed instanceof Date && !Number.isNaN(parsed.getTime()) ? parsed : null;
+
+      const normaliseStringInput = (input) => {
+        const trimmed = String(input).trim();
+        if (!trimmed) {
+          return null;
+        }
+
+        const digitsOnly = trimmed.replace(/[^0-9]/g, "");
+        if (digitsOnly.length === 8) {
+          const year = digitsOnly.slice(0, 4);
+          const month = digitsOnly.slice(4, 6);
+          const day = digitsOnly.slice(6, 8);
+          return `${year}-${month}-${day}`;
+        }
+
+        const replaced = trimmed.replace(/[./]/g, "-");
+        const isoMatch = replaced.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+        if (isoMatch) {
+          const [, year, month, day] = isoMatch;
+          return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+        }
+
+        return trimmed;
+      };
+
+      const parseFromNumber = (numeric) => {
+        if (!Number.isFinite(numeric)) {
+          return null;
+        }
+
+        if (numeric > 1e12) {
+          return new Date(numeric);
+        }
+
+        if (numeric > 1e9) {
+          return new Date(numeric * 1000);
+        }
+
+        const digits = Math.trunc(numeric);
+        if (digits >= 19000101 && digits <= 30000101) {
+          const text = String(digits).padStart(8, "0");
+          const year = text.slice(0, 4);
+          const month = text.slice(4, 6);
+          const day = text.slice(6, 8);
+          return new Date(`${year}-${month}-${day}`);
+        }
+
+        return null;
+      };
+
+      if (typeof value === "number") {
+        const parsedNumber = parseFromNumber(value);
+        if (parsedNumber instanceof Date && !Number.isNaN(parsedNumber.getTime())) {
+          return parsedNumber;
+        }
+      }
+
+      if (typeof value === "string") {
+        const normalised = normaliseStringInput(value);
+        if (normalised) {
+          const parsed = new Date(normalised);
+          if (parsed instanceof Date && !Number.isNaN(parsed.getTime())) {
+            return parsed;
+          }
+        }
+      }
+
+      const fallbackParsed = new Date(value);
+      return fallbackParsed instanceof Date && !Number.isNaN(fallbackParsed.getTime())
+        ? fallbackParsed
+        : null;
     };
 
     const parseNumeric = (value) => {
-      const numeric = Number(value);
+      if (value === "" || value == null) {
+        return null;
+      }
+
+      if (typeof value === "number") {
+        return Number.isFinite(value) ? value : null;
+      }
+
+      const text = String(value).trim();
+      if (!text) {
+        return null;
+      }
+
+      const normalised = text.replace(/[^0-9+\-.]/g, "");
+      if (!normalised || normalised === "." || normalised === "-" || normalised === "+") {
+        return null;
+      }
+
+      const numeric = Number(normalised);
       return Number.isFinite(numeric) ? numeric : null;
     };
 
@@ -367,11 +537,16 @@ export default function PortfolioPage() {
       return [];
     }
 
-    const now = new Date();
-    const threeMonthsAgo = new Date(now.getTime());
-    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+    const latestDate = priceSeries[priceSeries.length - 1]?.dateValue;
+    if (!latestDate) {
+      return priceSeries;
+    }
 
-    const recent = priceSeries.filter((item) => item.dateValue >= threeMonthsAgo);
+    const threshold = new Date(latestDate.getTime());
+    threshold.setHours(0, 0, 0, 0);
+    threshold.setMonth(threshold.getMonth() - 3);
+
+    const recent = priceSeries.filter((item) => item.dateValue >= threshold);
 
     if (recent.length) {
       return recent;
