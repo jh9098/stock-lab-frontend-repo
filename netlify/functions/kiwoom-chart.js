@@ -170,19 +170,63 @@ const clampCount = (value) => {
   return Math.max(20, Math.min(parsed, 500));
 };
 
-const formatDateString = (value) => {
+const toDateOnly = (value) => {
+  const normalise = (date) => {
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const day = date.getDate();
+    return new Date(year, month, day);
+  };
+
   if (value instanceof Date && !Number.isNaN(value.getTime())) {
-    const year = value.getFullYear();
-    const month = String(value.getMonth() + 1).padStart(2, "0");
-    const day = String(value.getDate()).padStart(2, "0");
-    return `${year}${month}${day}`;
+    return normalise(value);
   }
-  const digits = safeTrim(value).replace(/[^0-9]/g, "");
+
+  const text = safeTrim(value);
+  if (!text) {
+    return null;
+  }
+
+  const digits = text.replace(/[^0-9]/g, "");
   if (digits.length >= 8) {
-    return `${digits.slice(0, 4)}${digits.slice(4, 6)}${digits.slice(6, 8)}`;
+    const year = Number.parseInt(digits.slice(0, 4), 10);
+    const month = Number.parseInt(digits.slice(4, 6), 10);
+    const day = Number.parseInt(digits.slice(6, 8), 10);
+    const candidate = new Date(year, month - 1, day);
+    if (!Number.isNaN(candidate.getTime())) {
+      return normalise(candidate);
+    }
   }
-  const now = new Date();
-  return formatDateString(now);
+
+  const parsed = new Date(text);
+  if (!Number.isNaN(parsed.getTime())) {
+    return normalise(parsed);
+  }
+
+  return null;
+};
+
+const clampDateToToday = (value) => {
+  const today = toDateOnly(new Date());
+  const candidate = toDateOnly(value);
+
+  if (!candidate) {
+    return today;
+  }
+
+  return candidate > today ? today : candidate;
+};
+
+const formatDateToCompactString = (date) => {
+  const target = toDateOnly(date) ?? toDateOnly(new Date());
+  const year = target.getFullYear();
+  const month = String(target.getMonth() + 1).padStart(2, "0");
+  const day = String(target.getDate()).padStart(2, "0");
+  return `${year}${month}${day}`;
+};
+
+const formatDateString = (value) => {
+  return formatDateToCompactString(clampDateToToday(value));
 };
 
 const safeNumber = (value) => {
