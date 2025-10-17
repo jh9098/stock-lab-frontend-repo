@@ -1,8 +1,9 @@
-const REQUIRED_ENV_VARS = ["KIWOOM_APP_KEY", "KIWOOM_APP_SECRET"];
+/* eslint-env node */
 
-const DEFAULT_BASE_URL = "https://openapi.koreainvestment.com:9443";
+const REQUIRED_CHART_ENV_VARS = ["KIWOOM_CHART_API_URL", "KIWOOM_CHART_API_ID"];
+
+const DEFAULT_AUTH_BASE_URL = "https://openapi.kiwoom.com:9443";
 const TOKEN_PATH = "/oauth2/tokenP";
-const DAILY_CHART_PATH = "/uapi/domestic-stock/v1/quotations/inquire-daily-itemchartprice";
 
 const PERIOD_CODE_MAP = new Map([
   ["day", "D"],
@@ -30,17 +31,45 @@ const safeTrim = (value) => {
   return typeof value === "string" ? value.trim() : "";
 };
 
-const resolveBaseUrl = () => {
-  const candidates = [safeTrim(process.env.KIWOOM_BASE_URL), DEFAULT_BASE_URL];
+const resolveAuthBaseUrl = () => {
+  const candidates = [
+    safeTrim(process.env.KIWOOM_AUTH_BASE_URL),
+    safeTrim(process.env.KIWOOM_BASE_URL),
+    DEFAULT_AUTH_BASE_URL,
+  ];
+
   for (const candidate of candidates) {
     if (candidate) {
       return candidate.replace(/\/$/, "");
     }
   }
-  return DEFAULT_BASE_URL;
+
+  return DEFAULT_AUTH_BASE_URL;
 };
 
-const missingEnvVars = REQUIRED_ENV_VARS.filter((name) => !safeTrim(process.env[name]));
+const resolveTokenUrl = () => {
+  const explicit = safeTrim(process.env.KIWOOM_TOKEN_URL);
+  if (explicit) {
+    return explicit;
+  }
+  return `${resolveAuthBaseUrl()}${TOKEN_PATH}`;
+};
+
+const resolveChartUrl = () => {
+  const url = safeTrim(process.env.KIWOOM_CHART_API_URL || process.env.KIWOOM_CHART_URL);
+  return url ? url : null;
+};
+
+const hasStaticToken = Boolean(
+  safeTrim(process.env.KIWOOM_ACCESS_TOKEN || process.env.KIWOOM_STATIC_ACCESS_TOKEN)
+);
+
+const missingEnvVars = [
+  ...REQUIRED_CHART_ENV_VARS.filter((name) => !safeTrim(process.env[name])),
+  ...(!hasStaticToken
+    ? ["KIWOOM_APP_KEY", "KIWOOM_APP_SECRET"].filter((name) => !safeTrim(process.env[name]))
+    : []),
+];
 
 let cachedToken = null;
 let cachedExpiry = 0;
@@ -74,7 +103,12 @@ const getAccessToken = async () => {
     return cachedToken;
   }
 
-  const baseUrl = resolveBaseUrl();
+  const staticToken = safeTrim(process.env.KIWOOM_ACCESS_TOKEN || process.env.KIWOOM_STATIC_ACCESS_TOKEN);
+  if (staticToken) {
+    return staticToken.startsWith("Bearer ") ? staticToken.slice(7) : staticToken;
+  }
+
+  const tokenUrl = resolveTokenUrl();
   const body = JSON.stringify({
     grant_type: "client_credentials",
     appkey: safeTrim(process.env.KIWOOM_APP_KEY),
@@ -82,7 +116,7 @@ const getAccessToken = async () => {
   });
 
   console.log("[kiwoom-chart] 토큰 갱신 시도");
-  const { response, data, rawText } = await fetchJson(`${baseUrl}${TOKEN_PATH}`, {
+  const { response, data, rawText } = await fetchJson(tokenUrl, {
     method: "POST",
     headers: {
       "Content-Type": "application/json; charset=utf-8",
@@ -170,6 +204,7 @@ const normaliseDateLabel = (item) => {
     item?.bsop_date,
     item?.trd_dd,
     item?.date,
+    item?.dt,
   ];
   const timeCandidates = [item?.stck_bsop_time, item?.stck_trd_time, item?.time];
 
@@ -209,23 +244,44 @@ const sanitiseChartRows = (items = []) => {
   return items
     .map((item) => {
       const close = safeNumber(
-        item?.stck_clpr ?? item?.close ?? item?.closePrice ?? item?.clpr ?? item?.prpr
+        item?.cur_prc ??
+          item?.stck_clpr ??
+          item?.close ??
+          item?.closePrice ??
+          item?.clpr ??
+          item?.prpr
       );
       const open =
         safeNumber(
-          item?.stck_oprc ?? item?.open ?? item?.openPrice ?? item?.oprc ?? item?.opnprc
+          item?.open_pric ??
+            item?.stck_oprc ??
+            item?.open ??
+            item?.openPrice ??
+            item?.oprc ??
+            item?.opnprc
         ) ?? close;
       const high =
         safeNumber(
-          item?.stck_hgpr ?? item?.high ?? item?.highPrice ?? item?.hgpr ?? item?.hipr
+          item?.high_pric ??
+            item?.stck_hgpr ??
+            item?.high ??
+            item?.highPrice ??
+            item?.hgpr ??
+            item?.hipr
         ) ?? Math.max(open ?? close ?? 0, close ?? 0);
       const low =
         safeNumber(
-          item?.stck_lwpr ?? item?.low ?? item?.lowPrice ?? item?.lwpr ?? item?.lopr
+          item?.low_pric ??
+            item?.stck_lwpr ??
+            item?.low ??
+            item?.lowPrice ??
+            item?.lwpr ??
+            item?.lopr
         ) ?? Math.min(open ?? close ?? 0, close ?? 0);
       const volume =
         safeNumber(
-          item?.acml_vol ??
+          item?.trde_qty ??
+            item?.acml_vol ??
             item?.volume ??
             item?.trqu ??
             item?.tot_vol ??
@@ -265,66 +321,159 @@ const createResponse = (statusCode, payload) => ({
   body: JSON.stringify(payload),
 });
 
-const fetchChartFromApi = async ({ symbol, periodCode, count }) => {
-  const baseUrl = resolveBaseUrl();
-  const token = await getAccessToken();
-
-  const body = {
-    FID_COND_MRKT_DIV_CODE: "J",
-    FID_INPUT_ISCD: symbol,
-    FID_PERIOD_DIV_CODE: periodCode,
-    FID_INPUT_DATE_1: formatDateString(new Date()),
-    FID_INPUT_CNT_1: String(count),
-    FID_ORG_ADJ_PRC: "1",
-    FID_CLPR_ADJ_PRC: "1",
-  };
-
-  const makeRequest = async (accessToken) => {
-    return fetchJson(`${baseUrl}${DAILY_CHART_PATH}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json; charset=utf-8",
-        Authorization: `Bearer ${accessToken}`,
-        appkey: safeTrim(process.env.KIWOOM_APP_KEY),
-        appsecret: safeTrim(process.env.KIWOOM_APP_SECRET),
-        tr_id: "FHKST03010100",
-        custtype: safeTrim(process.env.KIWOOM_CUSTOMER_TYPE) || "P",
-      },
-      body: JSON.stringify(body),
-    });
-  };
-
-  let { response, data, rawText } = await makeRequest(token);
-
-  if (response.status === 401 || response.status === 403) {
-    console.warn("[kiwoom-chart] 인증 오류 발생, 토큰 갱신 후 재시도", response.status);
-    cachedToken = null;
-    const refreshedToken = await getAccessToken();
-    ({ response, data, rawText } = await makeRequest(refreshedToken));
+const extractHeaderValue = (response, name) => {
+  if (!response?.headers || !name) {
+    return "";
   }
 
-  if (!response.ok) {
-    throw new Error(
-      `차트 조회 실패: HTTP ${response.status} ${response.statusText} - ${rawText || "응답 본문 없음"}`
-    );
+  const direct = response.headers.get(name);
+  if (direct != null) {
+    return safeTrim(direct);
   }
 
-  const items = Array.isArray(data?.output2)
-    ? data.output2
-    : Array.isArray(data?.output1)
-    ? data.output1
-    : Array.isArray(data?.output)
-    ? data.output
-    : [];
+  const target = safeTrim(name).toLowerCase();
+  if (!target) {
+    return "";
+  }
 
-  const rows = sanitiseChartRows(items);
+  for (const [key, value] of response.headers.entries()) {
+    if (safeTrim(key).toLowerCase() === target) {
+      return safeTrim(value);
+    }
+  }
+
+  return "";
+};
+
+const mergePriceRows = (existing = [], incoming = []) => {
+  const map = new Map();
+
+  existing.forEach((item) => {
+    if (item?.date) {
+      map.set(item.date, item);
+    }
+  });
+
+  incoming.forEach((item) => {
+    if (item?.date) {
+      map.set(item.date, item);
+    }
+  });
+
+  return Array.from(map.values());
+};
+
+const fetchChartFromApi = async ({ symbol, count, baseDate, adjusted }) => {
+  const chartUrl = resolveChartUrl();
+  if (!chartUrl) {
+    throw new Error("Kiwoom chart API URL이 설정되지 않았습니다.");
+  }
+
+  const apiId = safeTrim(process.env.KIWOOM_CHART_API_ID);
+  if (!apiId) {
+    throw new Error("Kiwoom chart API ID가 설정되지 않았습니다.");
+  }
+
+  let token = await getAccessToken();
+  const toBearer = (value) => (value.startsWith("Bearer ") ? value : `Bearer ${value}`);
+  let bearerToken = toBearer(token);
+
+  const basePayload = {
+    stk_cd: symbol,
+    base_dt: baseDate,
+    upd_stkpc_tp: adjusted ? "1" : "0",
+  };
+
+  const maxRequests = Math.min(20, Math.max(1, Math.ceil(count / 100) + 1));
+  let requestCount = 0;
+  let accumulatedRows = [];
+  let accumulatedRawCount = 0;
+  let contYn = "";
+  let nextKey = "";
+  let metadata = {};
+
+  while (requestCount < maxRequests && accumulatedRows.length < count) {
+    const headers = {
+      "Content-Type": "application/json; charset=utf-8",
+      "api-id": apiId,
+      authorization: bearerToken,
+    };
+
+    if (contYn === "Y") {
+      headers["cont-yn"] = "Y";
+    }
+    if (nextKey) {
+      headers["next-key"] = nextKey;
+    }
+
+    const performRequest = async (authHeader, retry = true) => {
+      const { response, data, rawText } = await fetchJson(chartUrl, {
+        method: "POST",
+        headers: { ...headers, authorization: authHeader },
+        body: JSON.stringify(basePayload),
+      });
+
+      if ((response.status === 401 || response.status === 403) && retry && !hasStaticToken) {
+        console.warn("[kiwoom-chart] 인증 오류 발생, 토큰 갱신 후 재시도", response.status);
+        cachedToken = null;
+        token = await getAccessToken();
+        bearerToken = toBearer(token);
+        return performRequest(bearerToken, false);
+      }
+
+      return { response, data, rawText };
+    };
+
+    const { response, data, rawText } = await performRequest(bearerToken, true);
+    requestCount += 1;
+
+    if (!response.ok) {
+      throw new Error(
+        `차트 조회 실패: HTTP ${response.status} ${response.statusText} - ${rawText || "응답 본문 없음"}`
+      );
+    }
+
+    const list = Array.isArray(data?.stk_dt_pole_chart_qry) ? data.stk_dt_pole_chart_qry : [];
+    accumulatedRawCount += list.length;
+    const sanitisedRows = sanitiseChartRows(list);
+    accumulatedRows = mergePriceRows(accumulatedRows, sanitisedRows);
+
+    metadata = {
+      ...metadata,
+      return_code: data?.return_code ?? data?.rt_cd ?? null,
+      return_msg: data?.return_msg ?? data?.msg1 ?? null,
+      requestCount,
+    };
+
+    const headerContYn = extractHeaderValue(response, "cont-yn");
+    const bodyContYn = safeTrim(data?.["cont-yn"] ?? data?.cont_yn ?? data?.contYn);
+    const headerNextKey = extractHeaderValue(response, "next-key");
+    const bodyNextKey = safeTrim(data?.["next-key"] ?? data?.next_key ?? data?.nextKey);
+
+    contYn = (headerContYn || bodyContYn || "").toUpperCase();
+    nextKey = headerNextKey || bodyNextKey || "";
+
+    if (contYn !== "Y" || !nextKey) {
+      break;
+    }
+  }
+
+  const sortedRows = accumulatedRows.sort((a, b) => {
+    if (a.date < b.date) return -1;
+    if (a.date > b.date) return 1;
+    return 0;
+  });
+
+  const limitedRows = count ? sortedRows.slice(-count) : sortedRows;
+
   return {
-    rows,
-    rawCount: Array.isArray(items) ? items.length : 0,
+    rows: limitedRows,
+    rawCount: sortedRows.length,
     metadata: {
-      rt_cd: data?.rt_cd ?? data?.result_code ?? null,
-      msg_cd: data?.msg_cd ?? null,
-      msg1: data?.msg1 ?? data?.result_msg ?? null,
+      ...metadata,
+      contYn,
+      nextKey,
+      totalRaw: accumulatedRawCount,
     },
   };
 };
@@ -351,6 +500,12 @@ export const handler = async (event) => {
   const symbolParam = event.queryStringParameters?.symbol ?? event.queryStringParameters?.code;
   const periodParam = event.queryStringParameters?.timeframe ?? event.queryStringParameters?.period;
   const countParam = event.queryStringParameters?.count;
+  const baseDateParam =
+    event.queryStringParameters?.baseDate ?? event.queryStringParameters?.base_dt;
+  const adjustedParam =
+    event.queryStringParameters?.adjusted ??
+    event.queryStringParameters?.adjust ??
+    event.queryStringParameters?.upd_stkpc_tp;
 
   const symbol = normaliseSymbol(symbolParam);
 
@@ -361,32 +516,44 @@ export const handler = async (event) => {
   }
 
   const periodCode = resolvePeriodCode(periodParam);
+  if (periodCode !== "D") {
+    return createResponse(400, {
+      error: "현재는 일봉(timeframe=day) 차트만 지원합니다.",
+    });
+  }
   const count = clampCount(countParam);
+  const baseDate = formatDateString(baseDateParam || new Date());
+  const adjusted = safeTrim(adjustedParam) === "0" ? false : true;
 
   try {
     const { rows, rawCount, metadata } = await fetchChartFromApi({
       symbol,
-      periodCode,
       count,
+      baseDate,
+      adjusted,
     });
 
     if (!rows.length) {
       return createResponse(204, {
         symbol,
-        periodCode,
+        timeframe: periodCode,
         data: [],
         rawCount,
         metadata,
+        baseDate,
+        adjusted,
         note: "API 응답에 차트 데이터가 없습니다.",
       });
     }
 
     return createResponse(200, {
       symbol,
-      periodCode,
+      timeframe: periodCode,
       count: rows.length,
       rawCount,
       metadata,
+      baseDate,
+      adjusted,
       data: rows,
     });
   } catch (error) {
@@ -395,7 +562,9 @@ export const handler = async (event) => {
       error: "Kiwoom API 호출에 실패했습니다.",
       details: error instanceof Error ? error.message : String(error),
       symbol,
-      periodCode,
+      timeframe: periodCode,
+      baseDate,
+      adjusted,
     });
   }
 };
