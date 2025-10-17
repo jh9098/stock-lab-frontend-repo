@@ -480,24 +480,10 @@ export default function PortfolioPage() {
     if (!priceSeries.length) {
       return [];
     }
-
-    const latestDate = priceSeries[priceSeries.length - 1]?.dateValue;
-    if (!latestDate) {
-      return priceSeries;
-    }
-
-    const threshold = new Date(latestDate.getTime());
-    threshold.setHours(0, 0, 0, 0);
-    threshold.setMonth(threshold.getMonth() - 3);
-
-    const recent = priceSeries.filter((item) => item.dateValue >= threshold);
-
-    if (recent.length) {
-      return recent;
-    }
-
-    const fallbackCount = Math.min(priceSeries.length, 60);
-    return priceSeries.slice(priceSeries.length - fallbackCount);
+    // 3개월 거래일은 약 65일이므로, 안정성을 위해 최신 65개 데이터를 사용합니다.
+    // 데이터가 65개 미만일 경우 모든 데이터를 사용합니다.
+    const dataCount = Math.min(priceSeries.length, 65);
+    return priceSeries.slice(priceSeries.length - dataCount);
   }, [priceSeries]);
 
   const recentPrices = useMemo(() => {
