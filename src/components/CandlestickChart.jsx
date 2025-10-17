@@ -184,7 +184,7 @@ export default function CandlestickChart({
   const maxVolume = hasVolume ? Math.max(...volumes, 1) : 1;
   const normaliseVolume = (value) => {
     if (!hasVolume) return 0;
-    const ratio = value / maxVolume;
+    const ratio = (value ?? 0) / maxVolume;
     return Math.max(0, Math.min(1, ratio));
   };
 
