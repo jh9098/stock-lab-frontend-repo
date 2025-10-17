@@ -1,6 +1,6 @@
 import { Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
 import { Helmet } from "react-helmet";
-import { collection, doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
+import { collection, doc, serverTimestamp, setDoc } from "firebase/firestore";
 import usePortfolioData from "./hooks/usePortfolioData";
 import { db } from "./firebaseConfig";
 import useAuth from "./useAuth";
@@ -191,6 +191,11 @@ export default function PortfolioPage() {
       selectedStock.code,
       selectedStock.symbol,
       selectedStock.id,
+      selectedStock.altTicker,
+      selectedStock?.priceHistoryTicker,
+      ...(Array.isArray(selectedStock?.tickerCandidates)
+        ? selectedStock.tickerCandidates
+        : []),
     ];
 
     const candidateSet = new Set();
@@ -244,10 +249,46 @@ export default function PortfolioPage() {
     return ordered;
   }, [selectedStock]);
 
+  const apiTickerCandidates = useMemo(() => {
+    const toNumericCode = (value) => {
+      if (typeof value !== "string") {
+        return null;
+      }
+      const digits = value.replace(/[^0-9]/g, "");
+      if (!digits) {
+        return null;
+      }
+      if (digits.length === 6) {
+        return digits;
+      }
+      if (digits.length > 6) {
+        return digits.slice(-6);
+      }
+      return digits.padStart(6, "0");
+    };
+
+    const unique = new Set();
+    tickerCandidates.forEach((candidate) => {
+      const numeric = toNumericCode(candidate);
+      if (numeric) {
+        unique.add(numeric);
+      }
+    });
+    return Array.from(unique);
+  }, [tickerCandidates]);
+
   useEffect(() => {
     let cancelled = false;
 
-    if (!tickerCandidates.length) {
+    if (!selectedStock) {
+      setPriceHistory([]);
+      setPriceLoading(false);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    if (!apiTickerCandidates.length) {
       setPriceHistory([]);
       setPriceLoading(false);
       return () => {
@@ -256,7 +297,7 @@ export default function PortfolioPage() {
     }
 
     if (Array.isArray(selectedStock.priceHistory) && selectedStock.priceHistory.length) {
-      tickerCandidates.forEach((key) => {
+      apiTickerCandidates.forEach((key) => {
         const previous = priceCacheRef.current[key];
         const shouldSeedFromSelected =
           !previous?.isComplete ||
@@ -273,7 +314,7 @@ export default function PortfolioPage() {
       });
     }
 
-    const refreshedEntries = tickerCandidates.map((key) => ({
+    const refreshedEntries = apiTickerCandidates.map((key) => ({
       key,
       entry: priceCacheRef.current[key],
     }));
@@ -285,64 +326,112 @@ export default function PortfolioPage() {
     const hasCachedData =
       Array.isArray(primaryEntry?.entry?.data) && primaryEntry.entry.data.length > 0;
 
-    setPriceHistory(hasCachedData ? primaryEntry.entry.data : []);
-    setPriceLoading(!hasCachedData && !primaryEntry?.entry?.isComplete);
+    const fallbackHistory = Array.isArray(selectedStock.priceHistory)
+      ? selectedStock.priceHistory
+      : [];
 
-    if (primaryEntry?.entry?.isComplete && hasCachedData) {
-      return () => {
-        cancelled = true;
-      };
-    }
+    setPriceHistory(hasCachedData ? primaryEntry.entry.data : fallbackHistory);
+    setPriceLoading(!hasCachedData && !primaryEntry?.entry?.isComplete);
 
     const fetchPriceHistory = async () => {
       if (!hasCachedData) {
         setPriceLoading(true);
       }
+
+      const now = Date.now();
       let fetched = false;
       let encounteredError = false;
       let fetchedPrices = [];
 
-      for (const candidate of tickerCandidates) {
+      for (const candidate of apiTickerCandidates) {
         try {
-          const priceDoc = await getDoc(doc(db, "stock_prices", candidate));
-          if (!priceDoc.exists()) {
+          const searchParams = new URLSearchParams({
+            symbol: candidate,
+            timeframe: "day",
+            count: "180",
+          });
+          const response = await fetch(
+            `/.netlify/functions/kiwoom-chart?${searchParams.toString()}`
+          );
+
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+          }
+
+          const payload = await response.json();
+          const rows = Array.isArray(payload?.data) ? payload.data : [];
+
+          if (!rows.length) {
             continue;
           }
 
-          const data = priceDoc.data();
-          fetchedPrices = Array.isArray(data?.prices) ? data.prices : [];
-          fetched = true;
-
-          if (!cancelled) {
-            tickerCandidates.forEach((key) => {
-              priceCacheRef.current[key] = {
-                data: fetchedPrices,
-                isComplete: true,
-                lastUpdated: Date.now(),
+          fetchedPrices = rows
+            .map((item) => {
+              const parseNumber = (value) => {
+                if (typeof value === "number") {
+                  return Number.isFinite(value) ? value : null;
+                }
+                if (value == null || value === "") {
+                  return null;
+                }
+                const numeric = Number(String(value).replace(/[^0-9+\-.]/g, ""));
+                return Number.isFinite(numeric) ? numeric : null;
               };
-            });
-            setPriceHistory(fetchedPrices);
+
+              const close = parseNumber(item.close ?? item.clpr);
+              const open = parseNumber(item.open ?? item.oprc) ?? close;
+              const high = parseNumber(item.high ?? item.hipr) ?? Math.max(open ?? 0, close ?? 0);
+              const low = parseNumber(item.low ?? item.lopr) ?? Math.min(open ?? 0, close ?? 0);
+              const volume = parseNumber(item.volume ?? item.acml_vol ?? item.trqu) ?? 0;
+              const date = String(item.date ?? "").trim();
+
+              if (!Number.isFinite(close) || !date) {
+                return null;
+              }
+
+              return {
+                ...item,
+                open,
+                high,
+                low,
+                close,
+                volume,
+              };
+            })
+            .filter(Boolean);
+
+          if (fetchedPrices.length) {
+            fetched = true;
+            break;
           }
-          break;
         } catch (error) {
           encounteredError = true;
           console.error(
-            `주가 데이터를 불러오지 못했습니다. (티커 후보: ${candidate})`,
+            `키움 차트 데이터를 불러오지 못했습니다. (티커 후보: ${candidate})`,
             error
           );
         }
       }
 
       if (!cancelled) {
-        if (!fetched) {
-          tickerCandidates.forEach((key) => {
+        if (fetched && fetchedPrices.length) {
+          apiTickerCandidates.forEach((key) => {
             priceCacheRef.current[key] = {
-              data: primaryEntry?.entry?.data ?? [],
-              isComplete: !encounteredError,
-              lastUpdated: Date.now(),
+              data: fetchedPrices,
+              isComplete: true,
+              lastUpdated: now,
             };
           });
-          if (!hasCachedData) {
+          setPriceHistory(fetchedPrices);
+        } else {
+          apiTickerCandidates.forEach((key) => {
+            priceCacheRef.current[key] = {
+              data: fallbackHistory,
+              isComplete: !encounteredError && fallbackHistory.length > 0,
+              lastUpdated: now,
+            };
+          });
+          if (!hasCachedData && !fallbackHistory.length) {
             setPriceHistory([]);
           }
         }
@@ -355,7 +444,7 @@ export default function PortfolioPage() {
     return () => {
       cancelled = true;
     };
-  }, [selectedStock, tickerCandidates]);
+  }, [selectedStock, apiTickerCandidates]);
   const filteredStocks = useMemo(() => {
     if (statusFilter === "전체") {
       return stocks;
