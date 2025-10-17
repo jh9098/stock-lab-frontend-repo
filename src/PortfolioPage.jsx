@@ -654,6 +654,36 @@ export default function PortfolioPage() {
     return "-";
   };
 
+  const formatPriceValue = (value) => {
+    if (!Number.isFinite(value)) {
+      return "-";
+    }
+    return `${Math.round(value).toLocaleString()}원`;
+  };
+
+  const formatVolumeValue = (value) => {
+    if (!Number.isFinite(value)) {
+      return "-";
+    }
+    if (value >= 100000000) {
+      return `${(value / 100000000).toFixed(1)}억주`;
+    }
+    if (value >= 10000) {
+      return `${(value / 10000).toFixed(1)}만주`;
+    }
+    return `${Math.round(value).toLocaleString()}주`;
+  };
+
+  const pickNumeric = (...values) => {
+    for (const value of values) {
+      const numeric = Number(value);
+      if (Number.isFinite(numeric)) {
+        return numeric;
+      }
+    }
+    return null;
+  };
+
   useEffect(() => {
     if (!stocks.length) {
       setSelectedStock(null);
@@ -701,6 +731,65 @@ export default function PortfolioPage() {
 
     return { totalWeight, averageReturn };
   }, [stocks]);
+
+  const latestPoint = chartSeries.length ? chartSeries[chartSeries.length - 1] : null;
+  const previousPoint = chartSeries.length > 1 ? chartSeries[chartSeries.length - 2] : null;
+
+  const latestCloseNumeric = Number(latestPoint?.close);
+  const previousCloseNumeric = Number(previousPoint?.close);
+
+  const validLatestClose = Number.isFinite(latestCloseNumeric) ? latestCloseNumeric : null;
+  const validPreviousClose = Number.isFinite(previousCloseNumeric) ? previousCloseNumeric : null;
+
+  const priceDifference =
+    validLatestClose != null && validPreviousClose != null
+      ? validLatestClose - validPreviousClose
+      : null;
+
+  const differenceText =
+    priceDifference != null
+      ? `${priceDifference > 0 ? "+" : ""}${Math.round(priceDifference).toLocaleString()}원`
+      : "-";
+
+  const differencePercent =
+    priceDifference != null && validPreviousClose
+      ? (priceDifference / validPreviousClose) * 100
+      : null;
+
+  const differencePercentText =
+    differencePercent != null
+      ? `${differencePercent > 0 ? "+" : ""}${differencePercent.toFixed(2)}%`
+      : null;
+
+  const priceChangeClass =
+    priceDifference == null
+      ? "text-slate-300"
+      : priceDifference > 0
+      ? "text-rose-400"
+      : priceDifference < 0
+      ? "text-sky-400"
+      : "text-slate-300";
+
+  const latestOpen = Number(latestPoint?.open);
+  const latestHigh = Number(latestPoint?.high);
+  const latestLow = Number(latestPoint?.low);
+
+  const latestVolumeValue = latestPoint
+    ? pickNumeric(
+        latestPoint.volume,
+        latestPoint.tradingVolume,
+        latestPoint.accTradeVolume,
+        latestPoint.volumeValue,
+        latestPoint.volumeAmount,
+        latestPoint.v
+      )
+    : null;
+
+  const latestVolumeText = latestVolumeValue != null ? formatVolumeValue(latestVolumeValue) : "-";
+  const latestDateText = latestPoint?.date ?? selectedStock?.lastPriceDate ?? "-";
+  const marketLabel = selectedStock?.market ?? "KRX";
+  const timeframeTabs = ["일", "주", "월", "년"];
+  const activeTimeframe = timeframeTabs[0];
 
   return (
     <div className="min-h-screen bg-gray-900 text-gray-100">
@@ -813,30 +902,100 @@ export default function PortfolioPage() {
 
               <div className="space-y-3">
                 <h3 className="text-gray-300 font-semibold">가격 차트</h3>
-                <div className="h-72 w-full overflow-hidden rounded-lg border border-gray-700 bg-gray-900">
-                  {priceLoading ? (
-                    <div className="flex h-full items-center justify-center text-sm text-gray-400">
-                      차트 데이터를 불러오는 중입니다...
-                    </div>
-                  ) : chartSeries.length ? (
-                    <Suspense
-                      fallback={
-                        <div className="flex h-full items-center justify-center text-sm text-gray-400">
-                          차트 모듈을 불러오는 중입니다...
+                <div className="overflow-hidden rounded-xl border border-slate-800 bg-[#0B1120]">
+                  <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 bg-[#0f172a] px-4 py-3">
+                    <div className="flex flex-wrap items-center gap-3 text-white">
+                      <span className="rounded bg-slate-800 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-sky-300">
+                        {marketLabel}
+                      </span>
+                      <div className="space-y-1">
+                        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                          <span className="text-2xl font-bold sm:text-3xl">
+                            {formatPriceValue(validLatestClose)}
+                          </span>
+                          <span className={`text-sm font-semibold ${priceChangeClass}`}>
+                            {differenceText}
+                            {differencePercentText ? ` (${differencePercentText})` : ""}
+                          </span>
                         </div>
-                      }
-                    >
-                      <CandlestickChart
-                        data={chartSeries}
-                        supportLines={supportLevels}
-                        resistanceLines={resistanceLevels}
-                      />
-                    </Suspense>
-                  ) : (
-                    <div className="flex h-full items-center justify-center text-sm text-gray-400">
-                      가격 데이터가 없습니다.
+                        <p className="text-[11px] text-slate-400 sm:text-xs">
+                          {latestDateText && latestDateText !== "-"
+                            ? `기준 ${latestDateText}`
+                            : "기준 정보 없음"}
+                          {latestVolumeText && latestVolumeText !== "-"
+                            ? ` · 거래량 ${latestVolumeText}`
+                            : ""}
+                        </p>
+                      </div>
                     </div>
-                  )}
+                    <div className="flex gap-4 text-[11px] text-slate-300 sm:text-xs">
+                      <div className="text-right">
+                        <p className="text-slate-500">시가</p>
+                        <p className="font-semibold text-slate-100">
+                          {formatPriceValue(latestOpen)}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-slate-500">고가</p>
+                        <p className="font-semibold text-slate-100">
+                          {formatPriceValue(latestHigh)}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-slate-500">저가</p>
+                        <p className="font-semibold text-slate-100">
+                          {formatPriceValue(latestLow)}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex h-[22rem] flex-col">
+                    {priceLoading ? (
+                      <div className="flex flex-1 items-center justify-center text-sm text-slate-300">
+                        차트 데이터를 불러오는 중입니다...
+                      </div>
+                    ) : chartSeries.length ? (
+                      <div className="flex flex-1">
+                        <Suspense
+                          fallback={
+                            <div className="flex flex-1 items-center justify-center text-sm text-slate-300">
+                              차트 모듈을 불러오는 중입니다...
+                            </div>
+                          }
+                        >
+                          <CandlestickChart
+                            data={chartSeries}
+                            supportLines={supportLevels}
+                            resistanceLines={resistanceLevels}
+                          />
+                        </Suspense>
+                      </div>
+                    ) : (
+                      <div className="flex flex-1 items-center justify-center text-sm text-slate-300">
+                        가격 데이터가 없습니다.
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex items-center justify-between border-t border-slate-800 bg-[#0f172a] px-4 py-2 text-[11px] text-slate-300 sm:text-xs">
+                    <div className="flex gap-2">
+                      {timeframeTabs.map((label) => {
+                        const isActive = label === activeTimeframe;
+                        return (
+                          <span
+                            key={label}
+                            className={`rounded px-2 py-1 ${
+                              isActive
+                                ? "bg-sky-500/20 text-sky-200 font-semibold"
+                                : "bg-transparent text-slate-500"
+                            }`}
+                          >
+                            {label}
+                          </span>
+                        );
+                      })}
+                    </div>
+                    <span className="text-slate-500">데이터 기준: {latestDateText}</span>
+                  </div>
                 </div>
 
                 {(supportLevels.length || resistanceLevels.length) && (
