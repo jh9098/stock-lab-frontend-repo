@@ -29,35 +29,41 @@ export default function CausalInference() {
   const [error, setError] = useState(null);
   const [status, setStatus] = useState("idle");
   const [statusMessage, setStatusMessage] = useState("");
-  const [isUsingSampleData, setIsUsingSampleData] = useState(false);
-  const [sampleNotice, setSampleNotice] = useState("");
+  const [isUsingLocalData, setIsUsingLocalData] = useState(false);
+  const [localNotice, setLocalNotice] = useState("");
 
   const apiBase = resolveApiBase();
   const isApiConfigured = typeof apiBase === "string" && apiBase.length > 0;
 
-  const applySampleData = (payload = {}, notice) => {
-    const sampleResponse = buildSampleCausalResponse(payload);
+  const applyLocalData = (responseOrPayload = {}, { notice, fallback = false } = {}) => {
+    const localResponse =
+      responseOrPayload && responseOrPayload.top_paths
+        ? responseOrPayload
+        : buildSampleCausalResponse(responseOrPayload);
 
-    setResult(sampleResponse);
-    const samplePaths = sampleResponse?.top_paths ?? [];
-    setPaths(samplePaths);
+    setResult(localResponse);
+    const localPaths = localResponse?.top_paths ?? [];
+    setPaths(localPaths);
 
-    if (!samplePaths || samplePaths.length === 0) {
+    if (!localPaths || localPaths.length === 0) {
       setStatus("empty");
-      setStatusMessage("샘플 데이터에서 경로를 찾지 못했습니다.");
+      setStatusMessage("로컬 causal_graph 데이터에서 조건에 맞는 경로를 찾지 못했습니다.");
     } else {
       setStatus("success");
+      const highlightedCount = Math.min(8, localPaths.length);
       setStatusMessage(
-        `샘플 데이터: 총 ${samplePaths.length}개 경로 중 상위 ${Math.min(8, samplePaths.length)}개를 보여줍니다.`
+        `로컬 causal_graph 데이터 기준 총 ${localPaths.length}개 경로 중 상위 ${highlightedCount}개를 보여줍니다.`
       );
     }
 
     setError(null);
-    setIsUsingSampleData(true);
-    setSampleNotice(
-      notice ?? "실제 API 대신 제공된 causal_graph.json 기반 샘플 데이터를 표시하고 있습니다."
+    setIsUsingLocalData(true);
+    setLocalNotice(
+      notice ??
+        (fallback
+          ? "백엔드 대신 로컬 causal_graph 데이터로 결과를 표시했습니다."
+          : "로컬에 포함된 causal_graph 데이터로 결과를 계산했습니다.")
     );
-    setLoading(false);
   };
 
   const handleSubmit = async ({ start, end, direction, minStrength }) => {
@@ -72,11 +78,16 @@ export default function CausalInference() {
     };
 
     setError(null);
-    setIsUsingSampleData(false);
-    setSampleNotice("");
+    setIsUsingLocalData(false);
+    setLocalNotice("");
+
+    const localResponse = buildSampleCausalResponse(payload);
+    const hasLocalPaths = (localResponse?.top_paths ?? []).length > 0;
 
     if (!isApiConfigured) {
-      applySampleData(payload, "API 기본 URL이 설정되지 않아 샘플 데이터를 표시합니다.");
+      applyLocalData(localResponse, {
+        notice: "API 기본 URL이 설정되지 않아 로컬 causal_graph 데이터로 추론했습니다.",
+      });
       return;
     }
 
@@ -99,8 +110,8 @@ export default function CausalInference() {
         setStatusMessage(`총 ${topPaths.length}개 경로 중 상위 ${Math.min(8, topPaths.length)}개를 보여줍니다.`);
       }
 
-      setIsUsingSampleData(false);
-      setSampleNotice("");
+      setIsUsingLocalData(false);
+      setLocalNotice("");
     } catch (err) {
       let message = "연쇄효과 추론 중 오류가 발생했습니다.";
       if (err instanceof ApiError) {
@@ -118,7 +129,17 @@ export default function CausalInference() {
       } else if (err?.message) {
         message = err.message;
       }
-      applySampleData(payload, `${message} 대신 제공된 샘플 데이터를 표시합니다.`);
+      if (hasLocalPaths) {
+        applyLocalData(localResponse, {
+          notice: `${message} 백엔드 대신 로컬 causal_graph 데이터로 결과를 계산했습니다.`,
+          fallback: true,
+        });
+      } else {
+        applyLocalData(localResponse, {
+          notice: `${message} 로컬 causal_graph 데이터에서도 조건에 맞는 경로를 찾지 못했습니다.`,
+          fallback: true,
+        });
+      }
     } finally {
       setLoading(false);
     }
@@ -163,9 +184,9 @@ export default function CausalInference() {
           </div>
         )}
 
-        {sampleNotice && (
+        {localNotice && (
           <div className="rounded-lg border border-sky-500/40 bg-sky-500/10 p-4 text-sm text-sky-100" role="status">
-            {sampleNotice}
+            {localNotice}
           </div>
         )}
 
@@ -178,9 +199,9 @@ export default function CausalInference() {
               <p className="text-sm text-gray-300">응답에 포함된 핵심 지표를 한눈에 확인하세요.</p>
             </div>
             <div className="flex flex-wrap gap-2">
-              {isUsingSampleData && (
+              {isUsingLocalData && (
                 <span className="rounded-full border border-sky-500/60 bg-sky-500/15 px-3 py-1 text-xs font-semibold text-sky-100">
-                  샘플 데이터
+                  로컬 데이터
                 </span>
               )}
               {statusMessage && (
