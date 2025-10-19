@@ -7,6 +7,8 @@ import {
   query,
   serverTimestamp,
   updateDoc,
+  setDoc,
+  writeBatch,
 } from "firebase/firestore";
 import { db } from "../../firebaseConfig";
 import { useAdminContext } from "../AdminContext";
@@ -19,6 +21,12 @@ import {
 } from "../../lib/pageAccessConfig";
 
 const MANAGEABLE_PAGES = PAGE_OPTIONS.filter((option) => !option.adminOnly);
+
+function resolveRolePolicyPaths(rolePolicies, role) {
+  const storedPaths = rolePolicies?.[role]?.allowedPaths;
+  const sanitized = sanitizeAllowedPaths(storedPaths);
+  return ensurePortfolioPath(sanitized.length > 0 ? sanitized : [...DEFAULT_ALLOWED_PATHS], role);
+}
 
 function formatTimestamp(value) {
   if (!value) return "-";
@@ -57,6 +65,12 @@ function sanitizeAllowedPaths(paths = []) {
 export default function UserAccessManager() {
   const { setMessage, profile } = useAdminContext();
   const [users, setUsers] = useState([]);
+  const [rolePolicies, setRolePolicies] = useState(() => ({
+    guest: { allowedPaths: ensurePortfolioPath([...DEFAULT_ALLOWED_PATHS], "guest") },
+    member: { allowedPaths: ensurePortfolioPath([...DEFAULT_ALLOWED_PATHS], "member") },
+    admin: { allowedPaths: ensurePortfolioPath([...DEFAULT_ALLOWED_PATHS], "admin") },
+  }));
+  const [savingRole, setSavingRole] = useState("");
   const [updatingId, setUpdatingId] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 20;
@@ -83,6 +97,25 @@ export default function UserAccessManager() {
         };
       });
       setUsers(mapped);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    const rolePoliciesQuery = collection(db, "rolePolicies");
+    const unsubscribe = onSnapshot(rolePoliciesQuery, (snapshot) => {
+      setRolePolicies((prev) => {
+        const next = { ...prev };
+        snapshot.forEach((docSnap) => {
+          const roleKey = docSnap.id;
+          next[roleKey] = {
+            ...(next[roleKey] || {}),
+            allowedPaths: resolveRolePolicyPaths({ [roleKey]: docSnap.data() }, roleKey),
+          };
+        });
+        return next;
+      });
     });
 
     return () => unsubscribe();
@@ -116,6 +149,75 @@ export default function UserAccessManager() {
     []
   );
 
+  const handleRolePolicyToggle = async (role, pathValue, checked) => {
+    const normalizedPath = normalizePath(pathValue);
+    const currentPaths = resolveRolePolicyPaths(rolePolicies, role);
+    const nextPaths = new Set(currentPaths.map(normalizePath));
+
+    if (checked) {
+      nextPaths.add(normalizedPath);
+    } else {
+      nextPaths.delete(normalizedPath);
+    }
+
+    const ensured = ensurePortfolioPath(Array.from(nextPaths), role);
+
+    setRolePolicies((prev) => ({
+      ...prev,
+      [role]: {
+        ...(prev[role] || {}),
+        allowedPaths: ensured,
+      },
+    }));
+    setSavingRole(role);
+    try {
+      await setDoc(
+        doc(db, "rolePolicies", role),
+        {
+          allowedPaths: ensured,
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true }
+      );
+      setMessage(`${roleOptions.find((option) => option.value === role)?.label || role} 역할의 기본 권한을 저장했습니다.`);
+    } catch (error) {
+      console.error("역할 기본 권한 저장 실패", error);
+      setMessage("역할별 기본 권한을 저장하는 데 실패했습니다. 잠시 후 다시 시도해주세요.");
+    } finally {
+      setSavingRole("");
+    }
+  };
+
+  const handleApplyRolePolicy = async (role) => {
+    const targetUsers = users.filter((user) => user.role === role);
+    if (targetUsers.length === 0) {
+      setMessage(`${roleOptions.find((option) => option.value === role)?.label || role} 역할의 계정이 없습니다.`);
+      return;
+    }
+
+    const ensuredPaths = resolveRolePolicyPaths(rolePolicies, role);
+
+    setSavingRole(role);
+    try {
+      const batch = writeBatch(db);
+      targetUsers.forEach((user) => {
+        batch.update(doc(db, "users", user.id), {
+          allowedPaths: ensuredPaths,
+          updatedAt: serverTimestamp(),
+        });
+      });
+      await batch.commit();
+      setMessage(
+        `${roleOptions.find((option) => option.value === role)?.label || role} 역할의 ${targetUsers.length}명에게 기본 권한을 적용했습니다.`
+      );
+    } catch (error) {
+      console.error("역할 기본 권한 일괄 적용 실패", error);
+      setMessage("역할별 기본 권한을 적용하지 못했습니다. 잠시 후 다시 시도해주세요.");
+    } finally {
+      setSavingRole("");
+    }
+  };
+
   const updateUserDocument = async (userId, payload, successMessage) => {
     setUpdatingId(userId);
     try {
@@ -138,7 +240,7 @@ export default function UserAccessManager() {
       return;
     }
 
-    const normalizedPaths = ensurePortfolioPath(user.allowedPaths, nextRole);
+    const normalizedPaths = resolveRolePolicyPaths(rolePolicies, nextRole);
     const roleLabel =
       roleOptions.find((option) => option.value === nextRole)?.label || nextRole;
 
@@ -176,7 +278,7 @@ export default function UserAccessManager() {
   };
 
   const handleReset = async (user) => {
-    const basePaths = ensurePortfolioPath([...DEFAULT_ALLOWED_PATHS], user.role);
+    const basePaths = resolveRolePolicyPaths(rolePolicies, user.role);
     await updateUserDocument(
       user.id,
       {
@@ -186,16 +288,11 @@ export default function UserAccessManager() {
     );
   };
 
-  if (users.length === 0) {
-    return (
-      <section className="rounded-xl border border-gray-800 bg-gray-900 p-6 text-sm text-gray-300">
-        <h2 className="text-lg font-semibold text-white">회원 및 권한 관리</h2>
-        <p className="mt-3 text-gray-400">
-          아직 Google 로그인 이력이 없습니다. 사용자가 로그인하면 자동으로 목록에 추가됩니다.
-        </p>
-      </section>
-    );
-  }
+  const configurableRoles = useMemo(
+    () => roleOptions.filter((option) => option.value !== "admin"),
+    [roleOptions]
+  );
+  const adminRoleLabel = roleOptions.find((option) => option.value === "admin")?.label;
 
   return (
     <section className="space-y-6">
@@ -208,6 +305,76 @@ export default function UserAccessManager() {
           현재 페이지 {currentPage} / {totalPages} · 총 {users.length}명
         </p>
       </header>
+
+      <section className="space-y-4 rounded-2xl border border-gray-800 bg-gray-900 p-6">
+        <div className="flex flex-col gap-2">
+          <h3 className="text-lg font-semibold text-white">역할별 기본 접근 권한</h3>
+          <p className="text-sm text-gray-400">
+            역할마다 기본으로 허용할 페이지를 설정할 수 있습니다. 저장 후에는 아래 버튼으로 해당 역할의 모든 사용자에게 일괄 적용할 수 있습니다.
+          </p>
+        </div>
+        <div className="grid gap-4 lg:grid-cols-2">
+          {configurableRoles.map((roleOption) => {
+            const rolePaths = resolveRolePolicyPaths(rolePolicies, roleOption.value);
+            const rolePathSet = new Set(rolePaths.map(normalizePath));
+            return (
+              <article
+                key={`role-policy-${roleOption.value}`}
+                className="space-y-4 rounded-xl border border-gray-800 bg-gray-950/60 p-5"
+              >
+                <header className="space-y-1">
+                  <h4 className="text-base font-semibold text-teal-200">{roleOption.label} 기본 권한</h4>
+                  <p className="text-xs text-gray-400">
+                    체크된 페이지는 {roleOption.label} 역할을 부여받은 계정에 기본으로 허용됩니다.
+                  </p>
+                </header>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {MANAGEABLE_PAGES.map((page) => (
+                    <label
+                      key={`${roleOption.value}-${page.value}`}
+                      className="flex items-center gap-2 rounded-lg border border-gray-800 bg-gray-900/80 px-3 py-2 text-xs text-gray-200"
+                    >
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 rounded border-gray-700 bg-gray-800 text-teal-500 focus:ring-teal-500"
+                        checked={rolePathSet.has(normalizePath(page.value))}
+                        onChange={(event) =>
+                          handleRolePolicyToggle(roleOption.value, page.value, event.target.checked)
+                        }
+                        disabled={savingRole === roleOption.value}
+                      />
+                      <span>
+                        {page.label}
+                        {page.value === "/portfolio" && (
+                          <span className="ml-1 text-[0.65rem] text-teal-300">(멤버 전용)</span>
+                        )}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleApplyRolePolicy(roleOption.value)}
+                  className="w-full rounded-lg border border-teal-500/60 bg-teal-500/10 px-3 py-2 text-xs font-semibold text-teal-200 transition hover:bg-teal-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+                  disabled={savingRole === roleOption.value}
+                >
+                  {roleOption.label} 역할 계정에 기본 권한 적용
+                </button>
+              </article>
+            );
+          })}
+        </div>
+        <p className="text-xs text-gray-500">
+          {adminRoleLabel || "관리자"} 역할은 모든 페이지에 접근할 수 있도록 고정되어 있습니다.
+        </p>
+      </section>
+
+      {users.length === 0 && (
+        <div className="rounded-xl border border-gray-800 bg-gray-900 p-6 text-sm text-gray-300">
+          <p className="font-semibold text-white">아직 등록된 계정이 없습니다.</p>
+          <p className="mt-2 text-gray-400">사용자가 Google 계정으로 로그인하면 자동으로 목록에 추가됩니다.</p>
+        </div>
+      )}
 
       {paginatedUsers.map((user) => {
         const isCurrentAdmin = profile?.uid === user.id;
@@ -298,13 +465,15 @@ export default function UserAccessManager() {
         );
       })}
 
-      <PaginationControls
-        currentPage={currentPage}
-        totalItems={users.length}
-        pageSize={ITEMS_PER_PAGE}
-        onPageChange={setCurrentPage}
-        className="rounded-2xl border border-gray-800 bg-gray-900 px-4 py-3"
-      />
+      {users.length > 0 && (
+        <PaginationControls
+          currentPage={currentPage}
+          totalItems={users.length}
+          pageSize={ITEMS_PER_PAGE}
+          onPageChange={setCurrentPage}
+          className="rounded-2xl border border-gray-800 bg-gray-900 px-4 py-3"
+        />
+      )}
     </section>
   );
 }

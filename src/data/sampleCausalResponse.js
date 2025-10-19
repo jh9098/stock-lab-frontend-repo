@@ -84,7 +84,18 @@ const sanitizeNodeId = (nodeId, fallback) => {
     return fallback;
   }
 
-  return graphNodes.has(trimmed) ? trimmed : trimmed;
+  if (graphNodes.has(trimmed)) {
+    return trimmed;
+  }
+
+  if (typeof fallback === "string") {
+    const fallbackTrimmed = fallback.trim();
+    if (fallbackTrimmed.length > 0 && graphNodes.has(fallbackTrimmed)) {
+      return fallbackTrimmed;
+    }
+  }
+
+  return trimmed;
 };
 
 const sanitizeDirection = (direction) => {
