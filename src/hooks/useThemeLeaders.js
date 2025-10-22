@@ -10,23 +10,12 @@ import {
 } from "firebase/firestore";
 import { db } from "../firebaseConfig";
 import { buildSnapshotSignature } from "../lib/snapshotUtils";
+import { normalizeThemeLeadersItems } from "../lib/themeNormalization";
 
 const FIRESTORE_COLLECTION = "themeLeaders";
 const FIRESTORE_LATEST_DOC_ID = "latest";
 const FIRESTORE_HISTORY_COLLECTION = "themeLeadersSnapshots";
 const FETCH_COOLDOWN_MS = 60 * 60 * 1000; // 60분
-
-const normalizeItems = (items) => {
-  if (!Array.isArray(items)) {
-    return [];
-  }
-
-  return items.map((item, index) => ({
-    ...item,
-    id: item.themeCode || `${item.name}-${index}`,
-    leaders: Array.isArray(item.leaders) ? item.leaders : [],
-  }));
-};
 
 export default function useThemeLeaders() {
   const [themes, setThemes] = useState([]);
@@ -51,7 +40,7 @@ export default function useThemeLeaders() {
       return;
     }
 
-    const normalizedItems = normalizeItems(data.items);
+    const normalizedItems = normalizeThemeLeadersItems(data.items);
     setThemes(normalizedItems);
 
     const label =
@@ -178,7 +167,7 @@ export default function useThemeLeaders() {
         const latestBeforeSignature = latestBeforeSnapshot
           ? buildSnapshotSignature(
               latestBeforeSnapshot.asOfLabel || latestBeforeSnapshot.asOf || "",
-              normalizeItems(latestBeforeSnapshot.items)
+              normalizeThemeLeadersItems(latestBeforeSnapshot.items)
             )
           : "";
         const backendChanged =
@@ -216,7 +205,7 @@ export default function useThemeLeaders() {
         throw new Error("테마 데이터를 찾을 수 없습니다.");
       }
 
-      const normalizedItems = normalizeItems(payload.items);
+      const normalizedItems = normalizeThemeLeadersItems(payload.items);
       applyThemeData({
         items: normalizedItems,
         asOf: payload.asOf,
@@ -241,7 +230,7 @@ export default function useThemeLeaders() {
           const latestData = latestSnapshot.data();
           const latestSignature = buildSnapshotSignature(
             latestData.asOfLabel || latestData.asOf || latestData.updatedAt || "",
-            normalizeItems(latestData.items)
+            normalizeThemeLeadersItems(latestData.items)
           );
 
           if (latestSignature === payloadSignature) {
