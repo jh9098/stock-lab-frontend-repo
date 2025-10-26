@@ -1,9 +1,10 @@
 import { Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
 import { Helmet } from "react-helmet";
-import { collection, doc, serverTimestamp, setDoc } from "firebase/firestore";
+import { collection, doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
 import usePortfolioData from "./hooks/usePortfolioData";
 import { db } from "./firebaseConfig";
 import useAuth from "./useAuth";
+import useStockPrices from "./hooks/useStockPrices";
 
 const CandlestickChart = lazy(() => import("./components/CandlestickChart"));
 
@@ -177,9 +178,9 @@ export default function PortfolioPage() {
   const { loading, stocks } = usePortfolioData();
   const [selectedStock, setSelectedStock] = useState(null);
   const [statusFilter, setStatusFilter] = useState("전체");
-  const [priceHistory, setPriceHistory] = useState([]);
-  const [priceLoading, setPriceLoading] = useState(false);
-  const priceCacheRef = useRef({});
+  const [activePriceTicker, setActivePriceTicker] = useState(null);
+  const [tickerLookupPending, setTickerLookupPending] = useState(false);
+  const priceStatusCacheRef = useRef({});
 
   const tickerCandidates = useMemo(() => {
     if (!selectedStock) {
@@ -278,183 +279,116 @@ export default function PortfolioPage() {
   }, [tickerCandidates]);
 
   useEffect(() => {
-    let cancelled = false;
+    let isCancelled = false;
 
     if (!selectedStock) {
-      setPriceHistory([]);
-      setPriceLoading(false);
+      setActivePriceTicker(null);
+      setTickerLookupPending(false);
       return () => {
-        cancelled = true;
+        isCancelled = true;
       };
     }
 
     if (!apiTickerCandidates.length) {
-      setPriceHistory([]);
-      setPriceLoading(false);
+      setActivePriceTicker(null);
+      setTickerLookupPending(false);
       return () => {
-        cancelled = true;
+        isCancelled = true;
       };
     }
 
-    if (Array.isArray(selectedStock.priceHistory) && selectedStock.priceHistory.length) {
-      apiTickerCandidates.forEach((key) => {
-        const previous = priceCacheRef.current[key];
-        const shouldSeedFromSelected =
-          !previous?.isComplete ||
-          !Array.isArray(previous?.data) ||
-          previous.data.length < selectedStock.priceHistory.length;
+    const cachedMatch = apiTickerCandidates.find(
+      (candidate) => priceStatusCacheRef.current[candidate] === "hasData"
+    );
 
-        if (shouldSeedFromSelected) {
-          priceCacheRef.current[key] = {
-            data: selectedStock.priceHistory,
-            isComplete: previous?.isComplete ?? false,
-            lastUpdated: previous?.lastUpdated ?? 0,
-          };
-        }
-      });
+    if (cachedMatch) {
+      setActivePriceTicker(cachedMatch);
+      setTickerLookupPending(false);
+      return () => {
+        isCancelled = true;
+      };
     }
 
-    const refreshedEntries = apiTickerCandidates.map((key) => ({
-      key,
-      entry: priceCacheRef.current[key],
-    }));
+    setTickerLookupPending(true);
 
-    const primaryEntry =
-      refreshedEntries.find((item) => Array.isArray(item.entry?.data) && item.entry.data.length > 0) ??
-      refreshedEntries[0];
-
-    const hasCachedData =
-      Array.isArray(primaryEntry?.entry?.data) && primaryEntry.entry.data.length > 0;
-
-    const fallbackHistory = Array.isArray(selectedStock.priceHistory)
-      ? selectedStock.priceHistory
-      : [];
-
-    setPriceHistory(hasCachedData ? primaryEntry.entry.data : fallbackHistory);
-    setPriceLoading(!hasCachedData && !primaryEntry?.entry?.isComplete);
-
-    const fetchPriceHistory = async () => {
-      if (!hasCachedData) {
-        setPriceLoading(true);
-      }
-
-      const now = Date.now();
-      let fetched = false;
-      let encounteredError = false;
-      let fetchedPrices = [];
-
-      const baseDateString = (() => {
-        const today = new Date();
-        const year = today.getFullYear();
-        const month = String(today.getMonth() + 1).padStart(2, "0");
-        const day = String(today.getDate()).padStart(2, "0");
-        return `${year}${month}${day}`;
-      })();
-
+    const resolveTicker = async () => {
       for (const candidate of apiTickerCandidates) {
+        if (isCancelled) {
+          return;
+        }
+
+        const cachedStatus = priceStatusCacheRef.current[candidate];
+        if (cachedStatus === "hasData") {
+          setActivePriceTicker(candidate);
+          setTickerLookupPending(false);
+          return;
+        }
+        if (cachedStatus === "empty") {
+          continue;
+        }
+
         try {
-          const searchParams = new URLSearchParams({
-            symbol: candidate,
-            timeframe: "day",
-            count: "180",
-            baseDate: baseDateString,
-            adjusted: "1",
-          });
-          const response = await fetch(
-            `/.netlify/functions/kiwoom-chart?${searchParams.toString()}`
-          );
-
-          if (!response.ok) {
-            throw new Error(`HTTP ${response.status}`);
+          const snapshot = await getDoc(doc(db, "stock_prices", candidate));
+          if (isCancelled) {
+            return;
           }
 
-          const payload = await response.json();
-          const rows = Array.isArray(payload?.data) ? payload.data : [];
+          const snapshotData = snapshot.data();
+          const prices = Array.isArray(snapshotData?.prices)
+            ? snapshotData.prices
+            : [];
+          const hasData = snapshot.exists() && prices.length > 0;
 
-          if (!rows.length) {
-            continue;
-          }
+          priceStatusCacheRef.current[candidate] = hasData ? "hasData" : "empty";
 
-          fetchedPrices = rows
-            .map((item) => {
-              const parseNumber = (value) => {
-                if (typeof value === "number") {
-                  return Number.isFinite(value) ? value : null;
-                }
-                if (value == null || value === "") {
-                  return null;
-                }
-                const numeric = Number(String(value).replace(/[^0-9+\-.]/g, ""));
-                return Number.isFinite(numeric) ? numeric : null;
-              };
-
-              const close = parseNumber(item.close ?? item.clpr);
-              const open = parseNumber(item.open ?? item.oprc) ?? close;
-              const high = parseNumber(item.high ?? item.hipr) ?? Math.max(open ?? 0, close ?? 0);
-              const low = parseNumber(item.low ?? item.lopr) ?? Math.min(open ?? 0, close ?? 0);
-              const volume = parseNumber(item.volume ?? item.acml_vol ?? item.trqu) ?? 0;
-              const date = String(item.date ?? "").trim();
-
-              if (!Number.isFinite(close) || !date) {
-                return null;
-              }
-
-              return {
-                ...item,
-                open,
-                high,
-                low,
-                close,
-                volume,
-              };
-            })
-            .filter(Boolean);
-
-          if (fetchedPrices.length) {
-            fetched = true;
-            break;
+          if (hasData) {
+            setActivePriceTicker(candidate);
+            setTickerLookupPending(false);
+            return;
           }
         } catch (error) {
-          encounteredError = true;
           console.error(
-            `키움 차트 데이터를 불러오지 못했습니다. (티커 후보: ${candidate})`,
+            `주가 데이터를 확인하는 중 오류가 발생했습니다. (티커 후보: ${candidate})`,
             error
           );
+          priceStatusCacheRef.current[candidate] = "error";
         }
       }
 
-      if (!cancelled) {
-        if (fetched && fetchedPrices.length) {
-          apiTickerCandidates.forEach((key) => {
-            priceCacheRef.current[key] = {
-              data: fetchedPrices,
-              isComplete: true,
-              lastUpdated: now,
-            };
-          });
-          setPriceHistory(fetchedPrices);
-        } else {
-          apiTickerCandidates.forEach((key) => {
-            priceCacheRef.current[key] = {
-              data: fallbackHistory,
-              isComplete: !encounteredError && fallbackHistory.length > 0,
-              lastUpdated: now,
-            };
-          });
-          if (!hasCachedData && !fallbackHistory.length) {
-            setPriceHistory([]);
-          }
-        }
-        setPriceLoading(false);
+      if (!isCancelled) {
+        const fallbackTicker = apiTickerCandidates[0] ?? null;
+        setActivePriceTicker(fallbackTicker);
+        setTickerLookupPending(false);
       }
     };
 
-    fetchPriceHistory();
+    resolveTicker();
 
     return () => {
-      cancelled = true;
+      isCancelled = true;
     };
   }, [selectedStock, apiTickerCandidates]);
+
+  const { prices: fetchedPriceHistory, loading: fetchedPriceLoading } = useStockPrices(
+    activePriceTicker,
+    { days: 180, realtime: true }
+  );
+
+  const fallbackPriceHistory = useMemo(() => {
+    if (!selectedStock) {
+      return [];
+    }
+    return Array.isArray(selectedStock.priceHistory) ? selectedStock.priceHistory : [];
+  }, [selectedStock]);
+
+  const combinedPriceHistory = useMemo(() => {
+    if (Array.isArray(fetchedPriceHistory) && fetchedPriceHistory.length) {
+      return fetchedPriceHistory;
+    }
+    return fallbackPriceHistory;
+  }, [fetchedPriceHistory, fallbackPriceHistory]);
+
+  const priceLoading = tickerLookupPending || fetchedPriceLoading;
   const filteredStocks = useMemo(() => {
     if (statusFilter === "전체") {
       return stocks;
@@ -462,11 +396,11 @@ export default function PortfolioPage() {
     return stocks.filter((stock) => (stock.status ?? "") === statusFilter);
   }, [statusFilter, stocks]);
   const priceSeries = useMemo(() => {
-    const rawHistory = Array.isArray(priceHistory) && priceHistory.length
-      ? priceHistory
-      : selectedStock?.priceHistory;
+    const rawHistory = Array.isArray(combinedPriceHistory)
+      ? combinedPriceHistory
+      : [];
 
-    if (!rawHistory) {
+    if (!rawHistory.length) {
       return [];
     }
     
@@ -573,7 +507,7 @@ export default function PortfolioPage() {
       })
       .filter(Boolean)
       .sort((a, b) => a.dateValue - b.dateValue);
-  }, [priceHistory, selectedStock]);
+  }, [combinedPriceHistory]);
 
   const chartSeries = useMemo(() => {
     if (!priceSeries.length) {
