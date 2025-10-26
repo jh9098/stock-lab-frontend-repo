@@ -681,9 +681,25 @@ export default function PortfolioPage() {
           ? scopedPrices[0].dateValue
           : startDate;
 
-        const hitIndex = scopedPrices.findIndex((price) =>
-          type === "buy" ? price.close <= numericTarget : price.close >= numericTarget
-        );
+        const hasPriceHitTarget = (price) => {
+          const closeValue = Number.isFinite(price.close) ? price.close : null;
+          const lowValue = Number.isFinite(price.low) ? price.low : null;
+          const highValue = Number.isFinite(price.high) ? price.high : null;
+
+          if (type === "buy") {
+            return (
+              (lowValue != null && lowValue <= numericTarget) ||
+              (closeValue != null && closeValue <= numericTarget)
+            );
+          }
+
+          return (
+            (highValue != null && highValue >= numericTarget) ||
+            (closeValue != null && closeValue >= numericTarget)
+          );
+        };
+
+        const hitIndex = scopedPrices.findIndex(hasPriceHitTarget);
 
         const reached = hitIndex !== -1;
         const reachedInfo = reached ? scopedPrices[hitIndex] : null;
@@ -701,14 +717,32 @@ export default function PortfolioPage() {
 
         let maxAdversePercent = null;
         if (!reached && scopedPrices.length) {
-          const scopedCloses = scopedPrices.map((price) => price.close);
-          const scopedMax = Math.max(...scopedCloses);
-          const scopedMin = Math.min(...scopedCloses);
+          if (type === "buy") {
+            const adverseHigh = scopedPrices.reduce((acc, price) => {
+              const candidate = Number.isFinite(price.high)
+                ? price.high
+                : Number.isFinite(price.close)
+                ? price.close
+                : acc;
+              return candidate > acc ? candidate : acc;
+            }, -Infinity);
 
-          if (type === "buy" && Number.isFinite(scopedMax)) {
-            maxAdversePercent = ((scopedMax - numericTarget) / numericTarget) * 100;
-          } else if (type === "sell" && Number.isFinite(scopedMin)) {
-            maxAdversePercent = ((numericTarget - scopedMin) / numericTarget) * 100;
+            if (Number.isFinite(adverseHigh) && Number.isFinite(numericTarget) && numericTarget > 0) {
+              maxAdversePercent = ((adverseHigh - numericTarget) / numericTarget) * 100;
+            }
+          } else {
+            const adverseLow = scopedPrices.reduce((acc, price) => {
+              const candidate = Number.isFinite(price.low)
+                ? price.low
+                : Number.isFinite(price.close)
+                ? price.close
+                : acc;
+              return candidate < acc ? candidate : acc;
+            }, Infinity);
+
+            if (Number.isFinite(adverseLow) && Number.isFinite(numericTarget) && numericTarget > 0) {
+              maxAdversePercent = ((numericTarget - adverseLow) / numericTarget) * 100;
+            }
           }
         }
 
@@ -829,6 +863,27 @@ export default function PortfolioPage() {
     return `${Math.round(value).toLocaleString()}원`;
   };
 
+  const formatAveragePriceValue = (value) => {
+    if (!Number.isFinite(value)) {
+      return "-";
+    }
+    return `${value.toLocaleString("ko-KR", { maximumFractionDigits: 2 })}원`;
+  };
+
+  const formatWeightPercent = (value) => {
+    if (!Number.isFinite(value)) {
+      return "-";
+    }
+    return `${(value * 100).toFixed(1)}%`;
+  };
+
+  const formatPercentValue = (value) => {
+    if (!Number.isFinite(value)) {
+      return "-";
+    }
+    return `${value.toFixed(2)}%`;
+  };
+
   const formatVolumeValue = (value) => {
     if (!Number.isFinite(value)) {
       return "-";
@@ -884,18 +939,27 @@ export default function PortfolioPage() {
 
   const summary = useMemo(() => {
     if (!stocks.length) {
-      return { totalWeight: 0, averageReturn: 0 };
+      return { totalWeight: 0, averageReturn: null };
     }
 
     const totalWeight = stocks.reduce(
       (acc, stock) => acc + (Number(stock.targetWeight) || 0),
       0
     );
-    const averageReturn =
-      stocks.reduce(
-        (acc, stock) => acc + (Number(stock.aggregatedReturn) || 0),
-        0
-      ) / stocks.length;
+
+    const { sum, count } = stocks.reduce(
+      (acc, stock) => {
+        const numeric = Number(stock.aggregatedReturn);
+        if (Number.isFinite(numeric)) {
+          acc.sum += numeric;
+          acc.count += 1;
+        }
+        return acc;
+      },
+      { sum: 0, count: 0 }
+    );
+
+    const averageReturn = count ? sum / count : null;
 
     return { totalWeight, averageReturn };
   }, [stocks]);
@@ -972,8 +1036,15 @@ export default function PortfolioPage() {
       <header className="px-6 py-8 border-b border-gray-800">
         <h1 className="text-3xl font-bold text-white mb-2">유료 회원 포트폴리오 현황</h1>
         <p className="text-gray-400">
-          전체 목표 비중 {summary.totalWeight.toFixed(1)}% · 평균 수익률 {" "}
-          {summary.averageReturn.toFixed(2)}%
+          전체 목표 비중
+          {" "}
+          {Number.isFinite(summary.totalWeight)
+            ? `${summary.totalWeight.toFixed(1)}%`
+            : "-"}
+          {" "}· 평균 수익률 {" "}
+          {Number.isFinite(summary.averageReturn)
+            ? `${summary.averageReturn.toFixed(2)}%`
+            : "-"}
         </p>
       </header>
 
@@ -1163,6 +1234,34 @@ export default function PortfolioPage() {
                       })}
                     </div>
                     <span className="text-slate-500">데이터 기준: {latestDateText}</span>
+                  </div>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <div className="bg-gray-900 rounded-lg px-4 py-3">
+                    <p className="text-xs text-gray-400">자동 평균 매수가</p>
+                    <p className="text-lg font-semibold text-white">
+                      {formatAveragePriceValue(selectedStock.autoAverageBuyPrice)}
+                    </p>
+                    <p className="text-[11px] text-gray-500">
+                      비중 {formatWeightPercent(selectedStock.autoAverageBuyWeight)}
+                    </p>
+                  </div>
+                  <div className="bg-gray-900 rounded-lg px-4 py-3">
+                    <p className="text-xs text-gray-400">자동 평균 매도가</p>
+                    <p className="text-lg font-semibold text-white">
+                      {formatAveragePriceValue(selectedStock.autoAverageSellPrice)}
+                    </p>
+                    <p className="text-[11px] text-gray-500">
+                      비중 {formatWeightPercent(selectedStock.autoAverageSellWeight)}
+                    </p>
+                  </div>
+                  <div className="bg-gray-900 rounded-lg px-4 py-3">
+                    <p className="text-xs text-gray-400">자동 목표 수익률</p>
+                    <p className="text-lg font-semibold text-white">
+                      {formatPercentValue(selectedStock.autoExpectedReturn)}
+                    </p>
+                    <p className="text-[11px] text-gray-500">평균 매수·매도 목표 기준</p>
                   </div>
                 </div>
 

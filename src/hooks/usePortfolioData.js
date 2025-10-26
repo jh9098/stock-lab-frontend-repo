@@ -81,6 +81,44 @@ export default function usePortfolioData() {
   }, [user]);
 
   const computedStocks = useMemo(() => {
+    const parseLegMetrics = (legs = []) => {
+      const parsed = legs
+        .map((leg) => {
+          const price = Number(leg.targetPrice);
+          const rawWeight = leg.weight ?? leg.weightPercent ?? leg.percent;
+          const numericWeight = Number(rawWeight);
+
+          const weight = Number.isFinite(numericWeight)
+            ? numericWeight > 1
+              ? numericWeight / 100
+              : numericWeight
+            : null;
+
+          if (!Number.isFinite(price) || !Number.isFinite(weight) || weight <= 0) {
+            return null;
+          }
+
+          return { price, weight };
+        })
+        .filter(Boolean);
+
+      if (!parsed.length) {
+        return { totalWeight: 0, averagePrice: null };
+      }
+
+      const totalWeight = parsed.reduce((acc, item) => acc + item.weight, 0);
+      const averagePrice =
+        totalWeight > 0
+          ? parsed.reduce((acc, item) => acc + item.price * item.weight, 0) /
+            totalWeight
+          : null;
+
+      return {
+        totalWeight,
+        averagePrice: Number.isFinite(averagePrice) ? averagePrice : null,
+      };
+    };
+
     return stocks.map((stock) => {
       const buyLegs = stock.buyLegs ?? [];
       const sellLegs = stock.sellLegs ?? [];
@@ -94,11 +132,36 @@ export default function usePortfolioData() {
         ? sellCompleted / sellLegs.length
         : 0;
 
+      const buyMetrics = parseLegMetrics(buyLegs);
+      const sellMetrics = parseLegMetrics(sellLegs);
+
+      const autoExpectedReturn =
+        buyMetrics.averagePrice != null && sellMetrics.averagePrice != null
+          ? ((sellMetrics.averagePrice - buyMetrics.averagePrice) /
+              buyMetrics.averagePrice) *
+            100
+          : null;
+
+      const existingAggregatedReturn = Number(stock.aggregatedReturn);
+      const aggregatedReturn = Number.isFinite(autoExpectedReturn)
+        ? autoExpectedReturn
+        : Number.isFinite(existingAggregatedReturn)
+        ? existingAggregatedReturn
+        : null;
+
       return {
         ...stock,
         buyProgress,
         sellProgress,
         totalProgress: Math.min(1, (buyProgress + sellProgress) / 2),
+        aggregatedReturn,
+        autoAverageBuyPrice: buyMetrics.averagePrice,
+        autoAverageBuyWeight: buyMetrics.totalWeight,
+        autoAverageSellPrice: sellMetrics.averagePrice,
+        autoAverageSellWeight: sellMetrics.totalWeight,
+        autoExpectedReturn: Number.isFinite(autoExpectedReturn)
+          ? autoExpectedReturn
+          : null,
       };
     });
   }, [stocks]);
