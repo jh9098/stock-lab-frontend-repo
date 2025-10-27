@@ -24,6 +24,13 @@ const RESISTANCE_COLOR = "#F56565";
 const BUY_LINE_COLOR = "#0EA5E9";
 const SELL_LINE_COLOR = "#F97316";
 
+const LEVEL_META = {
+  support: { label: "지지선", color: SUPPORT_COLOR },
+  resistance: { label: "저항선", color: RESISTANCE_COLOR },
+  buy: { label: "매수선", color: BUY_LINE_COLOR },
+  sell: { label: "매도선", color: SELL_LINE_COLOR },
+};
+
 const formatNumber = (value) => {
   if (value == null || Number.isNaN(Number(value))) {
     return "-";
@@ -318,6 +325,25 @@ export default function CandlestickChart({
       ...parsedSellLines.map((value) => ({ value, type: "sell" })),
     ];
   }, [parsedSupportLines, parsedResistanceLines, parsedBuyLines, parsedSellLines]);
+
+  const groupedLevelLines = useMemo(() => {
+    const sorters = {
+      support: (a, b) => a - b,
+      resistance: (a, b) => b - a,
+      buy: (a, b) => a - b,
+      sell: (a, b) => b - a,
+    };
+
+    return ["support", "resistance", "buy", "sell"]
+      .map((type) => {
+        const values = levelLines
+          .filter((line) => line.type === type)
+          .map((line) => line.value)
+          .sort(sorters[type]);
+        return { type, values };
+      })
+      .filter((group) => group.values.length > 0);
+  }, [levelLines]);
 
   const priceRange = useMemo(() => {
     if (!visibleData.length) {
@@ -708,7 +734,7 @@ export default function CandlestickChart({
   const infoBoxVisible = isCrosshairActive && latestCandle;
 
   return (
-    <div className="flex h-full w-full flex-col">
+    <div className="grid h-full w-full grid-rows-[auto_1fr]">
       <div className="flex items-center gap-3 border-b border-slate-800 bg-[#111c2f] px-3 py-2 text-[10px] font-medium text-slate-200 sm:text-xs">
         {maLines.map((line) => (
           <span key={line.period} className="flex items-center gap-1">
@@ -722,26 +748,27 @@ export default function CandlestickChart({
           </span>
         ))}
       </div>
-      <div
-        ref={containerRef}
-        className="relative flex-1 select-none"
-        style={{ touchAction: "none" }}
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        onPointerCancel={handlePointerLeave}
-        onPointerLeave={handlePointerLeave}
-        onWheel={handleWheel}
-        role="application"
-        aria-label="포트폴리오 주가 차트"
-      >
-        {hasData ? (
-          <svg
-            viewBox={`0 0 100 ${viewBoxHeight}`}
-            preserveAspectRatio="none"
-            className="h-full w-full"
-            role="img"
-          >
+      <div className="flex flex-1 flex-col gap-4 overflow-hidden px-3 py-3 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(220px,0.35fr)] lg:px-4 lg:py-4">
+        <div
+          ref={containerRef}
+          className="relative flex min-h-[280px] flex-1 select-none rounded-xl border border-slate-800/70 bg-[#0B1120]"
+          style={{ touchAction: "none" }}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerLeave}
+          onPointerLeave={handlePointerLeave}
+          onWheel={handleWheel}
+          role="application"
+          aria-label="포트폴리오 주가 차트"
+        >
+          {hasData ? (
+            <svg
+              viewBox={`0 0 100 ${viewBoxHeight}`}
+              preserveAspectRatio="none"
+              className="h-full w-full"
+              role="img"
+            >
             <defs>
               <linearGradient id="candlestickChartBg" x1="0" x2="0" y1="0" y2="1">
                 <stop offset="0%" stopColor="#0F172A" />
@@ -807,14 +834,6 @@ export default function CandlestickChart({
                   : line.type === "buy"
                   ? BUY_LINE_COLOR
                   : SELL_LINE_COLOR;
-              const labelPrefix =
-                line.type === "support"
-                  ? "지지선"
-                  : line.type === "resistance"
-                  ? "저항선"
-                  : line.type === "buy"
-                  ? "매수선"
-                  : "매도선";
 
               return (
                 <g key={`${line.type}-${line.value}`}>
@@ -827,23 +846,6 @@ export default function CandlestickChart({
                     strokeWidth="0.4"
                     strokeDasharray="1.5 1.2"
                   />
-                  <rect
-                    x="66"
-                    y={Math.min(Math.max(y - 4, PRICE_CHART_TOP), priceAreaBottom - 6)}
-                    width="33"
-                    height="6"
-                    rx="1"
-                    fill="rgba(15, 23, 42, 0.9)"
-                  />
-                  <text
-                    x="82.5"
-                    y={Math.min(Math.max(y, PRICE_CHART_TOP + 4), priceAreaBottom - 2)}
-                    textAnchor="middle"
-                    fontSize="2.6"
-                    fill={strokeColor}
-                  >
-                    {`${labelPrefix} ${formatNumber(Math.round(line.value))}원`}
-                  </text>
                 </g>
               );
             })}
@@ -973,50 +975,90 @@ export default function CandlestickChart({
                 />
               </g>
             )}
-          </svg>
-        ) : (
-          <div className="flex h-full items-center justify-center text-sm text-slate-300">
-            차트를 그릴 데이터가 부족합니다.
-          </div>
-        )}
-
-        {infoBoxVisible && latestCandle && (
-          <div className="pointer-events-none absolute left-3 top-3 z-10 rounded-lg bg-slate-900/90 px-3 py-2 text-[11px] text-slate-100 shadow-lg">
-            <p className="text-xs font-semibold text-white">{latestCandle.label}</p>
-            <div className="mt-1 grid grid-cols-2 gap-x-4 gap-y-1 text-[10px]">
-              <span className="text-slate-400">시가</span>
-              <span className="text-teal-200">
-                {formatNumber(latestCandle.open)}
-              </span>
-              <span className="text-slate-400">고가</span>
-              <span className="text-rose-200">
-                {formatNumber(latestCandle.high)}
-              </span>
-              <span className="text-slate-400">저가</span>
-              <span className="text-sky-200">
-                {formatNumber(latestCandle.low)}
-              </span>
-              <span className="text-slate-400">종가</span>
-              <span className="text-white">
-                {formatNumber(latestCandle.close)}
-              </span>
-              {Number.isFinite(latestCandle.volume) && (
-                <>
-                  <span className="text-slate-400">거래량</span>
-                  <span className="text-slate-200">
-                    {formatNumber(Math.round(latestCandle.volume))}
-                  </span>
-                </>
-              )}
+            </svg>
+          ) : (
+            <div className="flex h-full w-full items-center justify-center text-sm text-slate-300">
+              차트를 그릴 데이터가 부족합니다.
             </div>
-          </div>
-        )}
+          )}
 
-        {!isCrosshairActive && hasData && (
-          <div className="pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-slate-800/70 px-4 py-1 text-[10px] text-slate-200 shadow">
-            그래프를 터치하면 십자선을 표시합니다.
-          </div>
-        )}
+          {infoBoxVisible && latestCandle && (
+            <div className="pointer-events-none absolute left-3 top-3 z-10 rounded-lg bg-slate-900/90 px-3 py-2 text-[11px] text-slate-100 shadow-lg">
+              <p className="text-xs font-semibold text-white">{latestCandle.label}</p>
+              <div className="mt-1 grid grid-cols-2 gap-x-4 gap-y-1 text-[10px]">
+                <span className="text-slate-400">시가</span>
+                <span className="text-teal-200">
+                  {formatNumber(latestCandle.open)}
+                </span>
+                <span className="text-slate-400">고가</span>
+                <span className="text-rose-200">
+                  {formatNumber(latestCandle.high)}
+                </span>
+                <span className="text-slate-400">저가</span>
+                <span className="text-sky-200">
+                  {formatNumber(latestCandle.low)}
+                </span>
+                <span className="text-slate-400">종가</span>
+                <span className="text-white">
+                  {formatNumber(latestCandle.close)}
+                </span>
+                {Number.isFinite(latestCandle.volume) && (
+                  <>
+                    <span className="text-slate-400">거래량</span>
+                    <span className="text-slate-200">
+                      {formatNumber(Math.round(latestCandle.volume))}
+                    </span>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+
+          {!isCrosshairActive && hasData && (
+            <div className="pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-slate-800/70 px-4 py-1 text-[10px] text-slate-200 shadow">
+              그래프를 터치하면 십자선을 표시합니다.
+            </div>
+          )}
+        </div>
+
+        <div className="rounded-xl border border-slate-800/70 bg-slate-900/70 p-4 text-[11px] text-slate-200 sm:text-xs">
+          <p className="text-xs font-semibold text-white sm:text-sm">가격 정보</p>
+          {groupedLevelLines.length ? (
+            <ul className="mt-3 space-y-3">
+              {groupedLevelLines.map((group) => {
+                const meta = LEVEL_META[group.type];
+                return (
+                  <li key={group.type} className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className="h-2.5 w-2.5 rounded-full"
+                        style={{ backgroundColor: meta.color }}
+                        aria-hidden="true"
+                      />
+                      <span className="text-[11px] font-semibold text-slate-100 sm:text-xs">
+                        {meta.label}
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap gap-1 text-[10px] text-slate-300 sm:text-[11px]">
+                      {group.values.map((value) => (
+                        <span
+                          key={`${group.type}-${value}`}
+                          className="rounded-full bg-slate-800/70 px-2 py-1 font-medium text-slate-100"
+                        >
+                          {formatNumber(Math.round(value))}원
+                        </span>
+                      ))}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <p className="mt-3 text-[10px] text-slate-400 sm:text-[11px]">
+              표시할 가격 정보가 없습니다.
+            </p>
+          )}
+        </div>
       </div>
     </div>
   );
