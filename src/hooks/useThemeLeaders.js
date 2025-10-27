@@ -41,6 +41,8 @@ export default function useThemeLeaders() {
     }
 
     const normalizedItems = normalizeThemeLeadersItems(data.items);
+    // Firestore에 rank가 비어 있는 문서가 있어도 normalizeThemeLeadersItems가
+    // 순번 기반으로 1위부터 채워 넣어주므로, 화면에서는 항상 정렬된 순위를 표시합니다.
     setThemes(normalizedItems);
 
     const label =

@@ -10,12 +10,16 @@ export const normalizeThemeLeadersItems = (items) => {
     const normalizedName =
       typeof safeItem.name === "string" ? safeItem.name.trim() : "";
     const themeName = normalizedName || "theme";
+    const fallbackRank = Number.isFinite(safeItem.rank)
+      ? Number(safeItem.rank)
+      : index + 1;
 
     return {
       ...safeItem,
       themeCode: normalizedCode || safeItem.themeCode || "",
       id: normalizedCode || `${themeName}-${index}`,
       leaders: Array.isArray(safeItem.leaders) ? safeItem.leaders : [],
+      rank: fallbackRank,
     };
   });
 };

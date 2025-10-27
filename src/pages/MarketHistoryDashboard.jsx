@@ -3,6 +3,8 @@ import { Helmet } from "react-helmet";
 import { Link, useLocation } from "react-router-dom";
 import useSnapshotsHistory from "../hooks/useSnapshotsHistory";
 import useThemeLeaders from "../hooks/useThemeLeaders";
+import useThemeLeadersHistory from "../hooks/useThemeLeadersHistory";
+import ThemeRankTrendChart from "../components/ThemeRankTrendChart";
 
 const SECTION_CONFIG = [
   {
@@ -96,6 +98,13 @@ export default function MarketHistoryDashboard({ initialSection }) {
     setInfoMessage: setThemeInfo,
   } = useThemeLeaders();
 
+  const {
+    chartSeries: themeRankSeries,
+    highlights: themeHighlights,
+    isLoading: themeHistoryLoading,
+    errorMessage: themeHistoryError,
+  } = useThemeLeadersHistory({ topCount: 10, chartCount: 5 });
+
   const sections = [
     { ...SECTION_CONFIG[0], ...institutionHistory },
     { ...SECTION_CONFIG[1], ...foreignHistory },
@@ -119,6 +128,7 @@ export default function MarketHistoryDashboard({ initialSection }) {
       anchor: section.anchor,
       title: section.title,
     })),
+    { key: "theme-rank", anchor: "theme-rank-trend", title: "테마 순위 변화" },
     { key: "themes", anchor: "theme-leaderboard", title: "테마 리더보드" },
   ];
 
@@ -339,6 +349,88 @@ export default function MarketHistoryDashboard({ initialSection }) {
             </div>
           </section>
         ))}
+
+        <section
+          id="theme-rank-trend"
+          className="rounded-3xl border border-cyan-500/30 bg-gradient-to-br from-slate-950 via-slate-900 to-black p-8 shadow-2xl shadow-black/30"
+        >
+          <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
+            <div className="space-y-3">
+              <div className="inline-flex items-center gap-2 rounded-full bg-cyan-500/20 px-3 py-1 text-xs font-semibold text-cyan-200">
+                테마 순위 변화
+              </div>
+              <h2 className="text-2xl font-semibold text-white md:text-3xl">30일간 TOP5 테마 순위 흐름</h2>
+              <p className="text-sm text-gray-300 md:text-base">
+                순위가 가장 높은 테마 다섯 개의 일별 변화를 범프 차트로 확인하세요. 마우스를 올리면 날짜별 상승·보합·하락 종목 수와 이동평균 지표를 함께 보여줍니다.
+              </p>
+              {themeHistoryError ? (
+                <p className="text-xs text-red-300 md:text-sm">{themeHistoryError}</p>
+              ) : (
+                <p className="text-xs text-gray-400 md:text-sm">
+                  최근 스냅샷에서 순위를 산정할 수 없는 경우에도 프런트엔드에서 1위부터 자동으로 매겨지므로 과거 데이터 누락 시에도 흐름을 추적할 수 있습니다.
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div className="mt-8">
+            {themeHistoryLoading && themeRankSeries.length === 0 ? (
+              <p className="text-center text-sm text-gray-300">테마 순위 히스토리를 불러오는 중입니다...</p>
+            ) : themeRankSeries.length === 0 ? (
+              <p className="text-center text-sm text-gray-300">표시할 순위 히스토리 데이터가 없습니다.</p>
+            ) : (
+              <ThemeRankTrendChart series={themeRankSeries} />
+            )}
+          </div>
+
+          {themeHighlights && (themeHighlights.risingTrends.length > 0 || themeHighlights.rapidClimbers.length > 0) && (
+            <div className="mt-8 grid gap-4 md:grid-cols-2">
+              {themeHighlights.risingTrends.length > 0 && (
+                <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4">
+                  <h3 className="text-sm font-semibold text-emerald-200">상승 추세 테마</h3>
+                  <p className="mt-1 text-xs text-emerald-100/80">
+                    {/* Δrank ≤ -2 && 평균 수익률 > 0 조건을 만족하는 경우만 표시합니다. */}
+                    최근 3회 관측에서 순위가 2단계 이상 개선되고 평균 수익률이 플러스인 테마를 하이라이트합니다.
+                  </p>
+                  <ul className="mt-3 space-y-2 text-sm text-emerald-100">
+                    {themeHighlights.risingTrends.map((item) => (
+                      <li key={item.themeId} className="flex items-center justify-between rounded-lg bg-emerald-500/10 px-3 py-2">
+                        <span className="font-semibold">{item.themeName}</span>
+                        <span className="text-xs text-emerald-200/80">
+                          현재 순위 #{item.latestRank} · 평균 수익률
+                          {" "}
+                          {item.averageChangeRate != null
+                            ? `${item.averageChangeRate.toFixed(2)}%`
+                            : "자료 부족"}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {themeHighlights.rapidClimbers.length > 0 && (
+                <div className="rounded-2xl border border-purple-500/30 bg-purple-500/10 p-4">
+                  <h3 className="text-sm font-semibold text-purple-200">순위 급등 테마</h3>
+                  <p className="mt-1 text-xs text-purple-100/80">
+                    직전 대비 순위가 두 계단 이상 상승한 테마를 모아 변곡점을 빠르게 포착할 수 있도록 했습니다.
+                  </p>
+                  <ul className="mt-3 space-y-2 text-sm text-purple-100">
+                    {themeHighlights.rapidClimbers.map((item) => (
+                      <li key={item.themeId} className="flex items-center justify-between rounded-lg bg-purple-500/10 px-3 py-2">
+                        <span className="font-semibold">{item.themeName}</span>
+                        <span className="text-xs text-purple-200/80">
+                          현재 순위 #{item.latestRank} · 직전 대비 +
+                          {item.deltaRank.toFixed(0)}계단
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+        </section>
 
         <section
           id="theme-leaderboard"
