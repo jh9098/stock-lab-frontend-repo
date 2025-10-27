@@ -1,0 +1,44 @@
+name: One-time bulk stock price scrape
+
+on:
+  workflow_dispatch:
+    inputs:
+      pages:
+        description: "페이지 수 (기본값 10)"
+        required: false
+        default: '10'
+      scrape_delay:
+        description: "페이지 간 요청 지연(초 단위, 기본 0.3)"
+        required: false
+        default: '0.3'
+
+jobs:
+  bulk-scrape:
+    name: Scrape full 10 pages for all stocks
+    runs-on: ubuntu-latest
+    concurrency:
+      group: bulk-stock-scrape
+      cancel-in-progress: false
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run bulk scrape
+        env:
+          SERVICE_ACCOUNT_KEY_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          PAGES_TO_SCRAPE: ${{ github.event.inputs.pages || '10' }}
+          SCRAPE_DELAY_SECONDS: ${{ github.event.inputs.scrape_delay || '0.3' }}
+        run: python daily_price_uploader.py
