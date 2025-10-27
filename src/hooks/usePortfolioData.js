@@ -84,7 +84,6 @@ export default function usePortfolioData() {
   const computedStocks = useMemo(() => {
     const parseLegMetrics = (legs = []) => {
       const parsed = legs
-        .filter((leg) => isLegFilled(leg))
         .map((leg) => {
           const price = resolveLegPrice(leg);
           const weight = resolveLegWeight(leg);
