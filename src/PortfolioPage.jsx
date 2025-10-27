@@ -614,14 +614,20 @@ export default function PortfolioPage() {
     if (!priceSeries.length) {
       return [];
     }
-    const hasPlentyOfData = priceSeries.length >= CHART_MIN_DAYS;
-    const dataCount = hasPlentyOfData
-      ? Math.min(priceSeries.length, CHART_MAX_DAYS)
-      : priceSeries.length;
-
+    
+    // 최소 90일 이상의 데이터가 있으면 최대 365일까지 표시
+    // 90일 미만이면 있는 데이터 전부 표시
+    if (priceSeries.length < CHART_MIN_DAYS) {
+      // 데이터가 90일 미만이면 전부 표시
+      return priceSeries;
+    }
+    
+    // 데이터가 90일 이상이면 최대 365일까지만 표시
+    const dataCount = Math.min(priceSeries.length, CHART_MAX_DAYS);
     return priceSeries.slice(priceSeries.length - dataCount);
   }, [priceSeries]);
 
+  
   const isChartAvailable = chartSeries.length > 0;
   const chartRangeDays = chartSeries.length;
   const chartRangeDescription = !isChartAvailable

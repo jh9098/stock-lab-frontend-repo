@@ -82,61 +82,77 @@ export default function usePortfolioData() {
   }, [user]);
 
   const computedStocks = useMemo(() => {
+    // 매수/매도 leg들의 가중평균 가격과 총 비중을 계산하는 함수
     const parseLegMetrics = (legs = []) => {
-      const parsed = legs
-        .map((leg) => {
-          const price = resolveLegPrice(leg);
-          const weight = resolveLegWeight(leg);
+      const validLegs = [];
+      
+      // 각 leg에서 가격과 비중 추출
+      for (const leg of legs) {
+        const price = resolveLegPrice(leg);
+        const weight = resolveLegWeight(leg);
 
-          if (!Number.isFinite(price) || !Number.isFinite(weight) || weight <= 0) {
-            return null;
-          }
+        // 가격과 비중이 모두 유효한 숫자인지 확인
+        if (Number.isFinite(price) && price > 0 && Number.isFinite(weight) && weight > 0) {
+          validLegs.push({ price, weight });
+        }
+      }
 
-          return { price, weight };
-        })
-        .filter(Boolean);
-
-      if (!parsed.length) {
+      // 유효한 leg이 없으면 null 반환
+      if (validLegs.length === 0) {
         return { totalWeight: null, averagePrice: null };
       }
 
-      const totalWeight = parsed.reduce((acc, item) => acc + item.weight, 0);
-      const safeTotalWeight = Number.isFinite(totalWeight) && totalWeight > 0 ? totalWeight : null;
-      const averagePrice =
-        safeTotalWeight != null
-          ? parsed.reduce((acc, item) => acc + item.price * item.weight, 0) /
-            safeTotalWeight
-          : null;
+      // 총 비중 계산
+      let totalWeight = 0;
+      for (const leg of validLegs) {
+        totalWeight += leg.weight;
+      }
+
+      // 총 비중이 유효하지 않으면 null 반환
+      if (!Number.isFinite(totalWeight) || totalWeight <= 0) {
+        return { totalWeight: null, averagePrice: null };
+      }
+
+      // 가중평균 가격 계산: (가격1 × 비중1 + 가격2 × 비중2 + ...) / 총비중
+      let weightedSum = 0;
+      for (const leg of validLegs) {
+        weightedSum += leg.price * leg.weight;
+      }
+
+      const averagePrice = weightedSum / totalWeight;
 
       return {
-        totalWeight: safeTotalWeight,
-        averagePrice: Number.isFinite(averagePrice) ? averagePrice : null,
+        totalWeight: totalWeight,
+        averagePrice: Number.isFinite(averagePrice) && averagePrice > 0 ? averagePrice : null,
       };
     };
 
     return stocks.map((stock) => {
-      const buyLegs = stock.buyLegs ?? [];
-      const sellLegs = stock.sellLegs ?? [];
+      const buyLegs = Array.isArray(stock.buyLegs) ? stock.buyLegs : [];
+      const sellLegs = Array.isArray(stock.sellLegs) ? stock.sellLegs : [];
 
+      // 완료된 leg 개수 계산
       const buyCompleted = buyLegs.filter((leg) => isLegFilled(leg)).length;
       const sellCompleted = sellLegs.filter((leg) => isLegFilled(leg)).length;
-      const buyProgress = buyLegs.length
-        ? buyCompleted / buyLegs.length
-        : 0;
-      const sellProgress = sellLegs.length
-        ? sellCompleted / sellLegs.length
-        : 0;
+      
+      // 진행률 계산
+      const buyProgress = buyLegs.length > 0 ? buyCompleted / buyLegs.length : 0;
+      const sellProgress = sellLegs.length > 0 ? sellCompleted / sellLegs.length : 0;
 
+      // 매수/매도 평균가격과 비중 계산
       const buyMetrics = parseLegMetrics(buyLegs);
       const sellMetrics = parseLegMetrics(sellLegs);
 
-      const autoExpectedReturn =
-        buyMetrics.averagePrice != null && sellMetrics.averagePrice != null
-          ? ((sellMetrics.averagePrice - buyMetrics.averagePrice) /
-              buyMetrics.averagePrice) *
-            100
-          : null;
+      // 자동 기대수익률 계산
+      let autoExpectedReturn = null;
+      if (buyMetrics.averagePrice != null && 
+          buyMetrics.averagePrice > 0 && 
+          sellMetrics.averagePrice != null && 
+          sellMetrics.averagePrice > 0) {
+        autoExpectedReturn = ((sellMetrics.averagePrice - buyMetrics.averagePrice) / buyMetrics.averagePrice) * 100;
+      }
 
+      // 기존 aggregatedReturn과 비교
       const existingAggregatedReturn = Number(stock.aggregatedReturn);
       const aggregatedReturn = Number.isFinite(autoExpectedReturn)
         ? autoExpectedReturn
@@ -154,9 +170,7 @@ export default function usePortfolioData() {
         autoAverageBuyWeight: buyMetrics.totalWeight,
         autoAverageSellPrice: sellMetrics.averagePrice,
         autoAverageSellWeight: sellMetrics.totalWeight,
-        autoExpectedReturn: Number.isFinite(autoExpectedReturn)
-          ? autoExpectedReturn
-          : null,
+        autoExpectedReturn: autoExpectedReturn,
       };
     });
   }, [stocks]);
