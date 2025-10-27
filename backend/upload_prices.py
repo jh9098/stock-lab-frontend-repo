@@ -1,10 +1,14 @@
+from __future__ import annotations
+
+import sys
+import time
+from typing import Dict, List, Tuple
+
 import pandas as pd
 import requests
 from bs4 import BeautifulSoup
 import firebase_admin
 from firebase_admin import credentials, firestore
-import time
-import sys
 
 # --- 설정 부분 ---
 
@@ -93,28 +97,81 @@ def scrape_daily_prices(ticker):
     return prices
 
 
+def merge_prices(
+    existing_prices: List[Dict[str, int | str]],
+    new_prices: List[Dict[str, int | str]],
+) -> Tuple[List[Dict[str, int | str]], int]:
+    """
+    기존 데이터와 신규 데이터를 날짜 기준으로 병합합니다.
+
+    같은 날짜가 존재하면 최신 스크래핑 데이터로 갱신하고,
+    변경 건수를 함께 반환합니다.
+    """
+
+    merged: Dict[str, Dict[str, int | str]] = {}
+    for record in existing_prices:
+        date_key = str(record.get('date', '')).strip()
+        if date_key:
+            merged[date_key] = record
+
+    change_count = 0
+    for record in new_prices:
+        date_key = str(record.get('date', '')).strip()
+        if not date_key:
+            continue
+
+        if date_key not in merged or merged[date_key] != record:
+            merged[date_key] = record
+            change_count += 1
+
+    if change_count == 0:
+        # 기존 데이터와 완전히 동일하면 정렬만 수행하지 않고 기존 순서를 유지합니다.
+        return existing_prices, 0
+
+    # 날짜 기준 내림차순 정렬 (최근 데이터가 앞으로 오도록)
+    merged_list = sorted(
+        merged.values(),
+        key=lambda item: str(item.get('date', '')),
+        reverse=True,
+    )
+    return merged_list, change_count
+
+
 def upload_to_firestore(ticker, name, prices):
-    """
-    스크래핑한 데이터를 Firestore에 업로드합니다.
-    """
+    """스크래핑한 데이터를 Firestore에 누적 저장합니다."""
+
     if not prices:
         print(f"    - [{ticker}] {name}: 업로드할 데이터가 없습니다. 건너뜁니다.")
         return
 
-    # Firestore에 저장할 데이터 구조
+    doc_ref = db.collection('stock_prices').document(ticker)
+
+    try:
+        snapshot = doc_ref.get()
+        existing_data = snapshot.to_dict() if snapshot.exists else {}
+    except Exception as e:
+        existing_data = {}
+        print(f"    - [{ticker}] {name}: 기존 데이터 조회 중 오류 발생: {e}")
+
+    existing_prices = list(existing_data.get('prices', [])) if existing_data else []
+    merged_prices, change_count = merge_prices(existing_prices, prices)
+
+    if change_count == 0:
+        print(f"    - [{ticker}] {name}: 새로운 데이터가 없어 건너뜁니다.")
+        return
+
     data = {
         'ticker': ticker,
         'name': name,
-        'prices': prices,
-        'updatedAt': firestore.SERVER_TIMESTAMP
+        'prices': merged_prices,
+        'updatedAt': firestore.SERVER_TIMESTAMP,
     }
-    
-    # 'stock_prices' 컬렉션에 종목 코드를 문서 ID로 사용하여 저장
-    doc_ref = db.collection('stock_prices').document(ticker)
-    
+
     try:
-        doc_ref.set(data)
-        print(f"    - [{ticker}] {name}: {len(prices)}일치 데이터 Firestore 업로드 완료.")
+        doc_ref.set(data, merge=True)
+        print(
+            f"    - [{ticker}] {name}: {change_count}건 갱신, 총 {len(merged_prices)}일치 데이터 누적 저장 완료."
+        )
     except Exception as e:
         print(f"    - [{ticker}] {name}: Firestore 업로드 중 오류 발생: {e}")
 
