@@ -467,23 +467,28 @@ export default function PortfolioPage() {
   const combinedPriceHistory = useMemo(() => {
     const fetched = Array.isArray(fetchedPriceHistory) ? fetchedPriceHistory : [];
     const fallback = Array.isArray(fallbackPriceHistory) ? fallbackPriceHistory : [];
-
+  
+    console.log(`Fetched prices: ${fetched.length}, Fallback prices: ${fallback.length}`); // 디버깅
+  
     if (!fetched.length && !fallback.length) {
       return [];
     }
-
+  
     const merged = new Map();
-    const appendRecords = (records) => {
+    
+    const appendRecords = (records, source) => {
+      console.log(`Processing ${records.length} records from ${source}`); // 디버깅
+      
       records.forEach((item) => {
         if (!item || typeof item !== "object") {
           return;
         }
-
+  
         const dateKey = resolveDateKey(item);
         if (!dateKey) {
           return;
         }
-
+  
         const existing = merged.get(dateKey) ?? {};
         const normalisedDateValue =
           normaliseDateValue(
@@ -496,27 +501,32 @@ export default function PortfolioPage() {
               item.time ??
               dateKey
           ) ?? normaliseDateValue(existing.dateValue ?? existing.date ?? dateKey);
-
+  
         const mergedRecord = {
           ...existing,
           ...item,
         };
-
+  
         if (!mergedRecord.date) {
           mergedRecord.date = dateKey;
         }
         if (normalisedDateValue) {
           mergedRecord.dateValue = normalisedDateValue;
         }
-
+  
         merged.set(dateKey, mergedRecord);
       });
     };
-
-    appendRecords(fallback);
-    appendRecords(fetched);
-
-    return Array.from(merged.values());
+  
+    // fallback 먼저 처리
+    appendRecords(fallback, 'fallback');
+    // fetched를 나중에 처리하여 덮어쓰기
+    appendRecords(fetched, 'fetched');
+  
+    const result = Array.from(merged.values());
+    console.log(`Combined price history: ${result.length} records`); // 디버깅
+    
+    return result;
   }, [fetchedPriceHistory, fallbackPriceHistory]);
 
   const priceLoading = tickerLookupPending || fetchedPriceLoading;
@@ -530,85 +540,102 @@ export default function PortfolioPage() {
     const rawHistory = Array.isArray(combinedPriceHistory)
       ? combinedPriceHistory
       : [];
-
+  
     if (!rawHistory.length) {
       return [];
     }
-
+  
     const parseNumeric = (value) => {
       if (value === "" || value == null) {
         return null;
       }
-
+  
       if (typeof value === "number") {
         return Number.isFinite(value) ? value : null;
       }
-
+  
       const text = String(value).trim();
       if (!text) {
         return null;
       }
-
+  
       const normalised = text.replace(/[^0-9+\-.]/g, "");
       if (!normalised || normalised === "." || normalised === "-" || normalised === "+") {
         return null;
       }
-
+  
       const numeric = Number(normalised);
       return Number.isFinite(numeric) ? numeric : null;
     };
-
-    return (Array.isArray(rawHistory) ? rawHistory : [])
-      .map((item) => {
-        const dateValue =
-          normaliseDateValue(
-            item.dateValue ??
-              item.date ??
-              item.timestamp ??
-              item.tradeDate ??
-              item.tradingDate ??
-              item.datetime ??
-              item.time
-          ) ?? null;
-        const close = parseNumeric(
-          item.close ?? item.price ?? item.closePrice ?? item.endPrice ?? item.c
-        );
-
-        if (close == null || !dateValue) {
-          return null;
-        }
-
-        const open =
-          parseNumeric(
-            item.open ??
-              item.openPrice ??
-              item.startPrice ??
-              item.o ??
-              item.firstPrice ??
-              item.beginPrice
-          ) ?? close;
-        const high =
-          parseNumeric(
-            item.high ?? item.highPrice ?? item.h ?? item.maxPrice ?? item.highest
-          ) ?? Math.max(open, close);
-        const low =
-          parseNumeric(
-            item.low ?? item.lowPrice ?? item.l ?? item.minPrice ?? item.lowest
-          ) ?? Math.min(open, close);
-
-        return {
-          ...item,
-          open,
-          high,
-          low,
-          close,
-          date: item.date ?? item.timestamp ?? resolveDateKey(item) ?? dateValue.toISOString().slice(0, 10),
-          dateValue,
-        };
-      })
-      .filter(Boolean)
-      .sort((a, b) => a.dateValue - b.dateValue);
+  
+    // 모든 데이터를 처리 (필터링하지 않음)
+    const processed = rawHistory.map((item) => {
+      const dateValue =
+        normaliseDateValue(
+          item.dateValue ??
+            item.date ??
+            item.timestamp ??
+            item.tradeDate ??
+            item.tradingDate ??
+            item.datetime ??
+            item.time
+        ) ?? null;
+      const close = parseNumeric(
+        item.close ?? item.price ?? item.closePrice ?? item.endPrice ?? item.c
+      );
+  
+      if (close == null || !dateValue) {
+        return null;
+      }
+  
+      const open =
+        parseNumeric(
+          item.open ??
+            item.openPrice ??
+            item.startPrice ??
+            item.o ??
+            item.firstPrice ??
+            item.beginPrice
+        ) ?? close;
+      const high =
+        parseNumeric(
+          item.high ?? item.highPrice ?? item.h ?? item.maxPrice ?? item.highest
+        ) ?? Math.max(open, close);
+      const low =
+        parseNumeric(
+          item.low ?? item.lowPrice ?? item.l ?? item.minPrice ?? item.lowest
+        ) ?? Math.min(open, close);
+  
+      return {
+        ...item,
+        open,
+        high,
+        low,
+        close,
+        date: item.date ?? item.timestamp ?? resolveDateKey(item) ?? dateValue.toISOString().slice(0, 10),
+        dateValue,
+      };
+    });
+  
+    // null 제거 및 날짜순 정렬
+    const filtered = processed.filter(Boolean);
+    const sorted = filtered.sort((a, b) => a.dateValue - b.dateValue);
+    
+    console.log(`총 가격 데이터: ${sorted.length}개`); // 디버깅용
+    
+    return sorted;
   }, [combinedPriceHistory]);
+  useEffect(() => {
+    if (selectedStock) {
+      console.log('=== 가격 데이터 디버깅 ===');
+      console.log('selectedStock.priceHistory:', selectedStock.priceHistory?.length ?? 0);
+      console.log('fallbackPriceHistory:', fallbackPriceHistory.length);
+      console.log('fetchedPriceHistory:', fetchedPriceHistory.length);
+      console.log('combinedPriceHistory:', combinedPriceHistory.length);
+      console.log('priceSeries:', priceSeries.length);
+      console.log('chartSeries:', chartSeries.length);
+    }
+  }, [selectedStock, fallbackPriceHistory, fetchedPriceHistory, combinedPriceHistory, priceSeries, chartSeries]);
 
   const chartSeries = useMemo(() => {
     if (!priceSeries.length) {
@@ -627,7 +654,7 @@ export default function PortfolioPage() {
     return priceSeries.slice(priceSeries.length - dataCount);
   }, [priceSeries]);
 
-  
+
   const isChartAvailable = chartSeries.length > 0;
   const chartRangeDays = chartSeries.length;
   const chartRangeDescription = !isChartAvailable
