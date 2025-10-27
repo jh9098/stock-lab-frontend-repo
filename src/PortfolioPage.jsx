@@ -625,17 +625,6 @@ export default function PortfolioPage() {
     
     return sorted;
   }, [combinedPriceHistory]);
-  useEffect(() => {
-    if (selectedStock) {
-      console.log('=== 가격 데이터 디버깅 ===');
-      console.log('selectedStock.priceHistory:', selectedStock.priceHistory?.length ?? 0);
-      console.log('fallbackPriceHistory:', fallbackPriceHistory.length);
-      console.log('fetchedPriceHistory:', fetchedPriceHistory.length);
-      console.log('combinedPriceHistory:', combinedPriceHistory.length);
-      console.log('priceSeries:', priceSeries.length);
-      console.log('chartSeries:', chartSeries.length);
-    }
-  }, [selectedStock, fallbackPriceHistory, fetchedPriceHistory, combinedPriceHistory, priceSeries, chartSeries]);
 
   const chartSeries = useMemo(() => {
     if (!priceSeries.length) {
