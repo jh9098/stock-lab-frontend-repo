@@ -9,6 +9,80 @@ import { isLegFilled, resolveLegPrice } from "./lib/legUtils";
 
 const CandlestickChart = lazy(() => import("./components/CandlestickChart"));
 
+const normaliseDateValue = (value) => {
+  if (!value) {
+    return null;
+  }
+
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : value;
+  }
+
+  if (typeof value?.toDate === "function") {
+    try {
+      const converted = value.toDate();
+      return converted instanceof Date && !Number.isNaN(converted.getTime())
+        ? converted
+        : null;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  const text = String(value).trim();
+  if (!text) {
+    return null;
+  }
+
+  const explicitMatch = text.match(/^(\d{4})[-./]?(\d{1,2})[-./]?(\d{1,2})/);
+  if (explicitMatch) {
+    const [, year, month, day] = explicitMatch;
+    const candidate = new Date(Number(year), Number(month) - 1, Number(day));
+    if (!Number.isNaN(candidate.getTime())) {
+      return candidate;
+    }
+  }
+
+  const digitsOnly = text.replace(/[^0-9]/g, "");
+  if (digitsOnly.length === 8) {
+    const year = parseInt(digitsOnly.slice(0, 4), 10);
+    const month = parseInt(digitsOnly.slice(4, 6), 10);
+    const day = parseInt(digitsOnly.slice(6, 8), 10);
+    const candidate = new Date(year, month - 1, day);
+    if (!Number.isNaN(candidate.getTime())) {
+      return candidate;
+    }
+  }
+
+  const fallback = new Date(value);
+  return Number.isNaN(fallback.getTime()) ? null : fallback;
+};
+
+const resolveDateKey = (item) => {
+  if (!item || typeof item !== "object") {
+    return null;
+  }
+
+  const dateCandidates = [
+    item.dateValue,
+    item.date,
+    item.timestamp,
+    item.tradeDate,
+    item.tradingDate,
+    item.datetime,
+    item.time,
+  ];
+
+  for (const candidate of dateCandidates) {
+    const normalised = normaliseDateValue(candidate);
+    if (normalised) {
+      return normalised.toISOString().slice(0, 10);
+    }
+  }
+
+  return null;
+};
+
 function ProgressBar({ value }) {
   const percentage = Math.max(0, Math.min(100, Math.round((value ?? 0) * 100)));
 
@@ -388,10 +462,58 @@ export default function PortfolioPage() {
   }, [selectedStock]);
 
   const combinedPriceHistory = useMemo(() => {
-    if (Array.isArray(fetchedPriceHistory) && fetchedPriceHistory.length) {
-      return fetchedPriceHistory;
+    const fetched = Array.isArray(fetchedPriceHistory) ? fetchedPriceHistory : [];
+    const fallback = Array.isArray(fallbackPriceHistory) ? fallbackPriceHistory : [];
+
+    if (!fetched.length && !fallback.length) {
+      return [];
     }
-    return fallbackPriceHistory;
+
+    const merged = new Map();
+    const appendRecords = (records) => {
+      records.forEach((item) => {
+        if (!item || typeof item !== "object") {
+          return;
+        }
+
+        const dateKey = resolveDateKey(item);
+        if (!dateKey) {
+          return;
+        }
+
+        const existing = merged.get(dateKey) ?? {};
+        const normalisedDateValue =
+          normaliseDateValue(
+            item.dateValue ??
+              item.date ??
+              item.timestamp ??
+              item.tradeDate ??
+              item.tradingDate ??
+              item.datetime ??
+              item.time ??
+              dateKey
+          ) ?? normaliseDateValue(existing.dateValue ?? existing.date ?? dateKey);
+
+        const mergedRecord = {
+          ...existing,
+          ...item,
+        };
+
+        if (!mergedRecord.date) {
+          mergedRecord.date = dateKey;
+        }
+        if (normalisedDateValue) {
+          mergedRecord.dateValue = normalisedDateValue;
+        }
+
+        merged.set(dateKey, mergedRecord);
+      });
+    };
+
+    appendRecords(fallback);
+    appendRecords(fetched);
+
+    return Array.from(merged.values());
   }, [fetchedPriceHistory, fallbackPriceHistory]);
 
   const priceLoading = tickerLookupPending || fetchedPriceLoading;
@@ -409,42 +531,6 @@ export default function PortfolioPage() {
     if (!rawHistory.length) {
       return [];
     }
-    
-    const toDate = (value) => {
-      if (value == null) return null;
-      if (value instanceof Date) {
-        return !Number.isNaN(value.getTime()) ? value : null;
-      }
-      if (typeof value.toDate === 'function') {
-        try {
-          const d = value.toDate();
-          return d instanceof Date && !Number.isNaN(d.getTime()) ? d : null;
-        } catch (e) {
-          return null;
-        }
-      }
-
-      const text = String(value).trim();
-      const match = text.match(/^(\d{4})[-./]?(\d{1,2})[-./]?(\d{1,2})/);
-
-      if (match) {
-        const [, year, month, day] = match;
-        const d = new Date(Number(year), Number(month) - 1, Number(day));
-        if (!Number.isNaN(d.getTime())) return d;
-      }
-      
-      const digitsOnly = text.replace(/[^0-9]/g, "");
-      if (digitsOnly.length === 8) {
-          const year = parseInt(digitsOnly.slice(0, 4), 10);
-          const month = parseInt(digitsOnly.slice(4, 6), 10);
-          const day = parseInt(digitsOnly.slice(6, 8), 10);
-          const d = new Date(year, month - 1, day);
-          if (!Number.isNaN(d.getTime())) return d;
-      }
-
-      const fallback = new Date(value);
-      return !Number.isNaN(fallback.getTime()) ? fallback : null;
-    };
 
     const parseNumeric = (value) => {
       if (value === "" || value == null) {
@@ -469,12 +555,18 @@ export default function PortfolioPage() {
       return Number.isFinite(numeric) ? numeric : null;
     };
 
-    return (Array.isArray(rawHistory)
-      ? rawHistory
-      : []
-    )
+    return (Array.isArray(rawHistory) ? rawHistory : [])
       .map((item) => {
-        const dateValue = toDate(item.date ?? item.timestamp);
+        const dateValue =
+          normaliseDateValue(
+            item.dateValue ??
+              item.date ??
+              item.timestamp ??
+              item.tradeDate ??
+              item.tradingDate ??
+              item.datetime ??
+              item.time
+          ) ?? null;
         const close = parseNumeric(
           item.close ?? item.price ?? item.closePrice ?? item.endPrice ?? item.c
         );
@@ -507,7 +599,7 @@ export default function PortfolioPage() {
           high,
           low,
           close,
-          date: item.date ?? item.timestamp ?? dateValue.toISOString().slice(0, 10),
+          date: item.date ?? item.timestamp ?? resolveDateKey(item) ?? dateValue.toISOString().slice(0, 10),
           dateValue,
         };
       })

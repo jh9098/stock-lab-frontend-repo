@@ -27,22 +27,92 @@ export const isLegFilled = (leg) => {
     leg.state,
     leg.currentStatus,
     leg.fillStatus,
+    leg.executionResult,
+    leg.result,
+    leg.outcome,
   ]
     .map((candidate) => toLowerText(candidate))
     .find((text) => text);
 
   if (statusText) {
-    if (statusText.includes("filled") || statusText.includes("체결")) {
+    const compact = statusText.replace(/\s+/g, "");
+    const hasFilledKeyword =
+      (statusText.includes("filled") && !statusText.includes("unfilled")) ||
+      (statusText.includes("complete") && !statusText.includes("incomplete")) ||
+      (statusText.includes("체결") && !compact.includes("미체결")) ||
+      (statusText.includes("완료") && !statusText.includes("미완"));
+
+    if (hasFilledKeyword) {
       return true;
     }
+
+    const reachedKeywordPresent =
+      !statusText.includes("unreached") &&
+      !statusText.includes("not reached") &&
+      (statusText.includes("reached") ||
+        statusText.includes("target hit") ||
+        statusText.includes("target_hit") ||
+        compact.includes("목표가도달") ||
+        compact.includes("목표가달성") ||
+        compact.includes("목표달성") ||
+        compact.includes("타겟도달") ||
+        compact.includes("타겟달성"));
+
+    if (reachedKeywordPresent) {
+      return true;
+    }
+  }
+
+  const completionFlags = [
+    leg.completed,
+    leg.isCompleted,
+    leg.done,
+    leg.filledLeg,
+    leg.targetReached,
+    leg.hitTarget,
+    leg.reachedTarget,
+    leg.executionCompleted,
+    leg.executionComplete,
+    leg.reached,
+  ];
+
+  if (completionFlags.some((value) => value === true)) {
+    return true;
   }
 
   return false;
 };
 
 const numericFromCandidates = (candidates = []) => {
+  const toNumeric = (value) => {
+    if (value === null || value === undefined) {
+      return null;
+    }
+
+    if (typeof value === "number") {
+      return Number.isFinite(value) ? value : null;
+    }
+
+    if (typeof value === "bigint") {
+      return Number(value);
+    }
+
+    const text = normaliseText(value).trim();
+    if (!text) {
+      return null;
+    }
+
+    const normalised = text.replace(/[^0-9+\-.]/g, "");
+    if (!normalised || /^[-+]?\.?$/.test(normalised)) {
+      return null;
+    }
+
+    const numeric = Number(normalised);
+    return Number.isFinite(numeric) ? numeric : null;
+  };
+
   for (const candidate of candidates) {
-    const numeric = Number(candidate);
+    const numeric = toNumeric(candidate);
     if (Number.isFinite(numeric)) {
       return numeric;
     }
