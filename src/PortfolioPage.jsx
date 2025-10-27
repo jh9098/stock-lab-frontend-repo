@@ -1180,6 +1180,20 @@ useEffect(() => {
   const latestDateText = latestPoint?.date ?? selectedStock?.lastPriceDate ?? "-";
   const marketLabel = selectedStock?.market ?? "KRX";
 
+  useEffect(() => {
+    if (!isChartModalOpen) {
+      return undefined;
+    }
+
+    const { style } = document.body;
+    const previousOverflow = style.overflow;
+    style.overflow = "hidden";
+
+    return () => {
+      style.overflow = previousOverflow;
+    };
+  }, [isChartModalOpen]);
+
   return (
     <div className="min-h-screen bg-gray-900 text-gray-100">
       <Helmet>
@@ -1581,39 +1595,97 @@ useEffect(() => {
 
         {isChartModalOpen && (
           <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-6"
             role="dialog"
             aria-modal="true"
             onClick={() => setChartModalOpen(false)}
           >
             <div
-              className="w-full max-w-5xl overflow-hidden rounded-xl bg-slate-900 shadow-2xl"
+              className="flex h-full w-full max-h-[92vh] max-w-6xl flex-col overflow-hidden rounded-2xl bg-slate-950 shadow-2xl"
               onClick={(event) => event.stopPropagation()}
+              onWheelCapture={(event) => event.stopPropagation()}
             >
-              <div className="flex items-center justify-between border-b border-slate-700 px-5 py-3">
-                <div>
-                  <h3 className="text-lg font-semibold text-white">차트 보기</h3>
-                  <p className="text-xs text-slate-400">
-                    {selectedStock?.name} ({selectedStock?.ticker}) · {chartRangeDescription}
-                  </p>
+              <div className="flex items-center justify-between border-b border-slate-800 bg-slate-900/70 px-6 py-4">
+                <div className="space-y-1">
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400">
+                    <span className="rounded bg-slate-800 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-sky-300">
+                      {marketLabel}
+                    </span>
+                    <span>{chartRangeDescription}</span>
+                  </div>
+                  <h3 className="text-lg font-semibold text-white">
+                    {selectedStock?.name} ({selectedStock?.ticker})
+                  </h3>
                 </div>
                 <button
                   type="button"
                   onClick={() => setChartModalOpen(false)}
-                  className="rounded bg-slate-700 px-3 py-1 text-sm font-semibold text-slate-100 transition hover:bg-slate-600"
+                  className="rounded bg-slate-800 px-3 py-1.5 text-sm font-semibold text-slate-100 transition hover:bg-slate-700"
                 >
                   닫기
                 </button>
               </div>
-              <div className="h-[26rem] w-full bg-[#0B1120]">
+
+              <div className="grid gap-6 border-b border-slate-900/80 bg-slate-900/40 px-6 py-4 text-xs text-slate-200 sm:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)] sm:text-sm">
+                <div className="space-y-2">
+                  <div className="flex flex-wrap items-baseline gap-3 text-white">
+                    <span className="text-3xl font-bold sm:text-4xl">
+                      {formatPriceValue(validLatestClose)}
+                    </span>
+                    <span className={`text-sm font-semibold sm:text-base ${priceChangeClass}`}>
+                      {differenceText}
+                      {differencePercentText ? ` (${differencePercentText})` : ""}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 sm:text-xs">
+                    {latestDateText && latestDateText !== "-"
+                      ? `기준 ${latestDateText}`
+                      : "기준 정보 없음"}
+                  </p>
+                  <div className="grid grid-cols-2 gap-3 text-[11px] text-slate-300 sm:text-xs md:max-w-md">
+                    <div>
+                      <p className="text-slate-500">시가</p>
+                      <p className="font-semibold text-slate-100">
+                        {formatPriceValue(latestOpen)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-slate-500">고가</p>
+                      <p className="font-semibold text-slate-100">
+                        {formatPriceValue(latestHigh)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-slate-500">저가</p>
+                      <p className="font-semibold text-slate-100">
+                        {formatPriceValue(latestLow)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-slate-500">거래량</p>
+                      <p className="font-semibold text-slate-100">{latestVolumeText}</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-3 text-[11px] sm:text-xs">
+                  <p className="font-semibold text-slate-100">차트 사용법</p>
+                  <ul className="mt-2 space-y-1 text-slate-400">
+                    <li>마우스 휠 또는 트랙패드로 확대/축소할 수 있어요.</li>
+                    <li>드래그하면 차트를 좌우로 이동할 수 있어요.</li>
+                    <li>클릭하거나 터치하면 십자선을 고정해 세부 수치를 확인할 수 있어요.</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div className="flex flex-1 flex-col bg-[#0B1120]">
                 {priceLoading ? (
-                  <div className="flex h-full items-center justify-center text-sm text-slate-300">
+                  <div className="flex flex-1 items-center justify-center text-sm text-slate-300">
                     차트 데이터를 불러오는 중입니다...
                   </div>
                 ) : isChartAvailable ? (
                   <Suspense
                     fallback={
-                      <div className="flex h-full items-center justify-center text-sm text-slate-300">
+                      <div className="flex flex-1 items-center justify-center text-sm text-slate-300">
                         차트 모듈을 불러오는 중입니다...
                       </div>
                     }
@@ -1627,13 +1699,14 @@ useEffect(() => {
                     />
                   </Suspense>
                 ) : (
-                  <div className="flex h-full items-center justify-center text-sm text-slate-300">
+                  <div className="flex flex-1 items-center justify-center text-sm text-slate-300">
                     차트 데이터가 없습니다.
                   </div>
                 )}
               </div>
+
               {(buyTargetLines.length || sellTargetLines.length) && (
-                <div className="flex flex-wrap gap-3 border-t border-slate-800 px-5 py-3 text-[11px] text-slate-300 sm:text-xs">
+                <div className="flex flex-wrap gap-3 border-t border-slate-900/70 bg-slate-950 px-6 py-4 text-[11px] text-slate-300 sm:text-xs">
                   {buyTargetLines.length > 0 && (
                     <span className="flex items-center gap-2">
                       <span className="h-2 w-2 rounded-full" style={{ backgroundColor: "#0EA5E9" }} />
