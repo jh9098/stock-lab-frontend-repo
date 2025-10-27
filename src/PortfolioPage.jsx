@@ -7,6 +7,9 @@ import useAuth from "./useAuth";
 import useStockPrices from "./hooks/useStockPrices";
 import { isLegFilled, resolveLegPrice } from "./lib/legUtils";
 
+const CHART_MIN_DAYS = 90;
+const CHART_MAX_DAYS = 365;
+
 const CandlestickChart = lazy(() => import("./components/CandlestickChart"));
 
 const normaliseDateValue = (value) => {
@@ -451,7 +454,7 @@ export default function PortfolioPage() {
 
   const { prices: fetchedPriceHistory, loading: fetchedPriceLoading } = useStockPrices(
     activePriceTicker,
-    { days: 180, realtime: true }
+    { days: CHART_MAX_DAYS, realtime: true }
   );
 
   const fallbackPriceHistory = useMemo(() => {
@@ -611,12 +614,21 @@ export default function PortfolioPage() {
     if (!priceSeries.length) {
       return [];
     }
-    // 기본적으로 최근 90거래일 데이터를 보여줍니다. 데이터가 부족하면 전체 데이터를 사용합니다.
-    const dataCount = Math.min(priceSeries.length, 90);
+    const hasPlentyOfData = priceSeries.length >= CHART_MIN_DAYS;
+    const dataCount = hasPlentyOfData
+      ? Math.min(priceSeries.length, CHART_MAX_DAYS)
+      : priceSeries.length;
+
     return priceSeries.slice(priceSeries.length - dataCount);
   }, [priceSeries]);
 
   const isChartAvailable = chartSeries.length > 0;
+  const chartRangeDays = chartSeries.length;
+  const chartRangeDescription = !isChartAvailable
+    ? "데이터 없음"
+    : chartRangeDays >= CHART_MAX_DAYS
+    ? "최근 1년 데이터"
+    : `최근 ${chartRangeDays}일 데이터`;
   const chartButtonDisabled = priceLoading || !isChartAvailable;
   const chartButtonLabel = priceLoading
     ? "차트 불러오는 중..."
@@ -1330,7 +1342,9 @@ export default function PortfolioPage() {
                     )}
                   </div>
                   <div className="px-4 py-3 text-[11px] text-slate-400 sm:text-sm">
-                    최근 90일 차트는 팝업으로 제공됩니다. 버튼을 눌러 상세한 캔들 차트를 확인하세요.
+                    {chartRangeDays >= CHART_MIN_DAYS
+                      ? `${chartRangeDescription}를 팝업으로 제공합니다. 버튼을 눌러 상세한 캔들 차트를 확인하세요.`
+                      : "보유 중인 차트 데이터가 적습니다. 버튼을 눌러 상세한 캔들 차트를 확인하세요."}
                   </div>
                 </div>
                 <div className="grid gap-3 sm:grid-cols-3">
@@ -1583,7 +1597,7 @@ export default function PortfolioPage() {
                 <div>
                   <h3 className="text-lg font-semibold text-white">차트 보기</h3>
                   <p className="text-xs text-slate-400">
-                    {selectedStock?.name} ({selectedStock?.ticker}) · 최근 90일 데이터
+                    {selectedStock?.name} ({selectedStock?.ticker}) · {chartRangeDescription}
                   </p>
                 </div>
                 <button
