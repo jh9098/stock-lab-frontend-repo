@@ -13,6 +13,7 @@ import PopularStocksHistory from "./pages/PopularStocksHistory";
 import ForeignNetBuyHistory from "./pages/ForeignNetBuyHistory";
 import InstitutionNetBuyHistory from "./pages/InstitutionNetBuyHistory";
 import MarketHistoryDashboard from "./pages/MarketHistoryDashboard";
+import ThemeRankHistoryPage from "./pages/ThemeRankHistoryPage";
 import AdminLayout from "./admin/AdminLayout";
 import AdminDashboard from "./admin/sections/AdminDashboard";
 import BlogManager from "./admin/sections/BlogManager";
@@ -108,6 +109,14 @@ function App() {
           element={
             <AccessGuard pathKey="/market-history">
               <MarketHistoryDashboard />
+            </AccessGuard>
+          }
+        />
+        <Route
+          path="/theme-rank-history"
+          element={
+            <AccessGuard pathKey="/theme-rank-history">
+              <ThemeRankHistoryPage />
             </AccessGuard>
           }
         />

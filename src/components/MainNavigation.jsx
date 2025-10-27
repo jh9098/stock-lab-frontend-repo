@@ -8,6 +8,7 @@ const NAV_SECTIONS = [
     items: [
       { label: "인사이트 블로그", to: "/market-insights" },
       { label: "수급·인기·테마 대시보드", to: "/market-history" },
+      { label: "테마 순위 히스토리", to: "/theme-rank-history" },
     ],
   },
   {
