@@ -23,6 +23,8 @@ logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
 
 DEFAULT_PAGES_TO_SCRAPE = int(os.getenv("PAGES_TO_SCRAPE", "1"))
 DEFAULT_DELAY_SECONDS = float(os.getenv("SCRAPE_DELAY_SECONDS", "0.3"))
+PORTFOLIO_COLLECTION = os.getenv("PORTFOLIO_COLLECTION", "portfolioStocks")
+PORTFOLIO_INITIAL_PAGES = int(os.getenv("PORTFOLIO_INITIAL_PAGES", "10"))
 SCRIPT_DIR = Path(__file__).resolve().parent
 DEFAULT_STOCK_LIST_FILE = os.getenv("STOCK_LIST_FILE", str(SCRIPT_DIR / "stock_list.xlsx"))
 
@@ -131,22 +133,95 @@ def scrape_daily_prices(ticker: str, pages_to_scrape: int = DEFAULT_PAGES_TO_SCR
     return prices
 
 
-def upload_to_firestore(db: firestore.Client, ticker: str, name: str, prices: List[Dict[str, int | str]]) -> None:
-    """수집된 주가 데이터를 Firestore에 저장합니다."""
+def merge_prices(
+    existing_prices: List[Dict[str, int | str]],
+    new_prices: List[Dict[str, int | str]],
+) -> tuple[List[Dict[str, int | str]], int]:
+    """기존 데이터와 신규 데이터를 합쳐 날짜 기준으로 정렬하고 변경 수를 반환합니다."""
 
-    if not prices:
-        LOGGER.info("%s (%s): 업로드할 데이터가 없어 건너뜁니다.", name, ticker)
+    if not new_prices:
+        return existing_prices, 0
+
+    merged: Dict[str, Dict[str, int | str]] = {}
+    for record in existing_prices:
+        date_key = str(record.get("date"))
+        if date_key:
+            merged[date_key] = record
+
+    change_count = 0
+    for record in new_prices:
+        date_key = str(record.get("date"))
+        if not date_key:
+            continue
+        if date_key not in merged:
+            merged[date_key] = record
+            change_count += 1
+        elif merged[date_key] != record:
+            merged[date_key] = record
+            change_count += 1
+
+    if change_count == 0:
+        return existing_prices, 0
+
+    sorted_records = sorted(merged.values(), key=lambda item: str(item.get("date", "")))
+    return sorted_records, change_count
+
+
+def upload_to_firestore(
+    doc_ref: firestore.DocumentReference,
+    ticker: str,
+    name: str,
+    new_prices: List[Dict[str, int | str]],
+    existing_data: Dict[str, object] | None,
+    mark_full_history: bool,
+) -> None:
+    """수집된 주가 데이터를 Firestore에 병합 저장합니다."""
+
+    existing_data = existing_data or {}
+    existing_prices: List[Dict[str, int | str]] = list(existing_data.get("prices", []))  # type: ignore[arg-type]
+
+    merged_prices, change_count = merge_prices(existing_prices, new_prices)
+
+    updates: Dict[str, object] = {}
+    if change_count:
+        updates.update({
+            "prices": merged_prices,
+            "ticker": ticker,
+            "name": name,
+        })
+    else:
+        if existing_data.get("name") != name:
+            updates["name"] = name
+        if not existing_data.get("ticker"):
+            updates["ticker"] = ticker
+
+    if mark_full_history and not existing_data.get("hasFullHistory"):
+        updates["hasFullHistory"] = True
+
+    if not updates:
+        LOGGER.info("%s (%s): 신규 데이터가 없어 업데이트를 건너뜁니다.", name, ticker)
         return
 
-    doc_ref = db.collection("stock_prices").document(ticker)
-    payload = {
-        "ticker": ticker,
-        "name": name,
-        "prices": prices,
-        "updatedAt": firestore.SERVER_TIMESTAMP,
-    }
-    doc_ref.set(payload)
-    LOGGER.info("%s (%s): %d건 데이터 업로드 완료", name, ticker, len(prices))
+    updates["updatedAt"] = firestore.SERVER_TIMESTAMP
+    doc_ref.set(updates, merge=True)
+
+    if change_count:
+        LOGGER.info(
+            "%s (%s): %d건의 변경 사항을 반영해 총 %d건으로 병합 저장했습니다.",
+            name,
+            ticker,
+            change_count,
+            len(merged_prices),
+        )
+    elif "hasFullHistory" in updates:
+        LOGGER.info(
+            "%s (%s): 초기 %d페이지 데이터가 이미 존재하여 상태 플래그만 갱신했습니다.",
+            name,
+            ticker,
+            PORTFOLIO_INITIAL_PAGES,
+        )
+    else:
+        LOGGER.info("%s (%s): 필드 정보만 최신화했습니다.", name, ticker)
 
 
 def iter_stock_list(stock_list_file: str) -> Iterable[Dict[str, str]]:
@@ -192,6 +267,26 @@ def iter_stock_list(stock_list_file: str) -> Iterable[Dict[str, str]]:
         yield {"ticker": record[ticker_col], "name": record[name_col]}
 
 
+def fetch_portfolio_tickers(db: firestore.Client) -> set[str]:
+    """포트폴리오에 등록된 종목 코드를 Firestore에서 조회합니다."""
+
+    try:
+        snapshots = db.collection(PORTFOLIO_COLLECTION).stream()
+    except Exception:  # pylint: disable=broad-except
+        LOGGER.exception("포트폴리오 종목 목록을 불러오지 못했습니다. 기본 설정으로 진행합니다.")
+        return set()
+
+    tickers: set[str] = set()
+    for snapshot in snapshots:
+        data = snapshot.to_dict() or {}
+        ticker = str(data.get("ticker", "")).strip()
+        if ticker:
+            tickers.add(ticker)
+
+    LOGGER.info("포트폴리오 등록 종목 %d개를 확인했습니다.", len(tickers))
+    return tickers
+
+
 def main() -> int:
     """스크립트 실행 진입점."""
 
@@ -205,13 +300,36 @@ def main() -> int:
 
     stock_list_file = DEFAULT_STOCK_LIST_FILE
     db = initialize_firestore()
+    portfolio_tickers = fetch_portfolio_tickers(db)
 
     for item in iter_stock_list(stock_list_file):
         ticker = item["ticker"]
         name = item["name"]
         LOGGER.info("%s (%s) 데이터 수집 시작", name, ticker)
-        prices = scrape_daily_prices(ticker)
-        upload_to_firestore(db, ticker, name, prices)
+
+        doc_ref = db.collection("stock_prices").document(ticker)
+        snapshot = doc_ref.get()
+        doc_data = snapshot.to_dict() if snapshot.exists else None
+
+        is_portfolio_ticker = ticker in portfolio_tickers
+        has_full_history = bool(doc_data and doc_data.get("hasFullHistory"))
+        pages_to_scrape = (
+            PORTFOLIO_INITIAL_PAGES
+            if is_portfolio_ticker and not has_full_history
+            else DEFAULT_PAGES_TO_SCRAPE
+        )
+
+        prices = scrape_daily_prices(ticker, pages_to_scrape)
+        mark_full_history = is_portfolio_ticker and pages_to_scrape == PORTFOLIO_INITIAL_PAGES
+
+        upload_to_firestore(
+            doc_ref,
+            ticker,
+            name,
+            prices,
+            doc_data,
+            mark_full_history,
+        )
 
     LOGGER.info("모든 종목 업데이트 완료")
     return 0
