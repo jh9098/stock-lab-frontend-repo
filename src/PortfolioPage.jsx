@@ -5,6 +5,7 @@ import usePortfolioData from "./hooks/usePortfolioData";
 import { db } from "./firebaseConfig";
 import useAuth from "./useAuth";
 import useStockPrices from "./hooks/useStockPrices";
+import { isLegFilled, resolveLegPrice } from "./lib/legUtils";
 
 const CandlestickChart = lazy(() => import("./components/CandlestickChart"));
 
@@ -180,6 +181,7 @@ export default function PortfolioPage() {
   const [statusFilter, setStatusFilter] = useState("전체");
   const [activePriceTicker, setActivePriceTicker] = useState(null);
   const [tickerLookupPending, setTickerLookupPending] = useState(false);
+  const [isChartModalOpen, setChartModalOpen] = useState(false);
   const priceStatusCacheRef = useRef({});
 
   const tickerCandidates = useMemo(() => {
@@ -369,6 +371,10 @@ export default function PortfolioPage() {
     };
   }, [selectedStock, apiTickerCandidates]);
 
+  useEffect(() => {
+    setChartModalOpen(false);
+  }, [selectedStock]);
+
   const { prices: fetchedPriceHistory, loading: fetchedPriceLoading } = useStockPrices(
     activePriceTicker,
     { days: 180, realtime: true }
@@ -513,11 +519,18 @@ export default function PortfolioPage() {
     if (!priceSeries.length) {
       return [];
     }
-    // 3개월 거래일은 약 65일이므로, 안정성을 위해 최신 65개 데이터를 사용합니다.
-    // 데이터가 65개 미만일 경우 모든 데이터를 사용합니다.
-    const dataCount = Math.min(priceSeries.length, 65);
+    // 기본적으로 최근 90거래일 데이터를 보여줍니다. 데이터가 부족하면 전체 데이터를 사용합니다.
+    const dataCount = Math.min(priceSeries.length, 90);
     return priceSeries.slice(priceSeries.length - dataCount);
   }, [priceSeries]);
+
+  const isChartAvailable = chartSeries.length > 0;
+  const chartButtonDisabled = priceLoading || !isChartAvailable;
+  const chartButtonLabel = priceLoading
+    ? "차트 불러오는 중..."
+    : isChartAvailable
+    ? "차트 보기"
+    : "차트 데이터 없음";
 
   const recentPrices = useMemo(() => {
     if (!priceSeries.length) {
@@ -557,6 +570,28 @@ export default function PortfolioPage() {
         return Number.isFinite(numeric) ? numeric : null;
       })
       .filter((value) => value != null)
+      .sort((a, b) => a - b);
+  }, [selectedStock]);
+
+  const buyTargetLines = useMemo(() => {
+    if (!selectedStock?.buyLegs?.length) {
+      return [];
+    }
+
+    return selectedStock.buyLegs
+      .map((leg) => resolveLegPrice(leg))
+      .filter((value) => Number.isFinite(value))
+      .sort((a, b) => a - b);
+  }, [selectedStock]);
+
+  const sellTargetLines = useMemo(() => {
+    if (!selectedStock?.sellLegs?.length) {
+      return [];
+    }
+
+    return selectedStock.sellLegs
+      .map((leg) => resolveLegPrice(leg))
+      .filter((value) => Number.isFinite(value))
       .sort((a, b) => a - b);
   }, [selectedStock]);
 
@@ -618,7 +653,7 @@ export default function PortfolioPage() {
           reachedDateValue: null,
           daysToHit: null,
           maxAdversePercent: null,
-          filled: Boolean(leg?.filled),
+          filled: isLegFilled(leg),
           createdAt: toSafeDate(leg?.createdAt),
           filledAt: toSafeDate(leg?.filledAt),
           startDate: toSafeDate(leg?.createdAt) ?? toSafeDate(selectedStock?.createdAt),
@@ -655,23 +690,23 @@ export default function PortfolioPage() {
             ? startDateCandidate
             : firstDate;
 
-        if (!hasValidTarget) {
-          return {
-            id: baseId,
-            sequence: leg.sequence,
-            type,
-            targetPrice: null,
-            rawTargetPrice: leg.targetPrice,
-            reached: false,
-            reachedDate: null,
-            daysToHit: null,
-            maxAdversePercent: null,
-            filled: Boolean(leg?.filled),
-            createdAt: legCreatedAt,
-            filledAt: toSafeDate(leg?.filledAt),
-            startDate,
-          };
-        }
+          if (!hasValidTarget) {
+            return {
+              id: baseId,
+              sequence: leg.sequence,
+              type,
+              targetPrice: null,
+              rawTargetPrice: leg.targetPrice,
+              reached: false,
+              reachedDate: null,
+              daysToHit: null,
+              maxAdversePercent: null,
+              filled: isLegFilled(leg),
+              createdAt: legCreatedAt,
+              filledAt: toSafeDate(leg?.filledAt),
+              startDate,
+            };
+          }
 
         const relevantPrices = parsedPrices.filter((price) => price.dateValue >= startDate);
         const scopedPrices = relevantPrices.length ? relevantPrices : parsedPrices;
@@ -765,7 +800,7 @@ export default function PortfolioPage() {
           reachedDateValue: reachedInfo ? reachedInfo.dateValue : null,
           daysToHit,
           maxAdversePercent,
-          filled: Boolean(leg?.filled),
+          filled: isLegFilled(leg),
           createdAt: legCreatedAt,
           filledAt: toSafeDate(leg?.filledAt),
           startDate,
@@ -1020,8 +1055,6 @@ export default function PortfolioPage() {
   const latestVolumeText = latestVolumeValue != null ? formatVolumeValue(latestVolumeValue) : "-";
   const latestDateText = latestPoint?.date ?? selectedStock?.lastPriceDate ?? "-";
   const marketLabel = selectedStock?.market ?? "KRX";
-  const timeframeTabs = ["일", "주", "월", "년"];
-  const activeTimeframe = timeframeTabs[0];
 
   return (
     <div className="min-h-screen bg-gray-900 text-gray-100">
@@ -1139,10 +1172,11 @@ export default function PortfolioPage() {
                 </button>
               </div>
 
+
               <div className="space-y-3">
-                <h3 className="text-gray-300 font-semibold">가격 차트</h3>
+                <h3 className="text-gray-300 font-semibold">가격 요약</h3>
                 <div className="overflow-hidden rounded-xl border border-slate-800 bg-[#0B1120]">
-                  <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 bg-[#0f172a] px-4 py-3">
+                  <div className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-800 bg-[#0f172a] px-4 py-3">
                     <div className="flex flex-wrap items-center gap-3 text-white">
                       <span className="rounded bg-slate-800 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-sky-300">
                         {marketLabel}
@@ -1161,82 +1195,52 @@ export default function PortfolioPage() {
                           {latestDateText && latestDateText !== "-"
                             ? `기준 ${latestDateText}`
                             : "기준 정보 없음"}
-                          {latestVolumeText && latestVolumeText !== "-"
-                            ? ` · 거래량 ${latestVolumeText}`
-                            : ""}
                         </p>
                       </div>
                     </div>
-                    <div className="flex gap-4 text-[11px] text-slate-300 sm:text-xs">
-                      <div className="text-right">
-                        <p className="text-slate-500">시가</p>
-                        <p className="font-semibold text-slate-100">
-                          {formatPriceValue(latestOpen)}
-                        </p>
+                    <div className="flex flex-col items-end gap-3 text-[11px] text-slate-300 sm:text-xs">
+                      <div className="flex gap-4">
+                        <div className="text-right">
+                          <p className="text-slate-500">시가</p>
+                          <p className="font-semibold text-slate-100">
+                            {formatPriceValue(latestOpen)}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-slate-500">고가</p>
+                          <p className="font-semibold text-slate-100">
+                            {formatPriceValue(latestHigh)}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-slate-500">저가</p>
+                          <p className="font-semibold text-slate-100">
+                            {formatPriceValue(latestLow)}
+                          </p>
+                        </div>
                       </div>
-                      <div className="text-right">
-                        <p className="text-slate-500">고가</p>
-                        <p className="font-semibold text-slate-100">
-                          {formatPriceValue(latestHigh)}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-slate-500">저가</p>
-                        <p className="font-semibold text-slate-100">
-                          {formatPriceValue(latestLow)}
-                        </p>
-                      </div>
+                      <button
+                        type="button"
+                        onClick={() => !chartButtonDisabled && setChartModalOpen(true)}
+                        disabled={chartButtonDisabled}
+                        className="rounded bg-sky-500 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:bg-slate-600"
+                      >
+                        {chartButtonLabel}
+                      </button>
                     </div>
                   </div>
-                  <div className="flex h-[22rem] flex-col">
-                    {priceLoading ? (
-                      <div className="flex flex-1 items-center justify-center text-sm text-slate-300">
-                        차트 데이터를 불러오는 중입니다...
-                      </div>
-                    ) : chartSeries.length ? (
-                      <div className="flex flex-1">
-                        <Suspense
-                          fallback={
-                            <div className="flex flex-1 items-center justify-center text-sm text-slate-300">
-                              차트 모듈을 불러오는 중입니다...
-                            </div>
-                          }
-                        >
-                          <CandlestickChart
-                            data={chartSeries}
-                            supportLines={supportLevels}
-                            resistanceLines={resistanceLevels}
-                          />
-                        </Suspense>
-                      </div>
-                    ) : (
-                      <div className="flex flex-1 items-center justify-center text-sm text-slate-300">
-                        가격 데이터가 없습니다.
-                      </div>
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 px-4 py-2 text-[11px] text-slate-300 sm:text-xs">
+                    <span className="text-slate-500">
+                      데이터 기준: {latestDateText ?? "-"}
+                    </span>
+                    {latestVolumeText && latestVolumeText !== "-" && (
+                      <span className="text-slate-500">거래량 {latestVolumeText}</span>
                     )}
                   </div>
-                  <div className="flex items-center justify-between border-t border-slate-800 bg-[#0f172a] px-4 py-2 text-[11px] text-slate-300 sm:text-xs">
-                    <div className="flex gap-2">
-                      {timeframeTabs.map((label) => {
-                        const isActive = label === activeTimeframe;
-                        return (
-                          <span
-                            key={label}
-                            className={`rounded px-2 py-1 ${
-                              isActive
-                                ? "bg-sky-500/20 text-sky-200 font-semibold"
-                                : "bg-transparent text-slate-500"
-                            }`}
-                          >
-                            {label}
-                          </span>
-                        );
-                      })}
-                    </div>
-                    <span className="text-slate-500">데이터 기준: {latestDateText}</span>
+                  <div className="px-4 py-3 text-[11px] text-slate-400 sm:text-sm">
+                    최근 90일 차트는 팝업으로 제공됩니다. 버튼을 눌러 상세한 캔들 차트를 확인하세요.
                   </div>
                 </div>
-
                 <div className="grid gap-3 sm:grid-cols-3">
                   <div className="bg-gray-900 rounded-lg px-4 py-3">
                     <p className="text-xs text-gray-400">자동 평균 매수가</p>
@@ -1265,8 +1269,27 @@ export default function PortfolioPage() {
                   </div>
                 </div>
 
-                {(supportLevels.length || resistanceLevels.length) && (
+                {(buyTargetLines.length ||
+                  sellTargetLines.length ||
+                  supportLevels.length ||
+                  resistanceLevels.length) && (
                   <div className="flex flex-wrap gap-3 text-xs text-gray-300">
+                    {buyTargetLines.length > 0 && (
+                      <span className="flex items-center gap-2">
+                        <span className="h-2 w-2 rounded-full" style={{ backgroundColor: "#0EA5E9" }} />
+                        매수선: {buyTargetLines
+                          .map((value) => `${Math.round(value).toLocaleString()}원`)
+                          .join(", ")}
+                      </span>
+                    )}
+                    {sellTargetLines.length > 0 && (
+                      <span className="flex items-center gap-2">
+                        <span className="h-2 w-2 rounded-full" style={{ backgroundColor: "#F97316" }} />
+                        매도선: {sellTargetLines
+                          .map((value) => `${Math.round(value).toLocaleString()}원`)
+                          .join(", ")}
+                      </span>
+                    )}
                     {supportLevels.length > 0 && (
                       <span className="flex items-center gap-2">
                         <span className="h-2 w-2 rounded-full" style={{ backgroundColor: "#48BB78" }} />
@@ -1364,17 +1387,11 @@ export default function PortfolioPage() {
                 <h3 className="text-gray-300 font-semibold mb-2">설정 이후 실행 여부</h3>
                 {executionSummary.total ? (
                   <div className="space-y-4">
-                    <div className="grid gap-3 sm:grid-cols-3">
+                    <div className="grid gap-3 sm:grid-cols-2">
                       <div className="bg-gray-900 rounded-lg p-3 text-center">
                         <p className="text-xs text-gray-400">체결 완료</p>
                         <p className="text-lg font-semibold text-emerald-400">
                           {executionSummary.filled} / {executionSummary.total}
-                        </p>
-                      </div>
-                      <div className="bg-gray-900 rounded-lg p-3 text-center">
-                        <p className="text-xs text-gray-400">가격 도달</p>
-                        <p className="text-lg font-semibold text-teal-400">
-                          {executionSummary.reached}
                         </p>
                       </div>
                       <div className="bg-gray-900 rounded-lg p-3 text-center">
@@ -1457,6 +1474,83 @@ export default function PortfolioPage() {
 
             <MemberNoteForm stock={selectedStock} />
           </section>
+        )}
+
+        {isChartModalOpen && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4"
+            role="dialog"
+            aria-modal="true"
+            onClick={() => setChartModalOpen(false)}
+          >
+            <div
+              className="w-full max-w-5xl overflow-hidden rounded-xl bg-slate-900 shadow-2xl"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="flex items-center justify-between border-b border-slate-700 px-5 py-3">
+                <div>
+                  <h3 className="text-lg font-semibold text-white">차트 보기</h3>
+                  <p className="text-xs text-slate-400">
+                    {selectedStock?.name} ({selectedStock?.ticker}) · 최근 90일 데이터
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setChartModalOpen(false)}
+                  className="rounded bg-slate-700 px-3 py-1 text-sm font-semibold text-slate-100 transition hover:bg-slate-600"
+                >
+                  닫기
+                </button>
+              </div>
+              <div className="h-[26rem] w-full bg-[#0B1120]">
+                {priceLoading ? (
+                  <div className="flex h-full items-center justify-center text-sm text-slate-300">
+                    차트 데이터를 불러오는 중입니다...
+                  </div>
+                ) : isChartAvailable ? (
+                  <Suspense
+                    fallback={
+                      <div className="flex h-full items-center justify-center text-sm text-slate-300">
+                        차트 모듈을 불러오는 중입니다...
+                      </div>
+                    }
+                  >
+                    <CandlestickChart
+                      data={chartSeries}
+                      supportLines={supportLevels}
+                      resistanceLines={resistanceLevels}
+                      buyLines={buyTargetLines}
+                      sellLines={sellTargetLines}
+                    />
+                  </Suspense>
+                ) : (
+                  <div className="flex h-full items-center justify-center text-sm text-slate-300">
+                    차트 데이터가 없습니다.
+                  </div>
+                )}
+              </div>
+              {(buyTargetLines.length || sellTargetLines.length) && (
+                <div className="flex flex-wrap gap-3 border-t border-slate-800 px-5 py-3 text-[11px] text-slate-300 sm:text-xs">
+                  {buyTargetLines.length > 0 && (
+                    <span className="flex items-center gap-2">
+                      <span className="h-2 w-2 rounded-full" style={{ backgroundColor: "#0EA5E9" }} />
+                      매수선 {buyTargetLines
+                        .map((value) => `${Math.round(value).toLocaleString()}원`)
+                        .join(", ")}
+                    </span>
+                  )}
+                  {sellTargetLines.length > 0 && (
+                    <span className="flex items-center gap-2">
+                      <span className="h-2 w-2 rounded-full" style={{ backgroundColor: "#F97316" }} />
+                      매도선 {sellTargetLines
+                        .map((value) => `${Math.round(value).toLocaleString()}원`)
+                        .join(", ")}
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
         )}
       </main>
     </div>

@@ -10,6 +10,7 @@ import {
 } from "firebase/firestore";
 import { db } from "../firebaseConfig";
 import useAuth from "../useAuth";
+import { isLegFilled, resolveLegPrice, resolveLegWeight } from "../lib/legUtils";
 
 function sortLegs(legs = []) {
   const sorted = [...legs].sort((a, b) => (a.sequence || 0) - (b.sequence || 0));
@@ -83,16 +84,10 @@ export default function usePortfolioData() {
   const computedStocks = useMemo(() => {
     const parseLegMetrics = (legs = []) => {
       const parsed = legs
+        .filter((leg) => isLegFilled(leg))
         .map((leg) => {
-          const price = Number(leg.targetPrice);
-          const rawWeight = leg.weight ?? leg.weightPercent ?? leg.percent;
-          const numericWeight = Number(rawWeight);
-
-          const weight = Number.isFinite(numericWeight)
-            ? numericWeight > 1
-              ? numericWeight / 100
-              : numericWeight
-            : null;
+          const price = resolveLegPrice(leg);
+          const weight = resolveLegWeight(leg);
 
           if (!Number.isFinite(price) || !Number.isFinite(weight) || weight <= 0) {
             return null;
@@ -103,18 +98,19 @@ export default function usePortfolioData() {
         .filter(Boolean);
 
       if (!parsed.length) {
-        return { totalWeight: 0, averagePrice: null };
+        return { totalWeight: null, averagePrice: null };
       }
 
       const totalWeight = parsed.reduce((acc, item) => acc + item.weight, 0);
+      const safeTotalWeight = Number.isFinite(totalWeight) && totalWeight > 0 ? totalWeight : null;
       const averagePrice =
-        totalWeight > 0
+        safeTotalWeight != null
           ? parsed.reduce((acc, item) => acc + item.price * item.weight, 0) /
-            totalWeight
+            safeTotalWeight
           : null;
 
       return {
-        totalWeight,
+        totalWeight: safeTotalWeight,
         averagePrice: Number.isFinite(averagePrice) ? averagePrice : null,
       };
     };
@@ -123,8 +119,8 @@ export default function usePortfolioData() {
       const buyLegs = stock.buyLegs ?? [];
       const sellLegs = stock.sellLegs ?? [];
 
-      const buyCompleted = buyLegs.filter((leg) => leg.filled).length;
-      const sellCompleted = sellLegs.filter((leg) => leg.filled).length;
+      const buyCompleted = buyLegs.filter((leg) => isLegFilled(leg)).length;
+      const sellCompleted = sellLegs.filter((leg) => isLegFilled(leg)).length;
       const buyProgress = buyLegs.length
         ? buyCompleted / buyLegs.length
         : 0;

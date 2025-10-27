@@ -5,6 +5,8 @@ const LOSS_COLOR = "#F87171";
 const NEUTRAL_COLOR = "#CBD5F5";
 const SUPPORT_COLOR = "#48BB78";
 const RESISTANCE_COLOR = "#F56565";
+const BUY_LINE_COLOR = "#0EA5E9";
+const SELL_LINE_COLOR = "#F97316";
 const PRICE_CHART_TOP = 12;
 const PRICE_CHART_HEIGHT = 62;
 const VOLUME_CHART_HEIGHT = 18;
@@ -81,6 +83,8 @@ export default function CandlestickChart({
   data,
   supportLines = [],
   resistanceLines = [],
+  buyLines = [],
+  sellLines = [],
 }) {
   const safeData = Array.isArray(data)
     ? data
@@ -107,10 +111,12 @@ export default function CandlestickChart({
 
   const parsedSupportLines = uniqueSorted(toNumberArray(supportLines));
   const parsedResistanceLines = uniqueSorted(toNumberArray(resistanceLines));
+  const parsedBuyLines = uniqueSorted(toNumberArray(buyLines));
+  const parsedSellLines = uniqueSorted(toNumberArray(sellLines));
 
   const valueCandidates = safeData
     .flatMap((item) => [item.high, item.low])
-    .concat(parsedSupportLines, parsedResistanceLines);
+    .concat(parsedSupportLines, parsedResistanceLines, parsedBuyLines, parsedSellLines);
 
   const rawMin = Math.min(...valueCandidates);
   const rawMax = Math.max(...valueCandidates);
@@ -148,6 +154,8 @@ export default function CandlestickChart({
   const levelLines = [
     ...parsedSupportLines.map((value) => ({ value, type: "support" })),
     ...parsedResistanceLines.map((value) => ({ value, type: "resistance" })),
+    ...parsedBuyLines.map((value) => ({ value, type: "buy" })),
+    ...parsedSellLines.map((value) => ({ value, type: "sell" })),
   ];
 
   const maLines = MOVING_AVERAGES.map((config) => {
@@ -215,7 +223,7 @@ export default function CandlestickChart({
         preserveAspectRatio="none"
         className="h-full w-full flex-1"
         role="img"
-        aria-label="최근 3개월 일봉 캔들 차트"
+        aria-label="최근 90일 일봉 캔들 차트"
       >
         <defs>
           <linearGradient id="candlestickChartBg" x1="0" x2="0" y1="0" y2="1">
@@ -268,8 +276,23 @@ export default function CandlestickChart({
         {levelLines.map((line) => {
           const ratio = normalisePrice(line.value);
           const y = 100 - ratio * PRICE_CHART_HEIGHT - PRICE_CHART_TOP;
-          const strokeColor = line.type === "support" ? SUPPORT_COLOR : RESISTANCE_COLOR;
+          const strokeColor =
+            line.type === "support"
+              ? SUPPORT_COLOR
+              : line.type === "resistance"
+              ? RESISTANCE_COLOR
+              : line.type === "buy"
+              ? BUY_LINE_COLOR
+              : SELL_LINE_COLOR;
           const label = `${formatNumber(Math.round(line.value))}원`;
+          const labelPrefix =
+            line.type === "support"
+              ? "지지선"
+              : line.type === "resistance"
+              ? "저항선"
+              : line.type === "buy"
+              ? "매수선"
+              : "매도선";
 
           return (
             <g key={`${line.type}-${line.value}`}>
@@ -297,7 +320,7 @@ export default function CandlestickChart({
                 fontSize="2.6"
                 fill={strokeColor}
               >
-                {line.type === "support" ? "지지선" : "저항선"} {label}
+                {labelPrefix} {label}
               </text>
             </g>
           );
