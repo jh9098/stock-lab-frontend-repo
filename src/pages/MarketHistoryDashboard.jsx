@@ -103,7 +103,7 @@ export default function MarketHistoryDashboard({ initialSection }) {
     highlights: themeHighlights,
     isLoading: themeHistoryLoading,
     errorMessage: themeHistoryError,
-  } = useThemeLeadersHistory({ topCount: 10, chartCount: 5 });
+  } = useThemeLeadersHistory({ limitCount: 30, topCount: 10, chartCount: 5 });
 
   const sections = [
     { ...SECTION_CONFIG[0], ...institutionHistory },
@@ -359,9 +359,9 @@ export default function MarketHistoryDashboard({ initialSection }) {
               <div className="inline-flex items-center gap-2 rounded-full bg-cyan-500/20 px-3 py-1 text-xs font-semibold text-cyan-200">
                 테마 순위 변화
               </div>
-              <h2 className="text-2xl font-semibold text-white md:text-3xl">30일간 TOP5 테마 순위 흐름</h2>
+              <h2 className="text-2xl font-semibold text-white md:text-3xl">최근 30일 TOP5 테마 순위 흐름</h2>
               <p className="text-sm text-gray-300 md:text-base">
-                순위가 가장 높은 테마 다섯 개의 일별 변화를 범프 차트로 확인하세요. 마우스를 올리면 날짜별 상승·보합·하락 종목 수와 이동평균 지표를 함께 보여줍니다.
+                순위가 가장 높은 테마 다섯 개의 일별 변화를 범프 차트로 확인하세요. 마우스를 올리면 날짜별 상승·보합·하락 종목 수와 이동평균 지표를 함께 보여줍니다. 전체 기간을 보려면 우측 버튼을 이용하세요.
               </p>
               {themeHistoryError ? (
                 <p className="text-xs text-red-300 md:text-sm">{themeHistoryError}</p>
@@ -370,6 +370,18 @@ export default function MarketHistoryDashboard({ initialSection }) {
                   최근 스냅샷에서 순위를 산정할 수 없는 경우에도 프런트엔드에서 1위부터 자동으로 매겨지므로 과거 데이터 누락 시에도 흐름을 추적할 수 있습니다.
                 </p>
               )}
+            </div>
+            <div className="flex flex-col items-end gap-3 text-sm text-gray-300">
+              <Link
+                to="/theme-rank-history"
+                className="inline-flex items-center gap-2 rounded-full border border-cyan-400/40 bg-cyan-500/20 px-4 py-2 font-semibold text-cyan-100 transition hover:bg-cyan-500/30"
+              >
+                전체 테마 히스토리 보기
+                <span aria-hidden>→</span>
+              </Link>
+              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-gray-300">
+                전체 기간 비교는 전용 페이지에서 확인하세요.
+              </span>
             </div>
           </div>
 

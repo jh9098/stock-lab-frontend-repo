@@ -9,6 +9,7 @@ export const PAGE_OPTIONS = [
   { value: '/forum/*', label: '상담 상세' },
   { value: '/portfolio', label: '프리미엄 포트폴리오', membersOnly: true },
   { value: '/market-history', label: '시장 수급·인기 대시보드' },
+  { value: '/theme-rank-history', label: '테마 순위 히스토리' },
   { value: '/popular-history', label: '인기 종목 히스토리' },
   { value: '/foreign-net-buy-history', label: '외국인 순매수 히스토리' },
   { value: '/institution-net-buy-history', label: '기관 순매수 히스토리' },
