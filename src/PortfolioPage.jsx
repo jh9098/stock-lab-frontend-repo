@@ -258,6 +258,7 @@ export default function PortfolioPage() {
   const [activePriceTicker, setActivePriceTicker] = useState(null);
   const [tickerLookupPending, setTickerLookupPending] = useState(false);
   const [isChartModalOpen, setChartModalOpen] = useState(false);
+  const bodyOverflowRef = useRef("");
   const priceStatusCacheRef = useRef({});
 
   const tickerCandidates = useMemo(() => {
@@ -1181,18 +1182,32 @@ useEffect(() => {
   const marketLabel = selectedStock?.market ?? "KRX";
 
   useEffect(() => {
-    if (!isChartModalOpen) {
+    if (typeof document === "undefined") {
       return undefined;
     }
 
-    const { style } = document.body;
-    const previousOverflow = style.overflow;
-    style.overflow = "hidden";
+    if (isChartModalOpen) {
+      const { style } = document.body;
+      bodyOverflowRef.current = style.overflow;
+      style.overflow = "hidden";
 
-    return () => {
-      style.overflow = previousOverflow;
-    };
+      return () => {
+        style.overflow = bodyOverflowRef.current ?? "";
+      };
+    }
+
+    document.body.style.overflow = bodyOverflowRef.current ?? "";
+
+    return undefined;
   }, [isChartModalOpen]);
+
+  useEffect(() => {
+    return () => {
+      if (typeof document !== "undefined") {
+        document.body.style.overflow = bodyOverflowRef.current ?? "";
+      }
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-900 text-gray-100">
@@ -1601,9 +1616,8 @@ useEffect(() => {
             onClick={() => setChartModalOpen(false)}
           >
             <div
-              className="flex h-full w-full max-h-[92vh] max-w-6xl flex-col overflow-hidden rounded-2xl bg-slate-950 shadow-2xl"
+              className="flex h-full w-full max-h-[92vh] max-w-6xl flex-col overflow-x-hidden overflow-y-auto rounded-2xl bg-slate-950 shadow-2xl"
               onClick={(event) => event.stopPropagation()}
-              onWheelCapture={(event) => event.stopPropagation()}
             >
               <div className="flex items-center justify-between border-b border-slate-800 bg-slate-900/70 px-6 py-4">
                 <div className="space-y-1">
@@ -1677,7 +1691,7 @@ useEffect(() => {
                 </div>
               </div>
 
-              <div className="flex flex-1 flex-col bg-[#0B1120]">
+              <div className="flex flex-1 flex-col bg-[#0B1120] min-h-[320px]">
                 {priceLoading ? (
                   <div className="flex flex-1 items-center justify-center text-sm text-slate-300">
                     차트 데이터를 불러오는 중입니다...
@@ -1705,26 +1719,6 @@ useEffect(() => {
                 )}
               </div>
 
-              {(buyTargetLines.length || sellTargetLines.length) && (
-                <div className="flex flex-wrap gap-3 border-t border-slate-900/70 bg-slate-950 px-6 py-4 text-[11px] text-slate-300 sm:text-xs">
-                  {buyTargetLines.length > 0 && (
-                    <span className="flex items-center gap-2">
-                      <span className="h-2 w-2 rounded-full" style={{ backgroundColor: "#0EA5E9" }} />
-                      매수선 {buyTargetLines
-                        .map((value) => `${Math.round(value).toLocaleString()}원`)
-                        .join(", ")}
-                    </span>
-                  )}
-                  {sellTargetLines.length > 0 && (
-                    <span className="flex items-center gap-2">
-                      <span className="h-2 w-2 rounded-full" style={{ backgroundColor: "#F97316" }} />
-                      매도선 {sellTargetLines
-                        .map((value) => `${Math.round(value).toLocaleString()}원`)
-                        .join(", ")}
-                    </span>
-                  )}
-                </div>
-              )}
             </div>
           </div>
         )}
