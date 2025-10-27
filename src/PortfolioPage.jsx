@@ -7,8 +7,7 @@ import useAuth from "./useAuth";
 import useStockPrices from "./hooks/useStockPrices";
 import { isLegFilled, resolveLegPrice } from "./lib/legUtils";
 
-const CHART_MIN_DAYS = 90;
-const CHART_MAX_DAYS = 365;
+const CHART_INITIAL_DAYS = 100;
 
 const CandlestickChart = lazy(() => import("./components/CandlestickChart"));
 
@@ -477,7 +476,7 @@ useEffect(() => {
 
   const { prices: fetchedPriceHistory, loading: fetchedPriceLoading } = useStockPrices(
     activePriceTicker,
-    { days: CHART_MAX_DAYS, realtime: true }
+    { days: 0, realtime: true }
   );
 
   const fallbackPriceHistory = useMemo(() => {
@@ -650,20 +649,7 @@ useEffect(() => {
   }, [combinedPriceHistory]);
 
   const chartSeries = useMemo(() => {
-    if (!priceSeries.length) {
-      return [];
-    }
-    
-    // 최소 90일 이상의 데이터가 있으면 최대 365일까지 표시
-    // 90일 미만이면 있는 데이터 전부 표시
-    if (priceSeries.length < CHART_MIN_DAYS) {
-      // 데이터가 90일 미만이면 전부 표시
-      return priceSeries;
-    }
-    
-    // 데이터가 90일 이상이면 최대 365일까지만 표시
-    const dataCount = Math.min(priceSeries.length, CHART_MAX_DAYS);
-    return priceSeries.slice(priceSeries.length - dataCount);
+    return priceSeries;
   }, [priceSeries]);
 
 
@@ -671,8 +657,8 @@ useEffect(() => {
   const chartRangeDays = chartSeries.length;
   const chartRangeDescription = !isChartAvailable
     ? "데이터 없음"
-    : chartRangeDays >= CHART_MAX_DAYS
-    ? "최근 1년 데이터"
+    : chartRangeDays > CHART_INITIAL_DAYS
+    ? `총 ${chartRangeDays}일 데이터`
     : `최근 ${chartRangeDays}일 데이터`;
   const chartButtonDisabled = priceLoading || !isChartAvailable;
   const chartButtonLabel = priceLoading
@@ -680,17 +666,6 @@ useEffect(() => {
     : isChartAvailable
     ? "차트 보기"
     : "차트 데이터 없음";
-
-  const recentPrices = useMemo(() => {
-    if (!priceSeries.length) {
-      return [];
-    }
-
-    return [...priceSeries]
-      .sort((a, b) => b.dateValue - a.dateValue)
-      .slice(0, 10)
-      .map((item) => ({ date: item.date, close: item.close }));
-  }, [priceSeries]);
 
   const supportLevels = useMemo(() => {
     const rawSupport = selectedStock?.supportLines;
@@ -1387,7 +1362,7 @@ useEffect(() => {
                     )}
                   </div>
                   <div className="px-4 py-3 text-[11px] text-slate-400 sm:text-sm">
-                    {chartRangeDays >= CHART_MIN_DAYS
+                    {chartRangeDays > CHART_INITIAL_DAYS
                       ? `${chartRangeDescription}를 팝업으로 제공합니다. 버튼을 눌러 상세한 캔들 차트를 확인하세요.`
                       : "보유 중인 차트 데이터가 적습니다. 버튼을 눌러 상세한 캔들 차트를 확인하세요."}
                   </div>
@@ -1458,29 +1433,6 @@ useEffect(() => {
                   </div>
                 )}
 
-                {priceSeries.length > 0 && (
-                  <div className="space-y-2">
-                    <p className="text-xs text-gray-400">최근 종가</p>
-                    <ul className="grid gap-2 sm:grid-cols-2 text-sm">
-                      {recentPrices.map((item) => {
-                        const numericClose = Number(item.close);
-                        const closeText = Number.isFinite(numericClose)
-                          ? `${numericClose.toLocaleString()}원`
-                          : item.close;
-
-                        return (
-                          <li
-                            key={item.date}
-                            className="flex items-center justify-between bg-gray-900 px-3 py-2 rounded border border-gray-700"
-                          >
-                            <span className="text-gray-300">{item.date}</span>
-                            <span className="font-semibold text-white">{closeText}</span>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  </div>
-                )}
               </div>
 
               <div className="rounded-lg bg-gray-900 px-4 py-2 text-xs text-gray-400 flex flex-wrap gap-x-6 gap-y-1">
