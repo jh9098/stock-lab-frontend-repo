@@ -9,12 +9,14 @@ import { db } from "../firebaseConfig";
  * @returns {{ prices: Array, loading: boolean, error: Error | null }}
  */
 export default function useStockPrices(ticker, options = {}) {
-  const { days = 90, realtime = true } = options;
+  const { days = 365, realtime = true } = options; // 기본값 365일로 변경
   const [prices, setPrices] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    console.log(`useStockPrices 호출: ticker=${ticker}, days=${days}`); // 디버깅
+    
     if (!ticker) {
       setPrices([]);
       setLoading(false);
@@ -29,14 +31,20 @@ export default function useStockPrices(ticker, options = {}) {
 
     const applySnapshot = (snapshot) => {
       if (!snapshot.exists()) {
+        console.log(`${ticker} 문서가 존재하지 않습니다`);
         setPrices([]);
         return;
       }
 
-      const allPrices = Array.isArray(snapshot.data()?.prices)
-        ? snapshot.data().prices
-        : [];
+      const data = snapshot.data();
+      console.log(`${ticker} 문서 데이터:`, data ? Object.keys(data) : 'null');
+      
+      const allPrices = Array.isArray(data?.prices) ? data.prices : [];
+      console.log(`전체 가격 데이터: ${allPrices.length}개`);
+      
+      // days가 0이거나 음수면 전체 데이터, 아니면 최근 N일
       const limited = days > 0 ? allPrices.slice(-days) : allPrices;
+      console.log(`제한된 가격 데이터: ${limited.length}개 (days=${days})`);
 
       const parseDateValue = (value) => {
         if (!value) return Number.NEGATIVE_INFINITY;
@@ -57,6 +65,7 @@ export default function useStockPrices(ticker, options = {}) {
         return String(aDateText).localeCompare(String(bDateText));
       });
 
+      console.log(`정렬 후 최종 데이터: ${sortedByDate.length}개`);
       setPrices(sortedByDate);
     };
 

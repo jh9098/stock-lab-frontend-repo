@@ -13,10 +13,12 @@ export const isLegFilled = (leg) => {
     return false;
   }
 
+  // 명시적으로 filled가 true인 경우
   if (leg.filled === true) {
     return true;
   }
 
+  // filledAt 날짜가 있으면 체결된 것
   if (leg.filledAt) {
     return true;
   }
@@ -36,6 +38,9 @@ export const isLegFilled = (leg) => {
 
   if (statusText) {
     const compact = statusText.replace(/\s+/g, "");
+    
+    // "filled", "complete", "체결", "완료"만 체결로 인식
+    // "reached"(목표가 도달)는 체결이 아니므로 제외
     const hasFilledKeyword =
       (statusText.includes("filled") && !statusText.includes("unfilled")) ||
       (statusText.includes("complete") && !statusText.includes("incomplete")) ||
@@ -46,21 +51,7 @@ export const isLegFilled = (leg) => {
       return true;
     }
 
-    const reachedKeywordPresent =
-      !statusText.includes("unreached") &&
-      !statusText.includes("not reached") &&
-      (statusText.includes("reached") ||
-        statusText.includes("target hit") ||
-        statusText.includes("target_hit") ||
-        compact.includes("목표가도달") ||
-        compact.includes("목표가달성") ||
-        compact.includes("목표달성") ||
-        compact.includes("타겟도달") ||
-        compact.includes("타겟달성"));
-
-    if (reachedKeywordPresent) {
-      return true;
-    }
+    // "reached" 관련 키워드는 모두 제거 (목표가 도달 ≠ 체결)
   }
 
   const completionFlags = [
@@ -68,12 +59,9 @@ export const isLegFilled = (leg) => {
     leg.isCompleted,
     leg.done,
     leg.filledLeg,
-    leg.targetReached,
-    leg.hitTarget,
-    leg.reachedTarget,
     leg.executionCompleted,
     leg.executionComplete,
-    leg.reached,
+    // targetReached, hitTarget, reachedTarget, reached 모두 제거
   ];
 
   if (completionFlags.some((value) => value === true)) {

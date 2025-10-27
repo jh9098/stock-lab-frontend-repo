@@ -346,107 +346,130 @@ export default function PortfolioPage() {
       }
       return digits.padStart(6, "0");
     };
-
+  
     const unique = new Set();
+    
+    console.log('=== apiTickerCandidates 생성 ===');
+    console.log('tickerCandidates:', tickerCandidates);
+    
     tickerCandidates.forEach((candidate) => {
       const numeric = toNumericCode(candidate);
+      console.log(`  ${candidate} -> ${numeric}`);
       if (numeric) {
         unique.add(numeric);
       }
     });
-    return Array.from(unique);
+    
+    const result = Array.from(unique);
+    console.log('최종 apiTickerCandidates:', result);
+    
+    return result;
   }, [tickerCandidates]);
 
-  useEffect(() => {
-    let isCancelled = false;
+useEffect(() => {
+  let isCancelled = false;
 
-    if (!selectedStock) {
-      setActivePriceTicker(null);
-      setTickerLookupPending(false);
-      return () => {
-        isCancelled = true;
-      };
-    }
+  console.log('=== activePriceTicker 설정 시작 ===');
+  console.log('selectedStock:', selectedStock?.ticker);
+  console.log('apiTickerCandidates:', apiTickerCandidates);
 
-    if (!apiTickerCandidates.length) {
-      setActivePriceTicker(null);
-      setTickerLookupPending(false);
-      return () => {
-        isCancelled = true;
-      };
-    }
+  if (!selectedStock) {
+    setActivePriceTicker(null);
+    setTickerLookupPending(false);
+    return () => {
+      isCancelled = true;
+    };
+  }
 
-    const cachedMatch = apiTickerCandidates.find(
-      (candidate) => priceStatusCacheRef.current[candidate] === "hasData"
-    );
+  if (!apiTickerCandidates.length) {
+    console.log('apiTickerCandidates가 비어있음');
+    setActivePriceTicker(null);
+    setTickerLookupPending(false);
+    return () => {
+      isCancelled = true;
+    };
+  }
 
-    if (cachedMatch) {
-      setActivePriceTicker(cachedMatch);
-      setTickerLookupPending(false);
-      return () => {
-        isCancelled = true;
-      };
-    }
+  const cachedMatch = apiTickerCandidates.find(
+    (candidate) => priceStatusCacheRef.current[candidate] === "hasData"
+  );
 
-    setTickerLookupPending(true);
+  if (cachedMatch) {
+    console.log('캐시에서 찾음:', cachedMatch);
+    setActivePriceTicker(cachedMatch);
+    setTickerLookupPending(false);
+    return () => {
+      isCancelled = true;
+    };
+  }
 
-    const resolveTicker = async () => {
-      for (const candidate of apiTickerCandidates) {
+  setTickerLookupPending(true);
+
+  const resolveTicker = async () => {
+    for (const candidate of apiTickerCandidates) {
+      if (isCancelled) {
+        return;
+      }
+
+      console.log(`티커 확인 중: ${candidate}`);
+
+      const cachedStatus = priceStatusCacheRef.current[candidate];
+      if (cachedStatus === "hasData") {
+        console.log(`  -> 캐시: hasData`);
+        setActivePriceTicker(candidate);
+        setTickerLookupPending(false);
+        return;
+      }
+      if (cachedStatus === "empty") {
+        console.log(`  -> 캐시: empty, 건너뜀`);
+        continue;
+      }
+
+      try {
+        const snapshot = await getDoc(doc(db, "stock_prices", candidate));
         if (isCancelled) {
           return;
         }
 
-        const cachedStatus = priceStatusCacheRef.current[candidate];
-        if (cachedStatus === "hasData") {
+        const snapshotData = snapshot.data();
+        const prices = Array.isArray(snapshotData?.prices)
+          ? snapshotData.prices
+          : [];
+        const hasData = snapshot.exists() && prices.length > 0;
+
+        console.log(`  -> 문서 존재: ${snapshot.exists()}, 가격 개수: ${prices.length}`);
+
+        priceStatusCacheRef.current[candidate] = hasData ? "hasData" : "empty";
+
+        if (hasData) {
+          console.log(`  -> 데이터 발견! activePriceTicker 설정: ${candidate}`);
           setActivePriceTicker(candidate);
           setTickerLookupPending(false);
           return;
         }
-        if (cachedStatus === "empty") {
-          continue;
-        }
-
-        try {
-          const snapshot = await getDoc(doc(db, "stock_prices", candidate));
-          if (isCancelled) {
-            return;
-          }
-
-          const snapshotData = snapshot.data();
-          const prices = Array.isArray(snapshotData?.prices)
-            ? snapshotData.prices
-            : [];
-          const hasData = snapshot.exists() && prices.length > 0;
-
-          priceStatusCacheRef.current[candidate] = hasData ? "hasData" : "empty";
-
-          if (hasData) {
-            setActivePriceTicker(candidate);
-            setTickerLookupPending(false);
-            return;
-          }
-        } catch (error) {
-          console.error(
-            `주가 데이터를 확인하는 중 오류가 발생했습니다. (티커 후보: ${candidate})`,
-            error
-          );
-          priceStatusCacheRef.current[candidate] = "error";
-        }
+      } catch (error) {
+        console.error(
+          `주가 데이터를 확인하는 중 오류가 발생했습니다. (티커 후보: ${candidate})`,
+          error
+        );
+        priceStatusCacheRef.current[candidate] = "error";
       }
+    }
 
-      if (!isCancelled) {
-        const fallbackTicker = apiTickerCandidates[0] ?? null;
-        setActivePriceTicker(fallbackTicker);
-        setTickerLookupPending(false);
-      }
-    };
+    if (!isCancelled) {
+      const fallbackTicker = apiTickerCandidates[0] ?? null;
+      console.log(`모든 후보 확인 완료, fallback 사용: ${fallbackTicker}`);
+      setActivePriceTicker(fallbackTicker);
+      setTickerLookupPending(false);
+    }
+  };
 
-    resolveTicker();
+  resolveTicker();
 
-    return () => {
-      isCancelled = true;
-    };
-  }, [selectedStock, apiTickerCandidates]);
+  return () => {
+    isCancelled = true;
+  };
+}, [selectedStock, apiTickerCandidates]);
 
   useEffect(() => {
     setChartModalOpen(false);
