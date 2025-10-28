@@ -5,6 +5,7 @@ import { useLocation, Link } from "react-router-dom";
 import { Helmet } from "react-helmet";
 import useSnapshotsHistory from "./hooks/useSnapshotsHistory";
 import useThemeLeaders from "./hooks/useThemeLeaders";
+import useLatestStockPrices from "./hooks/useLatestStockPrices";
 
 // Firebase imports
 import { db } from './firebaseConfig';
@@ -75,6 +76,17 @@ export default function Home() {
     });
     return map;
   }, [publicWatchlist]);
+
+  const publicWatchlistTickers = useMemo(
+    () => publicWatchlist.map((item) => (item.ticker ?? "").trim().toUpperCase()),
+    [publicWatchlist]
+  );
+
+  const {
+    priceMap: publicWatchlistPriceMap,
+    loading: publicWatchlistPriceLoading,
+    error: publicWatchlistPriceError,
+  } = useLatestStockPrices(publicWatchlistTickers);
 
   // 최근 포럼 글 상태
   const [latestForumPosts, setLatestForumPosts] = useState([]);
@@ -513,6 +525,9 @@ export default function Home() {
           items={publicWatchlist}
           loading={watchlistLoading}
           error={watchlistError}
+          priceMap={publicWatchlistPriceMap}
+          priceLoading={publicWatchlistPriceLoading}
+          priceError={publicWatchlistPriceError}
         />
 
         <section
