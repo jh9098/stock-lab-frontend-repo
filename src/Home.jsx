@@ -1,6 +1,6 @@
 // START OF FILE frontend/src/Home.jsx (수정: 종목 데이터 Firebase 연동 및 종목 코드 제거)
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, Link } from "react-router-dom";
 import { Helmet } from "react-helmet";
 import useSnapshotsHistory from "./hooks/useSnapshotsHistory";
@@ -12,12 +12,6 @@ import { addDoc, collection, doc, getDoc, limit, orderBy, query, serverTimestamp
 import { buildSnapshotSignature } from "./lib/snapshotUtils";
 
 export default function Home() {
-  // const [stocks, setStocks] = useState([]); // ⚠️ 기존 로컬 주식 데이터 상태 제거
-  // 💡 즐겨찾기 로직 변경: stock.code 대신 stock.id(Firebase 문서 ID)를 저장
-  const [favorites, setFavorites] = useState(() => {
-    const saved = localStorage.getItem("favorites_firebase_ids"); // 💡 localStorage 키 변경
-    return saved ? JSON.parse(saved) : [];
-  });
   const location = useLocation();
 
   // 최신 블로그 글 관련 상태
@@ -29,6 +23,37 @@ export default function Home() {
   const [latestStockAnalyses, setLatestStockAnalyses] = useState([]);
   const [stockAnalysesLoading, setStockAnalysesLoading] = useState(true);
   const [stockAnalysesError, setStockAnalysesError] = useState(null);
+
+  const [publicWatchlist, setPublicWatchlist] = useState([]);
+  const [watchlistLoading, setWatchlistLoading] = useState(true);
+  const [watchlistError, setWatchlistError] = useState(null);
+
+  const watchlistNumberFormatter = useMemo(() => new Intl.NumberFormat("ko-KR"), []);
+
+  const watchlistByAnalysisId = useMemo(() => {
+    const map = new Map();
+    publicWatchlist.forEach((item) => {
+      if (item.analysisId) {
+        map.set(item.analysisId, item);
+      }
+    });
+    return map;
+  }, [publicWatchlist]);
+
+  const watchlistByTicker = useMemo(() => {
+    const map = new Map();
+    publicWatchlist.forEach((item) => {
+      const ticker = (item.ticker || "").trim().toUpperCase();
+      if (!ticker) {
+        return;
+      }
+      if (!map.has(ticker)) {
+        map.set(ticker, []);
+      }
+      map.get(ticker).push(item);
+    });
+    return map;
+  }, [publicWatchlist]);
 
   // 최근 포럼 글 상태
   const [latestForumPosts, setLatestForumPosts] = useState([]);
@@ -445,15 +470,26 @@ export default function Home() {
     fetchLatestBlogPosts();
   }, []);
 
-  // 💡 즐겨찾기 토글 로직 변경: stock.code 대신 stock.id 사용
-  const toggleFavorite = (stockId) => {
-    const updated = favorites.includes(stockId)
-      ? favorites.filter((id) => id !== stockId)
-      : [...favorites, stockId];
-    setFavorites(updated);
-    localStorage.setItem("favorites_firebase_ids", JSON.stringify(updated)); // 💡 localStorage 키 변경
-  };
-
+  useEffect(() => {
+    const fetchWatchlist = async () => {
+      setWatchlistLoading(true);
+      setWatchlistError(null);
+      try {
+        const watchlistQuery = query(collection(db, "adminWatchlist"), orderBy("createdAt", "desc"));
+        const snapshot = await getDocs(watchlistQuery);
+        const items = snapshot.docs
+          .map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }))
+          .filter((item) => item.isPublic !== false);
+        setPublicWatchlist(items);
+      } catch (err) {
+        console.error("공개 관심 종목 불러오기 실패:", err);
+        setWatchlistError("공개 관심 종목을 불러오지 못했습니다.");
+      } finally {
+        setWatchlistLoading(false);
+      }
+    };
+    fetchWatchlist();
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-900 text-gray-100">
@@ -911,7 +947,7 @@ export default function Home() {
               <p className="text-xs font-semibold uppercase tracking-[0.35em] text-teal-300/80">핵심 종목 큐레이션</p>
               <h2 className="mt-2 text-3xl font-semibold text-white">최근 등록된 종목 & 전문가 분석</h2>
               <p className="mt-3 text-sm text-teal-100/80 md:text-base">
-                새롭게 등록된 종목 분석과 전략 포인트를 한 번에 살펴보고, 나만의 관심 종목을 빠르게 저장하세요.
+                새롭게 등록된 종목 분석과 전략 포인트를 한 번에 살펴보고, 관리자 관심 종목으로 지정된 종목을 함께 확인하세요.
               </p>
             </div>
             <Link
@@ -931,10 +967,26 @@ export default function Home() {
             ) : latestStockAnalyses.length > 0 ? (
               <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
                 {latestStockAnalyses.map((stock) => {
-                  const isFavorite = favorites.includes(stock.id);
                   const updatedDate = stock.createdAt
                     ? new Date(stock.createdAt.toDate()).toLocaleDateString('ko-KR')
                     : '';
+                  const tickerKey = (stock.ticker || '').trim().toUpperCase();
+                  const matchedWatchlist =
+                    watchlistByAnalysisId.get(stock.id) ||
+                    (tickerKey && watchlistByTicker.get(tickerKey)
+                      ? watchlistByTicker.get(tickerKey)[0]
+                      : null);
+                  const supportSummary = matchedWatchlist?.supportLines?.length
+                    ? matchedWatchlist.supportLines
+                        .map((value) => `${watchlistNumberFormatter.format(value)}원`)
+                        .join(', ')
+                    : null;
+                  const resistanceSummary = matchedWatchlist?.resistanceLines?.length
+                    ? matchedWatchlist.resistanceLines
+                        .map((value) => `${watchlistNumberFormatter.format(value)}원`)
+                        .join(', ')
+                    : null;
+                  const isWatchlist = Boolean(matchedWatchlist);
 
                   return (
                     <article
@@ -950,14 +1002,11 @@ export default function Home() {
                             </span>
                             <h3 className="mt-3 text-lg font-semibold text-white">{stock.name}</h3>
                           </div>
-                          <button
-                            type="button"
-                            onClick={() => toggleFavorite(stock.id)}
-                            className={`inline-flex items-center justify-center rounded-full border border-white/10 bg-white/5 p-2 text-base transition hover:border-teal-300 hover:bg-white/10 ${isFavorite ? 'text-pink-300' : 'text-slate-200'}`}
-                            aria-label={isFavorite ? `${stock.name} 즐겨찾기 해제` : `${stock.name} 즐겨찾기 등록`}
-                          >
-                            {isFavorite ? '★' : '☆'}
-                          </button>
+                          {isWatchlist && (
+                            <span className="inline-flex items-center gap-2 rounded-full border border-amber-400/40 bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-200">
+                              관리자 관심 종목
+                            </span>
+                          )}
                         </div>
                         <p className="mt-2 text-xs text-slate-400">업데이트: {updatedDate || '날짜 미상'}</p>
                         <p className="mt-4 text-sm text-slate-200">
@@ -967,10 +1016,17 @@ export default function Home() {
                         <p className="mt-3 text-sm text-slate-300">
                           {stock.detail || '등록된 설명이 없습니다. 분석 페이지에서 더 많은 정보를 확인하세요.'}
                         </p>
+                        {isWatchlist && (
+                          <div className="mt-3 space-y-1 rounded-lg border border-amber-400/20 bg-amber-500/5 p-3 text-xs text-amber-100">
+                            {matchedWatchlist.memo && <p className="text-amber-200">메모: {matchedWatchlist.memo}</p>}
+                            {supportSummary && <p>지지선: {supportSummary}</p>}
+                            {resistanceSummary && <p>저항선: {resistanceSummary}</p>}
+                          </div>
+                        )}
                       </div>
                       <div className="relative mt-6 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-300">
                         <span className="rounded-full bg-white/5 px-3 py-1">
-                          {isFavorite ? '관심 종목으로 저장됨' : '관심 종목에 추가 가능'}
+                          {isWatchlist ? '관리자 관심 종목에 포함됨' : '관심 종목 후보 탐색 중'}
                         </span>
                         <Link
                           to="/recommendations"
@@ -1180,7 +1236,7 @@ export default function Home() {
               <p className="text-xs font-semibold uppercase tracking-[0.35em] text-amber-200/80">맞춤 기능</p>
               <h2 className="mt-2 text-3xl font-semibold text-white">부가 기능 & 이용 가이드</h2>
               <p className="mt-3 text-sm text-amber-100/80 md:text-base">
-                즐겨찾기, 이용 가이드, 고급 도구 모음까지 투자에 필요한 모든 리소스를 이 섹션에 모았습니다.
+                관심 종목, 이용 가이드, 고급 도구 모음까지 투자에 필요한 모든 리소스를 이 섹션에 모았습니다.
               </p>
             </div>
             <Link
@@ -1201,31 +1257,57 @@ export default function Home() {
                   관심 종목
                 </span>
                 <h3 className="mt-3 text-xl font-semibold text-white">나의 관심 종목 관리</h3>
-                <p className="mt-3 text-sm text-slate-200">관심 종목을 즐겨찾기에 등록하고 업데이트 현황을 빠르게 확인하세요.</p>
+                <p className="mt-3 text-sm text-slate-200">관리자가 등록한 관심 종목과 지지선 정보를 한눈에 확인하세요.</p>
                 <ul className="mt-4 space-y-2 text-sm text-slate-200">
-                  {favorites.length > 0 ? (
-                    favorites.map((favId) => {
-                      const stock = latestStockAnalyses.find((s) => s.id === favId);
-                      return stock ? (
-                        <li key={favId} className="flex items-center justify-between gap-3 rounded-lg border border-white/5 bg-white/5 px-3 py-2">
-                          <span className="font-semibold text-white">{stock.name}</span>
-                          <span className="text-xs text-amber-200">{stock.strategy || '전략 미입력'}</span>
+                  {watchlistLoading ? (
+                    <li className="rounded-lg border border-dashed border-amber-500/40 px-3 py-4 text-center text-slate-300">
+                      관심 종목 정보를 불러오는 중입니다...
+                    </li>
+                  ) : watchlistError ? (
+                    <li className="rounded-lg border border-dashed border-red-500/40 px-3 py-4 text-center text-red-300">
+                      {watchlistError}
+                    </li>
+                  ) : publicWatchlist.length > 0 ? (
+                    publicWatchlist.slice(0, 5).map((item) => {
+                      const supportText = Array.isArray(item.supportLines) && item.supportLines.length
+                        ? item.supportLines
+                            .map((value) => `${watchlistNumberFormatter.format(value)}원`)
+                            .join(', ')
+                        : '지지선 미입력';
+                      const resistanceText = Array.isArray(item.resistanceLines) && item.resistanceLines.length
+                        ? item.resistanceLines
+                            .map((value) => `${watchlistNumberFormatter.format(value)}원`)
+                            .join(', ')
+                        : null;
+                      return (
+                        <li key={item.id} className="flex flex-col gap-1 rounded-lg border border-white/5 bg-white/5 px-3 py-2">
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="font-semibold text-white">{item.name}</span>
+                            <span className="text-xs text-amber-200">{item.ticker}</span>
+                          </div>
+                          <p className="text-xs text-amber-100">지지선: {supportText}</p>
+                          {resistanceText && (
+                            <p className="text-xs text-amber-100">저항선: {resistanceText}</p>
+                          )}
+                          {item.memo && (
+                            <p className="text-xs text-amber-200">메모: {item.memo}</p>
+                          )}
                         </li>
-                      ) : null;
+                      );
                     })
                   ) : (
                     <li className="rounded-lg border border-dashed border-amber-500/40 px-3 py-4 text-center text-slate-300">
-                      아직 관심 종목이 없습니다. 위 추천 섹션에서 마음에 드는 종목을 추가해보세요!
+                      아직 공개된 관심 종목이 없습니다. 관리자 등록 후 이 영역에서 바로 확인할 수 있습니다.
                     </li>
                   )}
                 </ul>
-                <button
-                  type="button"
+                <Link
+                  to="/portfolio"
                   className="mt-6 inline-flex items-center gap-2 rounded-full bg-amber-500/90 px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-amber-400"
                 >
-                  관심 종목 관리하기
+                  프리미엄 포트폴리오에서 확인하기
                   <span aria-hidden>→</span>
-                </button>
+                </Link>
               </div>
             </article>
 

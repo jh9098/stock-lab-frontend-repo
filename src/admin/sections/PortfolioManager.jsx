@@ -6,6 +6,7 @@ import {
   doc,
   getDoc,
   getDocs,
+  onSnapshot,
   orderBy,
   query,
   limit,
@@ -38,6 +39,11 @@ const emptyStockForm = {
   aggregatedReturn: "",
   strategyNote: "",
   orderIndex: "",
+  watchlistId: "",
+  supportLinesText: "",
+  resistanceLinesText: "",
+  alertThresholdPercent: "",
+  alertEnabled: true,
 };
 
 const emptyLegForm = {
@@ -74,6 +80,25 @@ function formatTimestamp(value) {
   return dateValue.toISOString().slice(0, 10);
 }
 
+function parseNumberArray(value) {
+  if (typeof value !== "string" || !value.trim()) {
+    return [];
+  }
+
+  return value
+    .split(/[\n,\s,]+/)
+    .map((item) => Number.parseFloat(item.replace(/[^0-9.\-]/g, "")))
+    .filter((num) => Number.isFinite(num));
+}
+
+function formatNumberArray(value) {
+  if (!Array.isArray(value) || value.length === 0) {
+    return "";
+  }
+
+  return value.join(", ");
+}
+
 export default function PortfolioManager() {
   const { setMessage } = useAdminContext();
   const [stocks, setStocks] = useState([]);
@@ -93,6 +118,9 @@ export default function PortfolioManager() {
     items: [],
     error: null,
   });
+  const [watchlistItems, setWatchlistItems] = useState([]);
+  const [watchlistLoading, setWatchlistLoading] = useState(true);
+  const [watchlistError, setWatchlistError] = useState(null);
 
   const fetchStocks = useCallback(async () => {
     setLoading(true);
@@ -121,16 +149,39 @@ export default function PortfolioManager() {
   }, [fetchStocks]);
 
   useEffect(() => {
+    const watchlistQuery = query(
+      collection(db, "adminWatchlist"),
+      orderBy("createdAt", "desc")
+    );
+
+    const unsubscribe = onSnapshot(
+      watchlistQuery,
+      (snapshot) => {
+        setWatchlistLoading(false);
+        setWatchlistError(null);
+        setWatchlistItems(snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() })));
+      },
+      (listenError) => {
+        console.error("관심 종목 후보 불러오기 실패", listenError);
+        setWatchlistLoading(false);
+        setWatchlistError("관심 종목 목록을 불러오지 못했습니다.");
+      }
+    );
+
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
     autocompleteBypassRef.current = true;
     setStockSuggestions({ open: false, loading: false, items: [], error: null });
     if (!selectedId) {
       lastEditedFieldRef.current = null;
       lastTickerLookupRef.current = null;
-      setStockForm((prev) => ({ ...emptyStockForm, orderIndex: stocks.length + 1 }));
-      setLegForm(emptyLegForm);
-      setEditingLegId(null);
-      return;
-    }
+    setStockForm((prev) => ({ ...emptyStockForm, orderIndex: stocks.length + 1 }));
+    setLegForm(emptyLegForm);
+    setEditingLegId(null);
+    return;
+  }
     const current = stocks.find((stock) => stock.id === selectedId);
     if (!current) {
       setSelectedId(null);
@@ -146,6 +197,17 @@ export default function PortfolioManager() {
       aggregatedReturn: current.aggregatedReturn ?? "",
       strategyNote: current.strategyNote ?? "",
       orderIndex: current.orderIndex ?? "",
+      watchlistId: current.watchlistId ?? "",
+      supportLinesText: formatNumberArray(current.supportLines),
+      resistanceLinesText: formatNumberArray(current.resistanceLines),
+      alertThresholdPercent:
+        current.alertThresholdPercent !== undefined && current.alertThresholdPercent !== null
+          ? String(current.alertThresholdPercent)
+          : "",
+      alertEnabled:
+        current.alertEnabled !== undefined && current.alertEnabled !== null
+          ? Boolean(current.alertEnabled)
+          : true,
     });
     setLegForm(emptyLegForm);
     setEditingLegId(null);
@@ -303,10 +365,32 @@ export default function PortfolioManager() {
     [stocks, selectedId]
   );
 
+  const watchlistMap = useMemo(() => {
+    const map = new Map();
+    watchlistItems.forEach((item) => {
+      map.set(item.id, item);
+    });
+    return map;
+  }, [watchlistItems]);
+
+  const watchlistCandidates = useMemo(
+    () =>
+      watchlistItems.filter(
+        (item) =>
+          (!item.linkedPortfolioId || item.linkedPortfolioId === selectedId) &&
+          (item.portfolioReady !== false || item.linkedPortfolioId === selectedId)
+      ),
+    [watchlistItems, selectedId]
+  );
+
   const handleStockFormChange = (field, value) => {
     lastEditedFieldRef.current = field;
     setStockForm((prev) => ({ ...prev, [field]: value }));
   };
+
+  const selectedWatchlist = stockForm.watchlistId
+    ? watchlistMap.get(stockForm.watchlistId) ?? null
+    : null;
 
   const handleSelectSuggestion = (item) => {
     if (closeSuggestionsTimeoutRef.current) {
@@ -324,11 +408,52 @@ export default function PortfolioManager() {
     setStockSuggestions({ open: false, loading: false, items: [], error: null });
   };
 
+  const handleSelectWatchlist = (watchlistId) => {
+    setStockForm((prev) => {
+      if (!watchlistId) {
+        return { ...prev, watchlistId: "" };
+      }
+
+      const candidate = watchlistMap.get(watchlistId);
+      if (!candidate) {
+        return { ...prev, watchlistId };
+      }
+
+      return {
+        ...prev,
+        watchlistId,
+        ticker: prev.ticker || candidate.ticker || "",
+        name: prev.name || candidate.name || "",
+        strategyNote: prev.strategyNote || candidate.memo || "",
+        supportLinesText: formatNumberArray(candidate.supportLines),
+        resistanceLinesText: formatNumberArray(candidate.resistanceLines),
+        alertThresholdPercent:
+          candidate.alertThresholdPercent !== undefined && candidate.alertThresholdPercent !== null
+            ? String(candidate.alertThresholdPercent)
+            : prev.alertThresholdPercent,
+        alertEnabled:
+          candidate.alertEnabled !== undefined && candidate.alertEnabled !== null
+            ? Boolean(candidate.alertEnabled)
+            : prev.alertEnabled ?? true,
+      };
+    });
+  };
+
   const handleSaveStock = async () => {
     if (!stockForm.ticker || !stockForm.name) {
       setMessage("종목 코드와 종목명을 입력해주세요.");
       return;
     }
+
+    const supportLines = parseNumberArray(stockForm.supportLinesText);
+    const resistanceLines = parseNumberArray(stockForm.resistanceLinesText);
+    const rawAlertThreshold = Number.parseFloat(stockForm.alertThresholdPercent);
+    const normalizedAlertThreshold = Number.isFinite(rawAlertThreshold)
+      ? rawAlertThreshold
+      : null;
+    const alertEnabled = Boolean(stockForm.alertEnabled);
+    const watchlistId = stockForm.watchlistId ? stockForm.watchlistId : null;
+    const previousWatchlistId = selectedStock?.watchlistId ?? null;
 
     const payload = {
       ticker: stockForm.ticker.trim().toUpperCase(),
@@ -338,10 +463,16 @@ export default function PortfolioManager() {
       aggregatedReturn: toNumber(stockForm.aggregatedReturn),
       strategyNote: stockForm.strategyNote,
       orderIndex: toNumber(stockForm.orderIndex) ?? stocks.length + 1,
+      supportLines,
+      resistanceLines,
+      alertThresholdPercent: normalizedAlertThreshold,
+      alertEnabled,
+      watchlistId,
       updatedAt: serverTimestamp(),
     };
 
     try {
+      let savedId = selectedId;
       if (selectedId) {
         await updateDoc(doc(db, "portfolioStocks", selectedId), payload);
         setMessage("포트폴리오 종목이 수정되었습니다.");
@@ -351,8 +482,38 @@ export default function PortfolioManager() {
           createdAt: serverTimestamp(),
         });
         setSelectedId(docRef.id);
+        savedId = docRef.id;
         setMessage("새 포트폴리오 종목이 등록되었습니다.");
       }
+
+      if (watchlistId) {
+        try {
+          await updateDoc(doc(db, "adminWatchlist", watchlistId), {
+            linkedPortfolioId: savedId,
+            portfolioReady: false,
+            supportLines,
+            resistanceLines,
+            alertThresholdPercent: normalizedAlertThreshold,
+            alertEnabled,
+            updatedAt: serverTimestamp(),
+          });
+        } catch (linkError) {
+          console.error("관심 종목 연동 업데이트 실패", linkError);
+        }
+      }
+
+      if (previousWatchlistId && previousWatchlistId !== watchlistId) {
+        try {
+          await updateDoc(doc(db, "adminWatchlist", previousWatchlistId), {
+            linkedPortfolioId: null,
+            portfolioReady: true,
+            updatedAt: serverTimestamp(),
+          });
+        } catch (unlinkError) {
+          console.error("관심 종목 연동 해제 실패", unlinkError);
+        }
+      }
+
       await fetchStocks();
     } catch (error) {
       console.error("포트폴리오 종목 저장 실패", error);
@@ -366,7 +527,19 @@ export default function PortfolioManager() {
       return;
     }
     try {
+      const watchlistId = selectedStock?.watchlistId;
       await deleteDoc(doc(db, "portfolioStocks", selectedId));
+      if (watchlistId) {
+        try {
+          await updateDoc(doc(db, "adminWatchlist", watchlistId), {
+            linkedPortfolioId: null,
+            portfolioReady: true,
+            updatedAt: serverTimestamp(),
+          });
+        } catch (unlinkError) {
+          console.error("관심 종목 연동 해제 실패", unlinkError);
+        }
+      }
       setMessage("포트폴리오 종목이 삭제되었습니다.");
       setSelectedId(null);
       await fetchStocks();
@@ -591,6 +764,93 @@ export default function PortfolioManager() {
                     className="rounded-lg bg-gray-950 border border-gray-700 px-3 py-2 text-white"
                     placeholder="예: 8.2"
                   />
+                </label>
+              </div>
+              <div className="grid md:grid-cols-2 gap-4">
+                <label className="flex flex-col gap-2 text-sm text-gray-300">
+                  관심 종목 불러오기
+                  <select
+                    value={stockForm.watchlistId}
+                    onChange={(event) => handleSelectWatchlist(event.target.value)}
+                    className="rounded-lg bg-gray-950 border border-gray-700 px-3 py-2 text-white"
+                  >
+                    <option value="">선택 안 함</option>
+                    {watchlistCandidates.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.name || item.ticker} · {item.ticker}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <div className="rounded-lg border border-gray-800 bg-gray-950 px-4 py-3 text-xs text-gray-300 space-y-1">
+                  {watchlistLoading ? (
+                    <p>관심 종목 목록을 불러오는 중...</p>
+                  ) : watchlistError ? (
+                    <p className="text-red-300">{watchlistError}</p>
+                  ) : selectedWatchlist ? (
+                    <>
+                      <p className="text-gray-200">
+                        선택된 관심 종목: <span className="font-semibold text-white">{selectedWatchlist.name}</span> ({selectedWatchlist.ticker})
+                      </p>
+                      {selectedWatchlist.memo && <p className="text-gray-400">메모: {selectedWatchlist.memo}</p>}
+                      <p className="text-gray-400">
+                        지지선: {Array.isArray(selectedWatchlist.supportLines) && selectedWatchlist.supportLines.length
+                          ? selectedWatchlist.supportLines.join(", ")
+                          : "-"}
+                      </p>
+                      <p className="text-gray-400">
+                        저항선: {Array.isArray(selectedWatchlist.resistanceLines) && selectedWatchlist.resistanceLines.length
+                          ? selectedWatchlist.resistanceLines.join(", ")
+                          : "-"}
+                      </p>
+                    </>
+                  ) : (
+                    <p>관심 종목을 선택하면 메모와 지지선 정보가 자동으로 채워집니다.</p>
+                  )}
+                </div>
+              </div>
+              <div className="grid md:grid-cols-2 gap-4">
+                <label className="flex flex-col gap-2 text-sm text-gray-300">
+                  지지선 (콤마 또는 줄바꿈 구분)
+                  <textarea
+                    rows={3}
+                    value={stockForm.supportLinesText}
+                    onChange={(event) => handleStockFormChange("supportLinesText", event.target.value)}
+                    className="rounded-lg bg-gray-950 border border-gray-700 px-3 py-2 text-white"
+                    placeholder="예: 72000, 68000"
+                  />
+                </label>
+                <label className="flex flex-col gap-2 text-sm text-gray-300">
+                  저항선 (콤마 또는 줄바꿈 구분)
+                  <textarea
+                    rows={3}
+                    value={stockForm.resistanceLinesText}
+                    onChange={(event) => handleStockFormChange("resistanceLinesText", event.target.value)}
+                    className="rounded-lg bg-gray-950 border border-gray-700 px-3 py-2 text-white"
+                    placeholder="예: 82000, 86000"
+                  />
+                </label>
+              </div>
+              <div className="grid md:grid-cols-2 gap-4">
+                <label className="flex flex-col gap-2 text-sm text-gray-300">
+                  지지선 알림 임계값 (%)
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={stockForm.alertThresholdPercent}
+                    onChange={(event) => handleStockFormChange("alertThresholdPercent", event.target.value)}
+                    className="rounded-lg bg-gray-950 border border-gray-700 px-3 py-2 text-white"
+                    placeholder="예: 3"
+                  />
+                </label>
+                <label className="flex items-center gap-2 text-sm text-gray-300">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(stockForm.alertEnabled)}
+                    onChange={(event) => handleStockFormChange("alertEnabled", event.target.checked)}
+                    className="h-4 w-4 rounded border-gray-700 bg-gray-900"
+                  />
+                  지지선 접근 알림 활성화
                 </label>
               </div>
               <div className="grid md:grid-cols-2 gap-4">

@@ -10,6 +10,25 @@ const STATUS_OPTIONS = [
   { value: "손절", label: "손절" },
 ];
 
+const parseNumberArray = (value) => {
+  if (typeof value !== "string" || !value.trim()) {
+    return [];
+  }
+
+  return value
+    .split(/[\n,\s,]+/)
+    .map((item) => Number.parseFloat(item.replace(/[^0-9.\-]/g, "")))
+    .filter((num) => Number.isFinite(num));
+};
+
+const formatNumberArray = (value) => {
+  if (!Array.isArray(value) || value.length === 0) {
+    return "";
+  }
+
+  return value.join(", ");
+};
+
 export default function StockAnalysisManager() {
   const { setMessage } = useAdminContext();
   const [analyses, setAnalyses] = useState([]);
@@ -18,10 +37,14 @@ export default function StockAnalysisManager() {
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState({
     name: "",
+    ticker: "",
     strategy: "",
     detail: "",
     status: "진행중",
     returnRate: "",
+    supportLinesText: "",
+    resistanceLinesText: "",
+    alertThresholdPercent: "5",
   });
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 20;
@@ -65,7 +88,17 @@ export default function StockAnalysisManager() {
   }, [fetchAnalyses]);
 
   const resetForm = useCallback(() => {
-    setForm({ name: "", strategy: "", detail: "", status: "진행중", returnRate: "" });
+    setForm({
+      name: "",
+      ticker: "",
+      strategy: "",
+      detail: "",
+      status: "진행중",
+      returnRate: "",
+      supportLinesText: "",
+      resistanceLinesText: "",
+      alertThresholdPercent: "5",
+    });
     setEditingId(null);
   }, []);
 
@@ -75,12 +108,25 @@ export default function StockAnalysisManager() {
       return;
     }
 
+    if (!form.ticker) {
+      setMessage("티커(종목 코드)를 입력해주세요.");
+      return;
+    }
+
+    const supportLines = parseNumberArray(form.supportLinesText);
+    const resistanceLines = parseNumberArray(form.resistanceLinesText);
+    const alertThresholdPercent = Number.parseFloat(form.alertThresholdPercent);
+
     const payload = {
       name: form.name,
+      ticker: form.ticker.trim(),
       strategy: form.strategy,
       detail: form.detail,
       status: form.status,
       returnRate: form.returnRate,
+      supportLines,
+      resistanceLines,
+      alertThresholdPercent: Number.isFinite(alertThresholdPercent) ? alertThresholdPercent : null,
       updatedAt: new Date(),
     };
 
@@ -107,10 +153,17 @@ export default function StockAnalysisManager() {
     setEditingId(analysis.id);
     setForm({
       name: analysis.name ?? "",
+      ticker: analysis.ticker ?? "",
       strategy: analysis.strategy ?? "",
       detail: analysis.detail ?? "",
       status: analysis.status ?? "진행중",
       returnRate: analysis.returnRate ?? "",
+      supportLinesText: formatNumberArray(analysis.supportLines),
+      resistanceLinesText: formatNumberArray(analysis.resistanceLines),
+      alertThresholdPercent:
+        analysis.alertThresholdPercent !== undefined && analysis.alertThresholdPercent !== null
+          ? String(analysis.alertThresholdPercent)
+          : "5",
     });
   };
 
@@ -171,6 +224,16 @@ export default function StockAnalysisManager() {
             />
           </label>
           <label className="flex flex-col gap-2 text-sm text-gray-300">
+            티커 / 종목 코드
+            <input
+              type="text"
+              value={form.ticker}
+              onChange={(event) => setForm((prev) => ({ ...prev, ticker: event.target.value }))}
+              className="rounded-lg bg-gray-950 border border-gray-700 px-3 py-2 text-white"
+              placeholder="예: 005930"
+            />
+          </label>
+          <label className="flex flex-col gap-2 text-sm text-gray-300">
             전략 요약
             <textarea
               rows={3}
@@ -188,6 +251,32 @@ export default function StockAnalysisManager() {
               className="rounded-lg bg-gray-950 border border-gray-700 px-3 py-2 text-white"
             />
           </label>
+          <div className="grid gap-4 md:grid-cols-2">
+            <label className="flex flex-col gap-2 text-sm text-gray-300">
+              지지선 (콤마 또는 줄바꿈 구분)
+              <textarea
+                rows={3}
+                value={form.supportLinesText}
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, supportLinesText: event.target.value }))
+                }
+                className="rounded-lg bg-gray-950 border border-gray-700 px-3 py-2 text-white"
+                placeholder="예: 72000, 68000"
+              />
+            </label>
+            <label className="flex flex-col gap-2 text-sm text-gray-300">
+              저항선 (콤마 또는 줄바꿈 구분)
+              <textarea
+                rows={3}
+                value={form.resistanceLinesText}
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, resistanceLinesText: event.target.value }))
+                }
+                className="rounded-lg bg-gray-950 border border-gray-700 px-3 py-2 text-white"
+                placeholder="예: 82000, 85000"
+              />
+            </label>
+          </div>
           <div className="grid md:grid-cols-2 gap-4">
             <label className="flex flex-col gap-2 text-sm text-gray-300">
               상태
@@ -212,6 +301,19 @@ export default function StockAnalysisManager() {
                 onChange={(event) => setForm((prev) => ({ ...prev, returnRate: event.target.value }))}
                 className="rounded-lg bg-gray-950 border border-gray-700 px-3 py-2 text-white"
                 placeholder="예: 12.5"
+              />
+            </label>
+            <label className="flex flex-col gap-2 text-sm text-gray-300">
+              지지선 알림 임계값 (%)
+              <input
+                type="number"
+                step="0.1"
+                value={form.alertThresholdPercent}
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, alertThresholdPercent: event.target.value }))
+                }
+                className="rounded-lg bg-gray-950 border border-gray-700 px-3 py-2 text-white"
+                placeholder="예: 3"
               />
             </label>
           </div>
@@ -245,6 +347,7 @@ export default function StockAnalysisManager() {
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p className="text-white font-semibold">{analysis.name}</p>
+                  <p className="text-xs text-gray-400">티커: {analysis.ticker ?? "-"}</p>
                   <p className="text-xs text-gray-400">상태: {analysis.status ?? "진행중"}</p>
                 </div>
                 <div className="flex gap-2">
@@ -279,6 +382,23 @@ export default function StockAnalysisManager() {
               <p className="text-sm text-gray-400">{analysis.detail}</p>
               {analysis.returnRate && (
                 <p className="text-xs text-teal-300">누적 수익률: {analysis.returnRate}%</p>
+              )}
+              {(Array.isArray(analysis.supportLines) && analysis.supportLines.length > 0) ||
+              (Array.isArray(analysis.resistanceLines) && analysis.resistanceLines.length > 0) ? (
+                <p className="text-xs text-gray-400">
+                  지지선: {Array.isArray(analysis.supportLines) && analysis.supportLines.length
+                    ? analysis.supportLines.join(", ")
+                    : "-"}
+                  {' · '}
+                  저항선: {Array.isArray(analysis.resistanceLines) && analysis.resistanceLines.length
+                    ? analysis.resistanceLines.join(", ")
+                    : "-"}
+                </p>
+              ) : null}
+              {analysis.alertThresholdPercent != null && (
+                <p className="text-xs text-gray-500">
+                  알림 임계값: {analysis.alertThresholdPercent}%
+                </p>
               )}
             </div>
           ))}

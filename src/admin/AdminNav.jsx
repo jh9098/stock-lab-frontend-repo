@@ -7,6 +7,7 @@ const NAV_ITEMS = [
   { to: "/admin/stocks", label: "종목 분석" },
   { to: "/admin/forum", label: "상담 게시판" },
   { to: "/admin/portfolio", label: "포트폴리오" },
+  { to: "/admin/watchlist", label: "관심 종목" },
 ];
 
 export default function AdminNav() {
