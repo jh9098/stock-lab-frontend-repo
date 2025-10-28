@@ -23,6 +23,7 @@ import {
 import { buildSnapshotSignature } from "./lib/snapshotUtils";
 import PublicWatchlistShowcase from "./components/PublicWatchlistShowcase";
 import usePublicWatchlist from "./hooks/usePublicWatchlist";
+import useAuth from "./useAuth";
 
 export default function Home() {
   const location = useLocation();
@@ -42,6 +43,11 @@ export default function Home() {
     loading: watchlistLoading,
     error: watchlistError,
   } = usePublicWatchlist();
+
+  const { user, profile } = useAuth();
+  const role = profile?.role ?? "guest";
+  const isLoggedIn = Boolean(user);
+  const isMember = role === "member" || role === "admin";
 
   const watchlistNumberFormatter = useMemo(() => new Intl.NumberFormat("ko-KR"), []);
 
@@ -1269,28 +1275,45 @@ export default function Home() {
                     </li>
                   ) : publicWatchlist.length > 0 ? (
                     publicWatchlist.slice(0, 5).map((item) => {
-                      const supportText = Array.isArray(item.supportLines) && item.supportLines.length
-                        ? item.supportLines
-                            .map((value) => `${watchlistNumberFormatter.format(value)}원`)
-                            .join(', ')
+                      const hasSupportLines = Array.isArray(item.supportLines) && item.supportLines.length > 0;
+                      const supportText = hasSupportLines
+                        ? item.supportLines.map((value) => `${watchlistNumberFormatter.format(value)}원`).join(', ')
                         : '지지선 미입력';
-                      const resistanceText = Array.isArray(item.resistanceLines) && item.resistanceLines.length
-                        ? item.resistanceLines
-                            .map((value) => `${watchlistNumberFormatter.format(value)}원`)
-                            .join(', ')
+                      const hasResistanceLines = Array.isArray(item.resistanceLines) && item.resistanceLines.length > 0;
+                      const resistanceText = hasResistanceLines
+                        ? item.resistanceLines.map((value) => `${watchlistNumberFormatter.format(value)}원`).join(', ')
                         : null;
+                      const shouldMaskAllValues = !isLoggedIn;
+                      const shouldMaskPremiumValues = isLoggedIn && !isMember;
+                      const shouldMaskSupport = (shouldMaskAllValues || shouldMaskPremiumValues) && hasSupportLines;
+                      const shouldMaskResistance = (shouldMaskAllValues || shouldMaskPremiumValues) && hasResistanceLines;
+                      const hasMaskedValues = shouldMaskSupport || shouldMaskResistance;
+                      const maskNoticeMessage = shouldMaskAllValues
+                        ? '관심 종목 상세 정보는 구글 로그인 후 확인 가능합니다.'
+                        : '관심 종목 상세 정보는 관리자 문의 후 확인 가능합니다.';
+                      const hasMemo = Boolean(item.memo);
+                      const memoIsVisible = hasMemo && isMember;
+                      const shouldShowMemoMaskForGuest = hasMemo && isLoggedIn && !isMember;
+                      const shouldShowMemoMaskForVisitors = hasMemo && shouldMaskAllValues;
                       return (
                         <li key={item.id} className="flex flex-col gap-1 rounded-lg border border-white/5 bg-white/5 px-3 py-2">
                           <div className="flex items-center justify-between gap-3">
                             <span className="font-semibold text-white">{item.name}</span>
                             <span className="text-xs text-amber-200">{item.ticker}</span>
                           </div>
-                          <p className="text-xs text-amber-100">지지선: {supportText}</p>
+                          <p className="text-xs text-amber-100">지지선: {shouldMaskSupport ? '●●●' : supportText}</p>
                           {resistanceText && (
-                            <p className="text-xs text-amber-100">저항선: {resistanceText}</p>
+                            <p className="text-xs text-amber-100">저항선: {shouldMaskResistance ? '●●●' : resistanceText}</p>
                           )}
-                          {item.memo && (
-                            <p className="text-xs text-amber-200">메모: {item.memo}</p>
+                          {hasMaskedValues && (
+                            <p className="text-xs text-amber-200">{maskNoticeMessage}</p>
+                          )}
+                          {memoIsVisible && <p className="text-xs text-amber-200">메모: {item.memo}</p>}
+                          {shouldShowMemoMaskForVisitors && (
+                            <p className="text-xs text-amber-200">메모는 구글 로그인 후 확인 가능합니다.</p>
+                          )}
+                          {shouldShowMemoMaskForGuest && (
+                            <p className="text-xs text-amber-200">메모는 관리자 문의 후 확인 가능합니다.</p>
                           )}
                         </li>
                       );
