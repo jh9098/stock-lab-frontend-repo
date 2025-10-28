@@ -20,6 +20,7 @@ import BlogManager from "./admin/sections/BlogManager";
 import StockAnalysisManager from "./admin/sections/StockAnalysisManager";
 import ConsultManager from "./admin/sections/ConsultManager";
 import PortfolioManager from "./admin/sections/PortfolioManager";
+import WatchlistManager from "./admin/sections/WatchlistManager";
 import MarketInsightsPage from "./MarketInsightsPage";
 import ContentCommunityPage from "./ContentCommunityPage";
 import CustomFeaturesPage from "./CustomFeaturesPage";
@@ -223,6 +224,14 @@ function App() {
           element={
             <AccessGuard pathKey="/admin/*" requiresAuth allowedRoles={["admin"]}>
               <PortfolioManager />
+            </AccessGuard>
+          }
+        />
+        <Route
+          path="watchlist"
+          element={
+            <AccessGuard pathKey="/admin/*" requiresAuth allowedRoles={["admin"]}>
+              <WatchlistManager />
             </AccessGuard>
           }
         />
