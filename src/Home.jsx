@@ -8,8 +8,21 @@ import useThemeLeaders from "./hooks/useThemeLeaders";
 
 // Firebase imports
 import { db } from './firebaseConfig';
-import { addDoc, collection, doc, getDoc, limit, orderBy, query, serverTimestamp, setDoc, getDocs } from 'firebase/firestore';
+import {
+  addDoc,
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  limit,
+  orderBy,
+  query,
+  serverTimestamp,
+  setDoc,
+} from 'firebase/firestore';
 import { buildSnapshotSignature } from "./lib/snapshotUtils";
+import PublicWatchlistShowcase from "./components/PublicWatchlistShowcase";
+import usePublicWatchlist from "./hooks/usePublicWatchlist";
 
 export default function Home() {
   const location = useLocation();
@@ -24,9 +37,11 @@ export default function Home() {
   const [stockAnalysesLoading, setStockAnalysesLoading] = useState(true);
   const [stockAnalysesError, setStockAnalysesError] = useState(null);
 
-  const [publicWatchlist, setPublicWatchlist] = useState([]);
-  const [watchlistLoading, setWatchlistLoading] = useState(true);
-  const [watchlistError, setWatchlistError] = useState(null);
+  const {
+    items: publicWatchlist,
+    loading: watchlistLoading,
+    error: watchlistError,
+  } = usePublicWatchlist();
 
   const watchlistNumberFormatter = useMemo(() => new Intl.NumberFormat("ko-KR"), []);
 
@@ -470,27 +485,6 @@ export default function Home() {
     fetchLatestBlogPosts();
   }, []);
 
-  useEffect(() => {
-    const fetchWatchlist = async () => {
-      setWatchlistLoading(true);
-      setWatchlistError(null);
-      try {
-        const watchlistQuery = query(collection(db, "adminWatchlist"), orderBy("createdAt", "desc"));
-        const snapshot = await getDocs(watchlistQuery);
-        const items = snapshot.docs
-          .map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }))
-          .filter((item) => item.isPublic !== false);
-        setPublicWatchlist(items);
-      } catch (err) {
-        console.error("공개 관심 종목 불러오기 실패:", err);
-        setWatchlistError("공개 관심 종목을 불러오지 못했습니다.");
-      } finally {
-        setWatchlistLoading(false);
-      }
-    };
-    fetchWatchlist();
-  }, []);
-
   return (
     <div className="min-h-screen bg-gray-900 text-gray-100">
       <Helmet>
@@ -508,6 +502,12 @@ export default function Home() {
           <div id="coupang-ad-banner" className="flex justify-center"></div>
         </div>
         */}
+
+        <PublicWatchlistShowcase
+          items={publicWatchlist}
+          loading={watchlistLoading}
+          error={watchlistError}
+        />
 
         <section
           id="market-status"

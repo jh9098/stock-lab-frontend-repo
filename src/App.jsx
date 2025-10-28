@@ -14,6 +14,7 @@ import ForeignNetBuyHistory from "./pages/ForeignNetBuyHistory";
 import InstitutionNetBuyHistory from "./pages/InstitutionNetBuyHistory";
 import MarketHistoryDashboard from "./pages/MarketHistoryDashboard";
 import ThemeRankHistoryPage from "./pages/ThemeRankHistoryPage";
+import PublicWatchlistPage from "./pages/PublicWatchlistPage";
 import AdminLayout from "./admin/AdminLayout";
 import AdminDashboard from "./admin/sections/AdminDashboard";
 import BlogManager from "./admin/sections/BlogManager";
@@ -70,6 +71,14 @@ function App() {
           element={
             <AccessGuard pathKey="/recommendations">
               <RecommendationsPage />
+            </AccessGuard>
+          }
+        />
+        <Route
+          path="/watchlist"
+          element={
+            <AccessGuard pathKey="/watchlist" requiresAuth>
+              <PublicWatchlistPage />
             </AccessGuard>
           }
         />

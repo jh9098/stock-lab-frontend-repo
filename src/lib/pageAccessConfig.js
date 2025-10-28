@@ -4,6 +4,7 @@ export const PAGE_OPTIONS = [
   { value: '/blog', label: '블로그 목록' },
   { value: '/blog/*', label: '블로그 상세' },
   { value: '/recommendations', label: '종목 추천' },
+  { value: '/watchlist', label: '프리미엄 관심 종목', membersOnly: true },
   { value: '/forum', label: '상담 포럼 목록' },
   { value: '/forum/write', label: '상담 글쓰기' },
   { value: '/forum/*', label: '상담 상세' },
@@ -21,7 +22,7 @@ export const PAGE_OPTIONS = [
 ];
 
 export const DEFAULT_ALLOWED_PATHS = PAGE_OPTIONS.filter(
-  (option) => !option.adminOnly && option.value !== '/portfolio'
+  (option) => !option.adminOnly && !option.membersOnly
 ).map((option) => option.value);
 
 export const PUBLIC_PATHS = DEFAULT_ALLOWED_PATHS;
