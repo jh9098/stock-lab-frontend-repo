@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   addDoc,
   collection,
@@ -9,12 +9,21 @@ import {
   onSnapshot,
   orderBy,
   query,
+  limit,
+  startAt,
+  endAt,
   serverTimestamp,
   updateDoc,
 } from "firebase/firestore";
 import { db } from "../../firebaseConfig";
 import { useAdminContext } from "../AdminContext";
 import PaginationControls from "../components/PaginationControls";
+import useLatestStockPrices from "../../hooks/useLatestStockPrices";
+import {
+  STOCK_PRICE_COLLECTION,
+  formatPriceTimestamp,
+  formatPriceValue,
+} from "../../lib/stockPriceUtils";
 
 const WATCHLIST_COLLECTION = "adminWatchlist";
 const STOCKS_COLLECTION = "stocks";
@@ -63,12 +72,26 @@ export default function WatchlistManager() {
   const [editingId, setEditingId] = useState(null);
   const [analysisOptions, setAnalysisOptions] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
+  const [stockSuggestions, setStockSuggestions] = useState({
+    open: false,
+    loading: false,
+    items: [],
+    error: null,
+  });
+  const closeSuggestionsTimeoutRef = useRef(null);
+  const autocompleteBypassRef = useRef(false);
+  const lastEditedFieldRef = useRef(null);
+  const lastTickerLookupRef = useRef(null);
 
   const ITEMS_PER_PAGE = 20;
 
   const resetForm = useCallback(() => {
     setForm(emptyForm);
     setEditingId(null);
+    setStockSuggestions({ open: false, loading: false, items: [], error: null });
+    autocompleteBypassRef.current = false;
+    lastEditedFieldRef.current = null;
+    lastTickerLookupRef.current = null;
   }, []);
 
   useEffect(() => {
@@ -117,6 +140,174 @@ export default function WatchlistManager() {
     });
   }, [items]);
 
+  const watchlistTickers = useMemo(
+    () =>
+      items
+        .map((item) => (item.ticker ?? "").trim().toUpperCase())
+        .filter((value) => value),
+    [items]
+  );
+
+  const { priceMap } = useLatestStockPrices(watchlistTickers);
+
+  useEffect(() => {
+    return () => {
+      if (closeSuggestionsTimeoutRef.current) {
+        clearTimeout(closeSuggestionsTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    const trimmedName = form.name.trim();
+
+    if (autocompleteBypassRef.current) {
+      autocompleteBypassRef.current = false;
+      return;
+    }
+
+    if (!trimmedName) {
+      setStockSuggestions((prev) => ({
+        ...prev,
+        loading: false,
+        items: [],
+        error: null,
+      }));
+      return;
+    }
+
+    setStockSuggestions((prev) => ({ ...prev, loading: true, error: null }));
+
+    let active = true;
+    const debounceTimer = setTimeout(async () => {
+      try {
+        const keyword = trimmedName;
+        const nameQuery = query(
+          collection(db, STOCK_PRICE_COLLECTION),
+          orderBy("name"),
+          startAt(keyword),
+          endAt(`${keyword}${String.fromCharCode(0xf8ff)}`),
+          limit(15)
+        );
+        const snapshot = await getDocs(nameQuery);
+        if (!active) {
+          return;
+        }
+
+        const suggestionItems = snapshot.docs.map((docSnap) => ({
+          ticker: docSnap.id,
+          name: docSnap.data()?.name ?? docSnap.id,
+        }));
+
+        const normalize = (value) => value.replace(/\s+/g, "").toLowerCase();
+        const normalizedInput = normalize(trimmedName);
+        const exactMatchDoc = snapshot.docs.find((docSnap) => {
+          const candidate = docSnap.data()?.name ?? docSnap.id;
+          if (!candidate) return false;
+          return (
+            normalize(candidate).localeCompare(normalizedInput, undefined, {
+              sensitivity: "base",
+            }) === 0
+          );
+        });
+
+        if (exactMatchDoc) {
+          autocompleteBypassRef.current = true;
+          lastEditedFieldRef.current = null;
+          lastTickerLookupRef.current = exactMatchDoc.id.trim().toUpperCase();
+          setForm((prev) => ({
+            ...prev,
+            ticker: exactMatchDoc.id,
+          }));
+        }
+
+        setStockSuggestions((prev) => ({
+          ...prev,
+          loading: false,
+          items: suggestionItems,
+          error: null,
+        }));
+      } catch (fetchError) {
+        console.error("종목 자동완성 조회 실패", fetchError);
+        if (active) {
+          setStockSuggestions((prev) => ({
+            ...prev,
+            loading: false,
+            error: "자동완성 결과를 불러오지 못했습니다.",
+          }));
+          setMessage("종목 정보를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.");
+        }
+      }
+    }, 250);
+
+    return () => {
+      active = false;
+      clearTimeout(debounceTimer);
+    };
+  }, [form.name, setMessage]);
+
+  useEffect(() => {
+    const trimmedTicker = form.ticker.trim().toUpperCase();
+    const trimmedName = form.name.trim();
+
+    if (
+      lastTickerLookupRef.current === trimmedTicker &&
+      lastEditedFieldRef.current === "name" &&
+      trimmedName === ""
+    ) {
+      return;
+    }
+
+    if (!trimmedTicker || trimmedName) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const fetchTickerName = async () => {
+      try {
+        const priceDocRef = doc(db, STOCK_PRICE_COLLECTION, trimmedTicker);
+        const docSnap = await getDoc(priceDocRef);
+        if (cancelled) return;
+        if (!docSnap.exists()) {
+          setMessage("종목 코드를 다시 확인해주세요.");
+          setStockSuggestions((prev) => ({
+            ...prev,
+            error: "해당 종목을 찾을 수 없습니다.",
+          }));
+          return;
+        }
+        const fetchedName = docSnap.data()?.name ?? "";
+        if (fetchedName) {
+          autocompleteBypassRef.current = true;
+          lastTickerLookupRef.current = trimmedTicker;
+          lastEditedFieldRef.current = null;
+          setForm((prev) => ({
+            ...prev,
+            ticker: trimmedTicker,
+            name: fetchedName,
+          }));
+          setStockSuggestions((prev) => ({ ...prev, error: null }));
+        }
+      } catch (tickerError) {
+        console.error("종목 단일 조회 실패", tickerError);
+        if (!cancelled) {
+          setMessage("종목 정보를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.");
+          setStockSuggestions((prev) => ({
+            ...prev,
+            error: "종목 정보를 불러오지 못했습니다.",
+          }));
+        }
+      }
+    };
+
+    fetchTickerName();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [form.ticker, form.name, setMessage]);
+
   const paginatedItems = useMemo(() => {
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
     return items.slice(startIndex, startIndex + ITEMS_PER_PAGE);
@@ -125,6 +316,10 @@ export default function WatchlistManager() {
   const totalPages = Math.max(1, Math.ceil(items.length / ITEMS_PER_PAGE));
 
   const handleEdit = useCallback((item) => {
+    autocompleteBypassRef.current = true;
+    lastEditedFieldRef.current = null;
+    lastTickerLookupRef.current = (item.ticker ?? "").trim().toUpperCase() || null;
+    setStockSuggestions({ open: false, loading: false, items: [], error: null });
     setEditingId(item.id);
     setForm({
       name: item.name ?? "",
@@ -145,6 +340,29 @@ export default function WatchlistManager() {
       alertEnabled: Boolean(item.alertEnabled ?? true),
       portfolioReady: Boolean(item.portfolioReady ?? true),
     });
+  }, []);
+
+  const handleFieldChange = useCallback((field, value) => {
+    if (field === "name" || field === "ticker") {
+      lastEditedFieldRef.current = field;
+    }
+    setForm((prev) => ({ ...prev, [field]: value }));
+  }, []);
+
+  const handleSelectSuggestion = useCallback((item) => {
+    if (closeSuggestionsTimeoutRef.current) {
+      clearTimeout(closeSuggestionsTimeoutRef.current);
+      closeSuggestionsTimeoutRef.current = null;
+    }
+    autocompleteBypassRef.current = true;
+    lastEditedFieldRef.current = null;
+    lastTickerLookupRef.current = (item.ticker ?? "").trim().toUpperCase() || null;
+    setForm((prev) => ({
+      ...prev,
+      name: item.name ?? "",
+      ticker: item.ticker ?? "",
+    }));
+    setStockSuggestions({ open: false, loading: false, items: [], error: null });
   }, []);
 
   const handleDelete = useCallback(
@@ -310,21 +528,59 @@ export default function WatchlistManager() {
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
-          <label className="flex flex-col gap-2 text-sm text-gray-300">
+          <label className="relative flex flex-col gap-2 text-sm text-gray-300">
             종목명
             <input
               type="text"
               value={form.name}
-              onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))}
+              onChange={(event) => handleFieldChange("name", event.target.value)}
+              onFocus={() => {
+                if (closeSuggestionsTimeoutRef.current) {
+                  clearTimeout(closeSuggestionsTimeoutRef.current);
+                  closeSuggestionsTimeoutRef.current = null;
+                }
+                setStockSuggestions((prev) => ({ ...prev, open: true }));
+              }}
+              onBlur={() => {
+                closeSuggestionsTimeoutRef.current = setTimeout(() => {
+                  setStockSuggestions((prev) => ({ ...prev, open: false }));
+                  closeSuggestionsTimeoutRef.current = null;
+                }, 150);
+              }}
               className="rounded-lg bg-gray-950 border border-gray-700 px-3 py-2 text-white"
-            />
+              />
+            {stockSuggestions.open && (
+              <ul className="absolute z-10 top-full left-0 right-0 mt-1 max-h-60 overflow-y-auto rounded-lg border border-gray-700 bg-gray-900 shadow-lg">
+                {stockSuggestions.loading && (
+                  <li className="px-3 py-2 text-xs text-gray-400">검색 중...</li>
+                )}
+                {!stockSuggestions.loading && stockSuggestions.error && (
+                  <li className="px-3 py-2 text-xs text-red-400">{stockSuggestions.error}</li>
+                )}
+                {!stockSuggestions.loading && !stockSuggestions.error && !stockSuggestions.items.length && (
+                  <li className="px-3 py-2 text-xs text-gray-400">일치하는 종목이 없습니다.</li>
+                )}
+                {stockSuggestions.items.map((item) => (
+                  <li key={item.ticker} className="border-t border-gray-800 first:border-t-0">
+                    <button
+                      type="button"
+                      onMouseDown={() => handleSelectSuggestion(item)}
+                      className="w-full text-left px-3 py-2 text-sm text-gray-200 hover:bg-gray-800"
+                    >
+                      <span className="font-medium text-white">{item.name}</span>
+                      <span className="ml-2 text-xs text-gray-400">{item.ticker}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
           </label>
           <label className="flex flex-col gap-2 text-sm text-gray-300">
             티커 / 종목 코드
             <input
               type="text"
               value={form.ticker}
-              onChange={(event) => setForm((prev) => ({ ...prev, ticker: event.target.value }))}
+              onChange={(event) => handleFieldChange("ticker", event.target.value)}
               className="rounded-lg bg-gray-950 border border-gray-700 px-3 py-2 text-white"
               placeholder="예: 005930"
             />
@@ -471,6 +727,10 @@ export default function WatchlistManager() {
             const resistanceText = Array.isArray(item.resistanceLines)
               ? item.resistanceLines.map((value) => `${numberFormatter.format(value)}원`).join(", ")
               : "-";
+            const tickerKey = (item.ticker ?? "").trim().toUpperCase();
+            const priceInfo = tickerKey ? priceMap.get(tickerKey) ?? null : null;
+            const priceValueText = formatPriceValue(priceInfo?.price) ?? "확인 불가";
+            const priceTimestampText = priceInfo?.priceDate ? formatPriceTimestamp(priceInfo.priceDate) : null;
 
             return (
               <div key={item.id} className="px-6 py-4 space-y-3">
@@ -494,6 +754,12 @@ export default function WatchlistManager() {
                     </div>
                     <p className="text-xs text-gray-400">
                       지지선: {supportText || "-"} · 저항선: {resistanceText || "-"}
+                    </p>
+                    <p className="text-xs text-gray-400">
+                      현재가: <span className="text-gray-100">{priceValueText}</span>
+                      {priceTimestampText && (
+                        <span className="ml-2 text-[11px] text-gray-500">기준 {priceTimestampText}</span>
+                      )}
                     </p>
                     {item.memo && <p className="text-sm text-gray-300">{item.memo}</p>}
                     <div className="flex flex-wrap gap-2 text-xs text-gray-400">

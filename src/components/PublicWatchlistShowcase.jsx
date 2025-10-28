@@ -2,8 +2,16 @@ import PropTypes from "prop-types";
 import { Link } from "react-router-dom";
 import useAuth from "../useAuth";
 import { formatPriceLines, formatTimestamp } from "../lib/watchlistUtils";
+import { formatPriceTimestamp, formatPriceValue } from "../lib/stockPriceUtils";
 
-export default function PublicWatchlistShowcase({ items, loading, error }) {
+export default function PublicWatchlistShowcase({
+  items,
+  loading,
+  error,
+  priceMap,
+  priceLoading,
+  priceError,
+}) {
   const visibleItems = Array.isArray(items) ? items.filter((item) => item?.isPublic !== false) : [];
   const { user, profile } = useAuth();
   const role = profile?.role ?? "guest";
@@ -65,6 +73,16 @@ export default function PublicWatchlistShowcase({ items, loading, error }) {
               const memoIsVisible = hasMemo && isMember;
               const shouldShowMemoMaskForGuest = hasMemo && isLoggedIn && !isMember;
               const shouldShowMemoMaskForVisitors = hasMemo && shouldMaskAllValues;
+              const tickerKey = (item.ticker ?? "").trim().toUpperCase();
+              const priceInfo = tickerKey && priceMap instanceof Map ? priceMap.get(tickerKey) ?? null : null;
+              const priceText = priceInfo
+                ? formatPriceValue(priceInfo.price)
+                : priceLoading
+                ? "가격 불러오는 중..."
+                : "가격 정보 없음";
+              const priceTimestampText = priceInfo?.priceDate
+                ? formatPriceTimestamp(priceInfo.priceDate)
+                : null;
 
               return (
                 <article
@@ -86,6 +104,16 @@ export default function PublicWatchlistShowcase({ items, loading, error }) {
                         </span>
                       )}
                     </div>
+                    <div className="flex flex-wrap items-center gap-2 text-sm text-amber-100/90">
+                      <span className="font-semibold text-amber-200">현재가</span>
+                      <span>{priceText}</span>
+                      {priceTimestampText && (
+                        <span className="text-xs text-amber-200/80">기준: {priceTimestampText}</span>
+                      )}
+                    </div>
+                    {!priceInfo && priceError && !priceLoading && (
+                      <p className="text-xs text-red-200/80">{priceError}</p>
+                    )}
                     {updatedText && <p className="text-xs text-amber-100/80">업데이트: {updatedText}</p>}
                     {memoIsVisible && <p className="text-sm text-amber-100/90">{item.memo}</p>}
                     {shouldShowMemoMaskForVisitors && (
@@ -173,10 +201,16 @@ PublicWatchlistShowcase.propTypes = {
   ),
   loading: PropTypes.bool,
   error: PropTypes.string,
+  priceMap: PropTypes.instanceOf(Map),
+  priceLoading: PropTypes.bool,
+  priceError: PropTypes.string,
 };
 
 PublicWatchlistShowcase.defaultProps = {
   items: [],
   loading: false,
   error: "",
+  priceMap: new Map(),
+  priceLoading: false,
+  priceError: "",
 };
