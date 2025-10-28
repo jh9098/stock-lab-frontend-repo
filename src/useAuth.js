@@ -27,6 +27,8 @@ import {
   normalizePath,
 } from './lib/pageAccessConfig';
 
+const MEMBER_REQUIRED_PATHS = ['/portfolio', '/watchlist'];
+
 const AuthContext = createContext(null);
 
 function buildInitialProfile(user) {
@@ -43,27 +45,33 @@ function buildInitialProfile(user) {
   };
 }
 
-function ensurePortfolioAccessForRole(paths = [], role = 'guest') {
-  const normalizedPaths = [...paths];
-  const hasPortfolioAccess = normalizedPaths.some((path) =>
-    matchPathPattern(path, '/portfolio')
+function ensureMemberPathsForRole(paths = [], role = 'guest') {
+  const normalizedPaths = Array.isArray(paths) ? [...paths] : [];
+
+  const matchesMemberPath = (candidate, target) =>
+    matchPathPattern(candidate, target) || matchPathPattern(target, candidate);
+
+  if (role === 'member' || role === 'admin') {
+    const nextPaths = [...normalizedPaths];
+    MEMBER_REQUIRED_PATHS.forEach((memberPath) => {
+      const hasMemberPath = nextPaths.some((path) =>
+        matchesMemberPath(path, memberPath)
+      );
+      if (!hasMemberPath) {
+        nextPaths.push(memberPath);
+      }
+    });
+    return Array.from(new Set(nextPaths));
+  }
+
+  const filtered = normalizedPaths.filter(
+    (path) =>
+      !MEMBER_REQUIRED_PATHS.some((memberPath) =>
+        matchesMemberPath(path, memberPath)
+      )
   );
 
-  if ((role === 'member' || role === 'admin') && !hasPortfolioAccess) {
-    normalizedPaths.push('/portfolio');
-  }
-
-  if (role === 'guest') {
-    return Array.from(
-      new Set(
-        normalizedPaths.filter(
-          (path) => !matchPathPattern(path, '/portfolio')
-        )
-      )
-    );
-  }
-
-  return Array.from(new Set(normalizedPaths));
+  return Array.from(new Set(filtered));
 }
 
 export function AuthProvider({ children }) {
@@ -114,7 +122,7 @@ export function AuthProvider({ children }) {
               const normalizedPaths = Array.isArray(data.allowedPaths)
                 ? data.allowedPaths
                 : DEFAULT_ALLOWED_PATHS;
-              const withPortfolio = ensurePortfolioAccessForRole(
+              const withMemberPaths = ensureMemberPathsForRole(
                 normalizedPaths,
                 data.role || 'guest'
               );
@@ -122,7 +130,7 @@ export function AuthProvider({ children }) {
               setProfile({
                 ...data,
                 uid: docSnap.id,
-                allowedPaths: withPortfolio,
+                allowedPaths: withMemberPaths,
               });
             } else {
               setProfile(null);

@@ -15,6 +15,7 @@ const NAV_SECTIONS = [
     label: "투자 전략",
     items: [
       { label: "종목 추천", to: "/recommendations" },
+      { label: "프리미엄 관심 종목", to: "/watchlist" },
       { label: "(유료)포트폴리오", to: "/portfolio" },
     ],
   },
