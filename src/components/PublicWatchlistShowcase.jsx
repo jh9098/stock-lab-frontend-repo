@@ -1,9 +1,14 @@
 import PropTypes from "prop-types";
 import { Link } from "react-router-dom";
+import useAuth from "../useAuth";
 import { formatPriceLines, formatTimestamp } from "../lib/watchlistUtils";
 
 export default function PublicWatchlistShowcase({ items, loading, error }) {
   const visibleItems = Array.isArray(items) ? items.filter((item) => item?.isPublic !== false) : [];
+  const { user, profile } = useAuth();
+  const role = profile?.role ?? "guest";
+  const isLoggedIn = Boolean(user);
+  const isMember = role === "member" || role === "admin";
 
   return (
     <section
@@ -53,8 +58,13 @@ export default function PublicWatchlistShowcase({ items, loading, error }) {
           <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
             {visibleItems.slice(0, 6).map((item) => {
               const supportText = formatPriceLines(item.supportLines) ?? "지지선 정보 없음";
-              const resistanceText = formatPriceLines(item.resistanceLines);
+              const resistanceText = formatPriceLines(item.resistanceLines) ?? "저항선 정보 없음";
               const updatedText = formatTimestamp(item.updatedAt || item.createdAt);
+              const shouldMaskAllValues = !isLoggedIn;
+              const hasMemo = Boolean(item.memo);
+              const memoIsVisible = hasMemo && isMember;
+              const shouldShowMemoMaskForGuest = hasMemo && isLoggedIn && !isMember;
+              const shouldShowMemoMaskForVisitors = hasMemo && shouldMaskAllValues;
 
               return (
                 <article
@@ -77,18 +87,31 @@ export default function PublicWatchlistShowcase({ items, loading, error }) {
                       )}
                     </div>
                     {updatedText && <p className="text-xs text-amber-100/80">업데이트: {updatedText}</p>}
-                    {item.memo && <p className="text-sm text-amber-100/90">{item.memo}</p>}
+                    {memoIsVisible && <p className="text-sm text-amber-100/90">{item.memo}</p>}
+                    {shouldShowMemoMaskForVisitors && (
+                      <p className="text-sm text-amber-200/80">메모는 구글 로그인 후 확인 가능합니다.</p>
+                    )}
+                    {shouldShowMemoMaskForGuest && (
+                      <p className="text-sm text-amber-200/80">메모는 관리자 문의 후 확인 가능합니다.</p>
+                    )}
                   </div>
 
                   <div className="relative space-y-2 rounded-xl border border-amber-400/20 bg-amber-500/5 p-4 text-sm text-amber-100">
                     <p>
                       <span className="font-semibold text-amber-200">지지선</span>
-                      <span className="ml-2 text-amber-100/90">{supportText}</span>
+                      <span className="ml-2 text-amber-100/90">
+                        {shouldMaskAllValues ? "●●●" : supportText}
+                      </span>
                     </p>
                     <p>
                       <span className="font-semibold text-amber-200">저항선</span>
-                      <span className="ml-2 text-amber-100/90">{resistanceText ?? "저항선 정보 없음"}</span>
+                      <span className="ml-2 text-amber-100/90">
+                        {shouldMaskAllValues ? "●●●" : resistanceText}
+                      </span>
                     </p>
+                    {shouldMaskAllValues && (
+                      <p className="text-xs text-amber-200/80">지지선·저항선은 구글 로그인 후 확인 가능합니다.</p>
+                    )}
                     {item.alertEnabled === false ? (
                       <p className="text-xs text-amber-200/80">알림이 비활성화되어 있습니다.</p>
                     ) : (
