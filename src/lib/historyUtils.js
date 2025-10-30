@@ -154,17 +154,18 @@ export const groupSnapshotsByDate = (snapshots) => {
 
   snapshots.forEach((snapshot) => {
     const asOfDate = toDateInstance(snapshot.asOf);
-    const createdDate = toDateInstance(snapshot.createdAt);
-    const primaryDate = asOfDate || createdDate;
+    const collectedRaw = snapshot.collectedAt ?? snapshot.createdAt;
+    const collectedDate = toDateInstance(collectedRaw);
+    const primaryDate = asOfDate || collectedDate;
     const dateKey =
-      toLocalDateKey(primaryDate) || toLocalDateKey(createdDate) || "날짜 미상";
+      toLocalDateKey(primaryDate) || toLocalDateKey(collectedDate) || "날짜 미상";
 
     const comparableTime =
       (primaryDate && primaryDate.getTime()) ||
-      (createdDate && createdDate.getTime()) ||
+      (collectedDate && collectedDate.getTime()) ||
       0;
 
-    const createdAtText = formatTimestamp(snapshot.createdAt);
+    const createdAtText = formatTimestamp(collectedRaw);
     const asOfText = snapshot.asOf || "-";
     const primaryDisplay = snapshot.asOf || createdAtText;
 
