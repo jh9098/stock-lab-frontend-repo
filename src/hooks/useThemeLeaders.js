@@ -260,7 +260,7 @@ export default function useThemeLeaders() {
               asOf: payload.asOf || "",
               asOfLabel: payload.asOfLabel || "",
               items: normalizedItems,
-              createdAt: serverTimestamp(),
+              collectedAt: serverTimestamp(),
             }),
           ]);
           setInfoMessage("최신 테마 데이터가 저장되었습니다.");

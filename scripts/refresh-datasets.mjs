@@ -193,7 +193,7 @@ const refreshDataset = async (dataset) => {
 
   await Promise.all([
     latestDocRef.set(document, { merge: false }),
-    historyCollectionRef.add({ ...document, createdAt: now }),
+    historyCollectionRef.add({ ...document, collectedAt: now }),
   ]);
 
   console.log(`✅ ${dataset.key}: Firestore 저장 완료 (${normalizedItems.length}건).`);
