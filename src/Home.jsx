@@ -6,6 +6,7 @@ import { Helmet } from "react-helmet";
 import useSnapshotsHistory from "./hooks/useSnapshotsHistory";
 import useThemeLeaders from "./hooks/useThemeLeaders";
 import useLatestStockPrices from "./hooks/useLatestStockPrices";
+import { formatPriceTimestamp, formatPriceValue } from "./lib/stockPriceUtils";
 
 // Firebase imports
 import { db } from './firebaseConfig';
@@ -1310,12 +1311,37 @@ export default function Home() {
                       const memoIsVisible = hasMemo && isMember;
                       const shouldShowMemoMaskForGuest = hasMemo && isLoggedIn && !isMember;
                       const shouldShowMemoMaskForVisitors = hasMemo && shouldMaskAllValues;
+                      const tickerKey = (item.ticker ?? '').trim().toUpperCase();
+                      const priceInfo =
+                        tickerKey && publicWatchlistPriceMap instanceof Map
+                          ? publicWatchlistPriceMap.get(tickerKey) ?? null
+                          : null;
+                      const formattedPrice = priceInfo ? formatPriceValue(priceInfo.price) : null;
+                      const priceDisplayText = priceInfo && formattedPrice
+                        ? formattedPrice
+                        : publicWatchlistPriceLoading
+                        ? '가격 불러오는 중...'
+                        : publicWatchlistPriceError
+                        ? '가격 정보를 불러오지 못했습니다.'
+                        : '가격 정보 없음';
+                      const priceTimestampText = priceInfo?.priceDate
+                        ? formatPriceTimestamp(priceInfo.priceDate)
+                        : null;
                       return (
                         <li key={item.id} className="flex flex-col gap-1 rounded-lg border border-white/5 bg-white/5 px-3 py-2">
                           <div className="flex items-center justify-between gap-3">
                             <span className="font-semibold text-white">{item.name}</span>
                             <span className="text-xs text-amber-200">{item.ticker}</span>
                           </div>
+                          <p className="text-xs text-amber-100">
+                            현재가: {priceDisplayText}
+                            {priceTimestampText && (
+                              <span className="ml-2 text-[11px] text-amber-200/80">기준: {priceTimestampText}</span>
+                            )}
+                          </p>
+                          {!priceInfo && publicWatchlistPriceError && !publicWatchlistPriceLoading && (
+                            <p className="text-[11px] text-red-200/80">{publicWatchlistPriceError}</p>
+                          )}
                           <p className="text-xs text-amber-100">지지선: {shouldMaskSupport ? '●●●' : supportText}</p>
                           {resistanceText && (
                             <p className="text-xs text-amber-100">저항선: {shouldMaskResistance ? '●●●' : resistanceText}</p>

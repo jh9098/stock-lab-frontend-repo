@@ -11,13 +11,22 @@ const DEFAULT_TOP_COUNT = 10;
 const DEFAULT_CHART_COUNT = 5;
 
 export default function useThemeLeadersHistory({
-  limitCount = DEFAULT_LIMIT_DAYS,
+  limitCount: providedLimitCount,
   topCount = DEFAULT_TOP_COUNT,
   chartCount = DEFAULT_CHART_COUNT,
 } = {}) {
+  const effectiveLimitCount =
+    providedLimitCount === null
+      ? undefined
+      : typeof providedLimitCount === "number" &&
+        Number.isInteger(providedLimitCount) &&
+        providedLimitCount > 0
+      ? providedLimitCount
+      : DEFAULT_LIMIT_DAYS;
+
   const historyState = useSnapshotsHistory({
     collectionName: COLLECTION_NAME,
-    limitCount,
+    limitCount: effectiveLimitCount,
   });
 
   const { groupedSnapshots } = historyState;

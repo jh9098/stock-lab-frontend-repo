@@ -71,7 +71,7 @@ export default function ThemeRankHistoryPage() {
     isLoading,
     errorMessage,
     totalSnapshots,
-  } = useThemeLeadersHistory({ limitCount: undefined, topCount: 30, chartCount: 30 });
+  } = useThemeLeadersHistory({ limitCount: null, topCount: 30, chartCount: 30 });
 
   const coverage = useMemo(() => {
     if (!Array.isArray(groupedSnapshots) || groupedSnapshots.length === 0) {

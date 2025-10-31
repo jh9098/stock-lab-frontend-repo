@@ -5,7 +5,10 @@ import usePortfolioData from "./hooks/usePortfolioData";
 import { db } from "./firebaseConfig";
 import useAuth from "./useAuth";
 import useStockPrices from "./hooks/useStockPrices";
+import useLatestStockPrices from "./hooks/useLatestStockPrices";
 import { isLegFilled, resolveLegPrice } from "./lib/legUtils";
+import { formatPriceLines } from "./lib/watchlistUtils";
+import { formatPriceTimestamp, formatPriceValue } from "./lib/stockPriceUtils";
 
 const CHART_INITIAL_DAYS = 100;
 
@@ -98,13 +101,25 @@ function ProgressBar({ value }) {
   );
 }
 
-function StockRow({ stock, onSelect }) {
+function StockRow({ stock, onSelect, priceInfo, priceLoading, priceError }) {
   const statusColor =
     stock.status === "완료"
       ? "text-emerald-400"
       : stock.status === "진행중"
       ? "text-yellow-400"
       : "text-gray-300";
+
+  const supportText = formatPriceLines(stock.supportLines) ?? "-";
+  const resistanceText = formatPriceLines(stock.resistanceLines) ?? "-";
+  const formattedPrice = priceInfo ? formatPriceValue(priceInfo.price) : null;
+  const priceDisplayText = priceInfo && formattedPrice
+    ? formattedPrice
+    : priceLoading
+    ? "불러오는 중..."
+    : priceError
+    ? "가격 정보를 불러오지 못했습니다."
+    : "-";
+  const priceTimestampText = priceInfo?.priceDate ? formatPriceTimestamp(priceInfo.priceDate) : null;
 
   return (
     <tr
@@ -117,6 +132,19 @@ function StockRow({ stock, onSelect }) {
       <td className="px-4 py-3">
         <ProgressBar value={stock.totalProgress} />
       </td>
+      <td className="px-4 py-3 text-right">
+        <div className="flex flex-col items-end gap-1">
+          <span className="font-semibold text-white">{priceDisplayText}</span>
+          {priceTimestampText && (
+            <span className="text-[11px] text-gray-400">기준: {priceTimestampText}</span>
+          )}
+          {!priceInfo && priceError && !priceLoading && (
+            <span className="text-[11px] text-red-300">{priceError}</span>
+          )}
+        </div>
+      </td>
+      <td className="px-4 py-3 text-xs text-gray-300">{supportText}</td>
+      <td className="px-4 py-3 text-xs text-gray-300">{resistanceText}</td>
       <td className="px-4 py-3 text-right">
         {typeof stock.aggregatedReturn === "number"
           ? `${stock.aggregatedReturn.toFixed(2)}%`
@@ -253,6 +281,18 @@ function MemberNoteForm({ stock }) {
 
 export default function PortfolioPage() {
   const { loading, stocks } = usePortfolioData();
+  const portfolioTickers = useMemo(
+    () =>
+      stocks
+        .map((stock) => (stock.ticker ?? "").trim().toUpperCase())
+        .filter((ticker) => ticker.length > 0),
+    [stocks]
+  );
+  const {
+    priceMap: portfolioPriceMap,
+    loading: portfolioPriceLoading,
+    error: portfolioPriceError,
+  } = useLatestStockPrices(portfolioTickers);
   const [selectedStock, setSelectedStock] = useState(null);
   const [statusFilter, setStatusFilter] = useState("전체");
   const [activePriceTicker, setActivePriceTicker] = useState(null);
@@ -1266,41 +1306,58 @@ useEffect(() => {
                   <th className="px-4 py-3">종목명</th>
                   <th className="px-4 py-3">상태</th>
                   <th className="px-4 py-3">진행률</th>
+                  <th className="px-4 py-3 text-right">현재가</th>
+                  <th className="px-4 py-3">지지선</th>
+                  <th className="px-4 py-3">저항선</th>
                   <th className="px-4 py-3 text-right">총 수익률</th>
                 </tr>
               </thead>
               <tbody>
                 {loading && (
                   <tr>
-                    <td colSpan={5} className="px-4 py-6 text-center text-gray-400">
+                    <td colSpan={8} className="px-4 py-6 text-center text-gray-400">
                       데이터를 불러오는 중입니다...
                     </td>
                   </tr>
                 )}
                 {!loading && !stocks.length && (
                   <tr>
-                    <td colSpan={5} className="px-4 py-6 text-center text-gray-400">
+                    <td colSpan={8} className="px-4 py-6 text-center text-gray-400">
                       아직 등록된 포트폴리오가 없습니다.
                     </td>
                   </tr>
                 )}
                 {!loading && stocks.length > 0 && !filteredStocks.length && (
                   <tr>
-                    <td colSpan={5} className="px-4 py-6 text-center text-gray-400">
+                    <td colSpan={8} className="px-4 py-6 text-center text-gray-400">
                       선택한 상태에 해당하는 종목이 없습니다.
                     </td>
                   </tr>
                 )}
                 {!loading &&
-                  filteredStocks.map((stock) => (
-                    <StockRow
-                      key={stock.id}
-                      stock={stock}
-                      onSelect={setSelectedStock}
-                    />
-                  ))}
+                  filteredStocks.map((stock) => {
+                    const tickerKey = (stock.ticker ?? "").trim().toUpperCase();
+                    const priceInfo =
+                      tickerKey && portfolioPriceMap instanceof Map
+                        ? portfolioPriceMap.get(tickerKey) ?? null
+                        : null;
+
+                    return (
+                      <StockRow
+                        key={stock.id}
+                        stock={stock}
+                        onSelect={setSelectedStock}
+                        priceInfo={priceInfo}
+                        priceLoading={portfolioPriceLoading}
+                        priceError={portfolioPriceError}
+                      />
+                    );
+                  })}
               </tbody>
             </table>
+            {portfolioPriceError && !portfolioPriceLoading && (
+              <p className="px-4 pb-4 text-xs text-red-300">{portfolioPriceError}</p>
+            )}
           </div>
         </section>
 

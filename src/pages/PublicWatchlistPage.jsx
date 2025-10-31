@@ -3,6 +3,8 @@ import { Helmet } from "react-helmet";
 import { Link } from "react-router-dom";
 import usePublicWatchlist from "../hooks/usePublicWatchlist";
 import { formatPriceLines, formatTimestamp } from "../lib/watchlistUtils";
+import useLatestStockPrices from "../hooks/useLatestStockPrices";
+import { formatPriceTimestamp, formatPriceValue } from "../lib/stockPriceUtils";
 
 export default function PublicWatchlistPage() {
   const {
@@ -23,6 +25,20 @@ export default function PublicWatchlistPage() {
       portfolioReady,
     };
   }, [watchlistItems]);
+
+  const watchlistTickers = useMemo(
+    () =>
+      watchlistItems
+        .map((item) => (item.ticker ?? "").trim().toUpperCase())
+        .filter((ticker) => ticker.length > 0),
+    [watchlistItems]
+  );
+
+  const {
+    priceMap: latestPriceMap,
+    loading: priceLoading,
+    error: priceError,
+  } = useLatestStockPrices(watchlistTickers);
 
   const lastUpdatedText = meta.updatedAt ? formatTimestamp(meta.updatedAt) : "업데이트 정보 없음";
 
@@ -70,6 +86,20 @@ export default function PublicWatchlistPage() {
           const resistanceText = formatPriceLines(item.resistanceLines);
           const updatedText = formatTimestamp(item.updatedAt || item.createdAt);
           const alertEnabled = item.alertEnabled !== false;
+          const tickerKey = (item.ticker ?? "").trim().toUpperCase();
+          const priceInfo =
+            tickerKey && latestPriceMap instanceof Map ? latestPriceMap.get(tickerKey) ?? null : null;
+          const formattedPrice = priceInfo ? formatPriceValue(priceInfo.price) : null;
+          const priceDisplayText = priceInfo && formattedPrice
+            ? formattedPrice
+            : priceLoading
+            ? "가격 불러오는 중..."
+            : priceError
+            ? "가격 정보를 불러오지 못했습니다."
+            : "가격 정보 없음";
+          const priceTimestampText = priceInfo?.priceDate
+            ? formatPriceTimestamp(priceInfo.priceDate)
+            : null;
 
           return (
             <article
@@ -94,6 +124,16 @@ export default function PublicWatchlistPage() {
                 </div>
                 {updatedText && (
                   <p className="text-xs text-amber-100/80">업데이트: {updatedText}</p>
+                )}
+                <div className="flex flex-wrap items-center gap-2 text-sm text-amber-100/90">
+                  <span className="font-semibold text-amber-200">현재가</span>
+                  <span>{priceDisplayText}</span>
+                  {priceTimestampText && (
+                    <span className="text-xs text-amber-200/80">기준: {priceTimestampText}</span>
+                  )}
+                </div>
+                {!priceInfo && priceError && !priceLoading && (
+                  <p className="text-xs text-red-200/80">{priceError}</p>
                 )}
                 {item.memo && <p className="text-sm text-amber-100/90">{item.memo}</p>}
               </div>

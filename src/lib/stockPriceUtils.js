@@ -16,6 +16,54 @@ export function extractLatestPriceSnapshot(data) {
     return null;
   }
 
+  const parseDateValue = (value) => {
+    if (!value) {
+      return null;
+    }
+
+    if (typeof value?.toDate === "function") {
+      try {
+        const converted = value.toDate();
+        if (converted instanceof Date && !Number.isNaN(converted.getTime())) {
+          return converted;
+        }
+      } catch (error) {
+        console.warn("가격 스냅샷 날짜 변환 실패", error);
+      }
+    }
+
+    if (value instanceof Date) {
+      return Number.isNaN(value.getTime()) ? null : value;
+    }
+
+    if (typeof value === "number") {
+      const numericDate = new Date(value);
+      return Number.isNaN(numericDate.getTime()) ? null : numericDate;
+    }
+
+    if (typeof value === "string") {
+      const trimmed = value.trim();
+      if (!trimmed) {
+        return null;
+      }
+
+      if (/^\d{8}$/.test(trimmed)) {
+        const year = trimmed.slice(0, 4);
+        const month = trimmed.slice(4, 6);
+        const day = trimmed.slice(6, 8);
+        const date = new Date(`${year}-${month}-${day}T00:00:00`);
+        if (!Number.isNaN(date.getTime())) {
+          return date;
+        }
+      }
+
+      const parsed = new Date(trimmed);
+      return Number.isNaN(parsed.getTime()) ? null : parsed;
+    }
+
+    return null;
+  };
+
   const directFields = [
     { price: data.currentPrice, date: data.priceDate ?? data.updatedAt ?? null },
     { price: data.price, date: data.priceDate ?? data.updatedAt ?? null },
@@ -35,20 +83,54 @@ export function extractLatestPriceSnapshot(data) {
     return null;
   }
 
-  const latestEntry = prices[0];
-  const priceDateCandidate =
-    latestEntry?.date ?? latestEntry?.tradeDate ?? latestEntry?.timestamp ?? null;
+  let latestSnapshot = null;
+  let latestTimestamp = Number.NEGATIVE_INFINITY;
+  let fallbackSnapshot = null;
+  let fallbackIndex = -1;
 
-  const entryFields = [latestEntry?.close, latestEntry?.endPrice, latestEntry?.price];
-
-  for (const value of entryFields) {
-    const numeric = toNumeric(value);
-    if (numeric !== null) {
-      return { price: numeric, priceDate: priceDateCandidate };
+  prices.forEach((entry, index) => {
+    if (!entry || typeof entry !== "object") {
+      return;
     }
-  }
 
-  return null;
+    const candidatePrice =
+      toNumeric(entry.close) ??
+      toNumeric(entry.endPrice) ??
+      toNumeric(entry.price) ??
+      toNumeric(entry.lastPrice) ??
+      toNumeric(entry.currentPrice);
+
+    if (candidatePrice === null) {
+      return;
+    }
+
+    const rawDate =
+      entry.date ??
+      entry.dateValue ??
+      entry.tradeDate ??
+      entry.timestamp ??
+      entry.tradingDate ??
+      entry.datetime ??
+      entry.time ??
+      null;
+    const parsedDate = parseDateValue(rawDate);
+
+    if (parsedDate) {
+      const timeValue = parsedDate.getTime();
+      if (timeValue > latestTimestamp) {
+        latestTimestamp = timeValue;
+        latestSnapshot = { price: candidatePrice, priceDate: rawDate ?? null };
+      }
+      return;
+    }
+
+    if (index >= fallbackIndex) {
+      fallbackIndex = index;
+      fallbackSnapshot = { price: candidatePrice, priceDate: rawDate ?? null };
+    }
+  });
+
+  return latestSnapshot ?? fallbackSnapshot;
 }
 
 export function normaliseDateValue(value) {

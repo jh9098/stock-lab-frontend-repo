@@ -53,7 +53,7 @@ export default function useStockPrices(ticker, options = {}) {
       };
 
       const sortedByDate = [...limited].sort((a, b) => {
-        const timeDiff = parseDateValue(a?.date) - parseDateValue(b?.date);
+        const timeDiff = parseDateValue(b?.date) - parseDateValue(a?.date);
 
         if (timeDiff !== 0) {
           return timeDiff;
@@ -62,7 +62,7 @@ export default function useStockPrices(ticker, options = {}) {
         const aDateText = a?.date ?? "";
         const bDateText = b?.date ?? "";
 
-        return String(aDateText).localeCompare(String(bDateText));
+        return String(bDateText).localeCompare(String(aDateText));
       });
 
       console.log(`정렬 후 최종 데이터: ${sortedByDate.length}개`);
